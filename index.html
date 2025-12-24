@@ -22,7 +22,7 @@
         </div>
         
         <div class="flex mb-4">
-            <input type="text" id="itemInput" placeholder="Dodaj produkt..." class="flex-1 border rounded-l-lg p-2 outline-none">
+            <input type="text" id="itemInput" placeholder="Dodaj produkt..." class="flex-1 border rounded-l-lg p-2 outline-none focus:ring-2 focus:ring-blue-500">
             <button onclick="addItem()" class="bg-green-500 text-white px-4 py-2 rounded-r-lg hover:bg-green-600">Dodaj</button>
         </div>
 
@@ -35,7 +35,7 @@
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
-            apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8", // TWÓJ KLUCZ Z ETAPU 1
+            apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
             authDomain: "nasza-lista-zakupow.firebaseapp.com",
             projectId: "nasza-lista-zakupow",
             storageBucket: "nasza-lista-zakupow.firebasestorage.app",
@@ -48,7 +48,7 @@
         const db = getFirestore(app);
         const colRef = collection(db, 'shoppingList');
 
-        // --- LOGIKA LOGOWANIA ---
+        // LOGOWANIE
         window.handleLogin = async () => {
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPassword').value;
@@ -61,7 +61,7 @@
 
         window.handleLogout = () => signOut(auth);
 
-        // --- MONITOROWANIE STANU ZALOGOWANIA ---
+        // MONITOROWANIE SESJI
         onAuthStateChanged(auth, (user) => {
             const loginSec = document.getElementById('loginSection');
             const appSec = document.getElementById('appSection');
@@ -69,7 +69,7 @@
             if (user) {
                 loginSec.classList.add('hidden');
                 appSec.classList.remove('hidden');
-                document.body.classList.remove('items-center'); // Zmiana układu strony
+                document.body.classList.remove('items-center');
                 loadData();
             } else {
                 loginSec.classList.remove('hidden');
@@ -78,11 +78,9 @@
             }
         });
 
-                // --- POPRAWIONA OBSŁUGA DANYCH Z DIAGNOSTYKĄ ---
+        // POBIERANIE DANYCH
         function loadData() {
-            // Dodajemy logikę, która upewni się, że mamy dostęp
             const q = query(colRef, orderBy("timestamp", "desc"));
-            
             onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('shoppingList');
                 list.innerHTML = "";
@@ -91,29 +89,34 @@
                     const li = document.createElement('li');
                     li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200 shadow-sm";
                     li.innerHTML = `<span>${item.name}</span>
-                                    <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 font-bold px-2">X</button>`;
+                                    <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded">X</button>`;
                     list.appendChild(li);
                 });
             }, (error) => {
-                // Jeśli tu trafimy, wiemy na 100%, że Firestore odrzucił sesję
-                console.error("Szczegóły błędu:", error);
-                alert("Błąd uprawnień Firestore: " + error.message + "\n\nSprawdź czy wylogowanie i ponowne zalogowanie pomoże.");
+                alert("Błąd uprawnień: " + error.message);
             });
         }
 
-            });
-        }
-
+        // DODAWANIE
         window.addItem = async () => {
             const input = document.getElementById('itemInput');
             if (input.value.trim()) {
-                await addDoc(colRef, { name: input.value, timestamp: Date.now() });
-                input.value = "";
+                try {
+                    await addDoc(colRef, { name: input.value, timestamp: Date.now() });
+                    input.value = "";
+                } catch (e) {
+                    alert("Błąd dodawania: " + e.message);
+                }
             }
         };
 
+        // USUWANIE
         window.deleteItem = async (id) => {
-            await deleteDoc(doc(db, 'shoppingList', id));
+            try {
+                await deleteDoc(doc(db, 'shoppingList', id));
+            } catch (e) {
+                alert("Błąd usuwania: " + e.message);
+            }
         };
     </script>
 </body>
