@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wspólna Lista Zakupów</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <h1 class="text-2xl font-bold mb-4 text-gray-800">🛒 Lista Zakupów</h1>
+        
+        <div class="flex mb-4">
+            <input type="text" id="itemInput" placeholder="Dodaj produkt..." class="flex-1 border rounded-l-lg p-2 outline-none focus:ring-2 focus:ring-blue-500">
+            <button onclick="addItem()" class="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600">Dodaj</button>
+        </div>
+
+        <ul id="shoppingList" class="space-y-2">
+            </ul>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
+  authDomain: "nasza-lista-zakupow.firebaseapp.com",
+  projectId: "nasza-lista-zakupow",
+  storageBucket: "nasza-lista-zakupow.firebasestorage.app",
+  messagingSenderId: "516283526174",
+  appId: "1:516283526174:web:f42c9c38333e821da5520f"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const colRef = collection(db, 'shoppingList');
+
+        // Dodawanie elementu
+        window.addItem = async () => {
+            const input = document.getElementById('itemInput');
+            if (input.value.trim() !== "") {
+                await addDoc(colRef, { name: input.value, timestamp: Date.now() });
+                input.value = "";
+            }
+        };
+
+        // Nasłuchiwanie zmian w czasie rzeczywistym
+        onSnapshot(colRef, (snapshot) => {
+            const listElement = document.getElementById('shoppingList');
+            listElement.innerHTML = "";
+            snapshot.docs.forEach(docSnap => {
+                const item = docSnap.data();
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border";
+                li.innerHTML = `
+                    <span>${item.name}</span>
+                    <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 hover:text-red-700">Usuń</button>
+                `;
+                listElement.appendChild(li);
+            });
+        });
+
+        // Usuwanie elementu
+        window.deleteItem = async (id) => {
+            await deleteDoc(doc(db, 'shoppingList', id));
+        };
+    </script>
+</body>
+</html>
