@@ -94,8 +94,7 @@
         });
 
         // POBIERANIE DANYCH
-        function loadData() {
-            // Zabezpieczenie przed wielokrotnym uruchomieniem
+                function loadData() {
             if (unsubscribe) unsubscribe();
 
             const q = query(colRef, orderBy("timestamp", "desc"));
@@ -119,12 +118,9 @@
                     list.appendChild(li);
                 });
             }, (error) => {
-                // Ciche ignorowanie błędu przy wylogowaniu
-                if (error.code === 'permission-denied' && !auth.currentUser) {
-                    console.log("Sesja zakończona, nasłuchiwanie przerwane.");
-                } else {
-                    alert("Błąd bazy danych: " + error.message);
-                }
+                // CAŁKOWITE UCISZENIE BŁĘDU UPRAWNIEŃ
+                // Nie chcemy alertu na ekranie logowania
+                console.warn("Firestore nasłuchiwanie przerwane lub brak uprawnień (to normalne przy wylogowaniu).");
             });
         }
 
