@@ -78,20 +78,29 @@
             }
         });
 
-        // --- OBSŁUGA DANYCH ---
+                // --- POPRAWIONA OBSŁUGA DANYCH Z DIAGNOSTYKĄ ---
         function loadData() {
+            // Dodajemy logikę, która upewni się, że mamy dostęp
             const q = query(colRef, orderBy("timestamp", "desc"));
+            
             onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('shoppingList');
                 list.innerHTML = "";
                 snapshot.docs.forEach(docSnap => {
                     const item = docSnap.data();
                     const li = document.createElement('li');
-                    li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border";
+                    li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200 shadow-sm";
                     li.innerHTML = `<span>${item.name}</span>
-                                    <button onclick="deleteItem('${docSnap.id}')" class="text-red-500">Usuń</button>`;
+                                    <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 font-bold px-2">X</button>`;
                     list.appendChild(li);
                 });
+            }, (error) => {
+                // Jeśli tu trafimy, wiemy na 100%, że Firestore odrzucił sesję
+                console.error("Szczegóły błędu:", error);
+                alert("Błąd uprawnień Firestore: " + error.message + "\n\nSprawdź czy wylogowanie i ponowne zalogowanie pomoże.");
+            });
+        }
+
             });
         }
 
