@@ -1,0 +1,15 @@
+{
+  "name": "Nasza Lista Zakupów",
+  "short_name": "Zakupy",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f3f4f6",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081840.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
