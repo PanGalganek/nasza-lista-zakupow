@@ -44,13 +44,22 @@ const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const colRef = collection(db, 'shoppingList');
 
-        // Dodawanie elementu
+                // Poprawiona funkcja z powiadomieniami o błędach
         window.addItem = async () => {
             const input = document.getElementById('itemInput');
             if (input.value.trim() !== "") {
-                await addDoc(colRef, { name: input.value, timestamp: Date.now() });
-                input.value = "";
+                try {
+                    await addDoc(colRef, { name: input.value, timestamp: Date.now() });
+                    input.value = "";
+                } catch (error) {
+                    // To pokaże błąd na ekranie telefonu!
+                    alert("Błąd Firebase: " + error.message);
+                }
+            } else {
+                alert("Wpisz coś najpierw!");
             }
+        };
+
         };
 
         // Nasłuchiwanie zmian w czasie rzeczywistym
