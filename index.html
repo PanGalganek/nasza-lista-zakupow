@@ -32,7 +32,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -48,6 +48,9 @@
         const db = getFirestore(app);
         const colRef = collection(db, 'shoppingList');
 
+        // Globalna zmienna do wyłączania nasłuchiwania
+        let unsubscribe = null;
+
         // LOGOWANIE
         window.handleLogin = async () => {
             const email = document.getElementById('loginEmail').value;
@@ -59,7 +62,14 @@
             }
         };
 
-        window.handleLogout = () => signOut(auth);
+        // WYLOGOWANIE (ZABEZPIECZONE)
+        window.handleLogout = async () => {
+            if (unsubscribe) {
+                unsubscribe();
+                unsubscribe = null;
+            }
+            await signOut(auth);
+        };
 
         // MONITOROWANIE SESJI
         onAuthStateChanged(auth, (user) => {
@@ -72,52 +82,72 @@
                 document.body.classList.remove('items-center');
                 loadData();
             } else {
+                if (unsubscribe) {
+                    unsubscribe();
+                    unsubscribe = null;
+                }
                 loginSec.classList.remove('hidden');
                 appSec.classList.add('hidden');
                 document.body.classList.add('items-center');
+                document.getElementById('shoppingList').innerHTML = "";
             }
         });
 
         // POBIERANIE DANYCH
         function loadData() {
-        function loadData() {
-    const q = query(colRef, orderBy("timestamp", "desc"));
-    
-    unsubscribe = onSnapshot(q, (snapshot) => {
-        const list = document.getElementById('shoppingList');
-        list.innerHTML = "";
-        snapshot.docs.forEach(docSnap => {
-            const item = docSnap.data();
-            const li = document.createElement('li');
-            li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200 shadow-sm";
-            
-            // Dodajemy styl dla produktów oznaczonych jako kupione (opcjonalnie na przyszłość)
-            const textStyle = item.bought ? "line-through text-gray-400" : "text-gray-700 font-medium";
-            
-            li.innerHTML = `
-                <span class="${textStyle}">${item.name}</span>
-                <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 font-bold px-3 py-1 hover:bg-red-100 rounded-md transition">X</button>
-            `;
-            list.appendChild(li);
-        });
-    }, (error) => {
-        // --- TO JEST KLUCZOWA ZMIANA ---
-        // Jeśli błąd to 'permission-denied' i nie ma zalogowanego użytkownika, siedź cicho.
-        if (error.code === 'permission-denied' && !auth.currentUser) {
-            console.log("Wylogowano poprawnie, ignoruję błąd uprawnień.");
-        } else {
-            alert("Błąd uprawnień Firestore: " + error.message);
-        }
-    });
-}
+            // Zabezpieczenie przed wielokrotnym uruchomieniem
+            if (unsubscribe) unsubscribe();
 
+            const q = query(colRef, orderBy("timestamp", "desc"));
+            
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                const list = document.getElementById('shoppingList');
+                list.innerHTML = "";
+                snapshot.docs.forEach(docSnap => {
+                    const item = docSnap.data();
+                    const li = document.createElement('li');
+                    li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200 shadow-sm";
+                    
+                    const textStyle = item.bought ? "line-through text-gray-400 italic" : "text-gray-700 font-medium";
+                    
+                    li.innerHTML = `
+                        <span onclick="toggleBought('${docSnap.id}', ${item.bought || false})" class="${textStyle} flex-1 cursor-pointer py-1">
+                            ${item.name}
+                        </span>
+                        <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 font-bold px-3 py-1 hover:bg-red-50 rounded transition">X</button>
+                    `;
+                    list.appendChild(li);
+                });
+            }, (error) => {
+                // Ciche ignorowanie błędu przy wylogowaniu
+                if (error.code === 'permission-denied' && !auth.currentUser) {
+                    console.log("Sesja zakończona, nasłuchiwanie przerwane.");
+                } else {
+                    alert("Błąd bazy danych: " + error.message);
+                }
+            });
+        }
+
+        // PRZEKREŚLANIE (KUPIONE)
+        window.toggleBought = async (id, currentStatus) => {
+            try {
+                const docRef = doc(db, 'shoppingList', id);
+                await updateDoc(docRef, { bought: !currentStatus });
+            } catch (e) {
+                console.error("Błąd aktualizacji:", e);
+            }
+        };
 
         // DODAWANIE
         window.addItem = async () => {
             const input = document.getElementById('itemInput');
             if (input.value.trim()) {
                 try {
-                    await addDoc(colRef, { name: input.value, timestamp: Date.now() });
+                    await addDoc(colRef, { 
+                        name: input.value, 
+                        timestamp: Date.now(),
+                        bought: false 
+                    });
                     input.value = "";
                 } catch (e) {
                     alert("Błąd dodawania: " + e.message);
