@@ -80,22 +80,37 @@
 
         // POBIERANIE DANYCH
         function loadData() {
-            const q = query(colRef, orderBy("timestamp", "desc"));
-            onSnapshot(q, (snapshot) => {
-                const list = document.getElementById('shoppingList');
-                list.innerHTML = "";
-                snapshot.docs.forEach(docSnap => {
-                    const item = docSnap.data();
-                    const li = document.createElement('li');
-                    li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200 shadow-sm";
-                    li.innerHTML = `<span>${item.name}</span>
-                                    <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 font-bold px-2 hover:bg-red-50 rounded">X</button>`;
-                    list.appendChild(li);
-                });
-            }, (error) => {
-                alert("Błąd uprawnień: " + error.message);
-            });
+        function loadData() {
+    const q = query(colRef, orderBy("timestamp", "desc"));
+    
+    unsubscribe = onSnapshot(q, (snapshot) => {
+        const list = document.getElementById('shoppingList');
+        list.innerHTML = "";
+        snapshot.docs.forEach(docSnap => {
+            const item = docSnap.data();
+            const li = document.createElement('li');
+            li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-200 shadow-sm";
+            
+            // Dodajemy styl dla produktów oznaczonych jako kupione (opcjonalnie na przyszłość)
+            const textStyle = item.bought ? "line-through text-gray-400" : "text-gray-700 font-medium";
+            
+            li.innerHTML = `
+                <span class="${textStyle}">${item.name}</span>
+                <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 font-bold px-3 py-1 hover:bg-red-100 rounded-md transition">X</button>
+            `;
+            list.appendChild(li);
+        });
+    }, (error) => {
+        // --- TO JEST KLUCZOWA ZMIANA ---
+        // Jeśli błąd to 'permission-denied' i nie ma zalogowanego użytkownika, siedź cicho.
+        if (error.code === 'permission-denied' && !auth.currentUser) {
+            console.log("Wylogowano poprawnie, ignoruję błąd uprawnień.");
+        } else {
+            alert("Błąd uprawnień Firestore: " + error.message);
         }
+    });
+}
+
 
         // DODAWANIE
         window.addItem = async () => {
