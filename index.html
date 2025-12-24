@@ -20,68 +20,73 @@
     </div>
 
     <script type="module">
+        // 1. POPRAWNE IMPORTY (Tylko raz i tylko z URL)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+        // 2. TWOJA KONFIGURACJA (Używam Twoich danych)
+        const firebaseConfig = {
+            apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
+            authDomain: "nasza-lista-zakupow.firebaseapp.com",
+            projectId: "nasza-lista-zakupow",
+            storageBucket: "nasza-lista-zakupow.firebasestorage.app",
+            messagingSenderId: "516283526174",
+            appId: "1:516283526174:web:f42c9c38333e821da5520f"
+        };
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
-  authDomain: "nasza-lista-zakupow.firebaseapp.com",
-  projectId: "nasza-lista-zakupow",
-  storageBucket: "nasza-lista-zakupow.firebasestorage.app",
-  messagingSenderId: "516283526174",
-  appId: "1:516283526174:web:f42c9c38333e821da5520f"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+        // 3. INICJALIZACJA (Tylko raz!)
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const colRef = collection(db, 'shoppingList');
 
-                // Poprawiona funkcja z powiadomieniami o błędach
+        // 4. DODAWANIE ELEMENTU
         window.addItem = async () => {
             const input = document.getElementById('itemInput');
-            if (input.value.trim() !== "") {
+            const text = input.value.trim();
+            
+            if (text !== "") {
                 try {
-                    await addDoc(colRef, { name: input.value, timestamp: Date.now() });
+                    await addDoc(colRef, { 
+                        name: text, 
+                        timestamp: Date.now() 
+                    });
                     input.value = "";
                 } catch (error) {
-                    // To pokaże błąd na ekranie telefonu!
-                    alert("Błąd Firebase: " + error.message);
+                    alert("Błąd zapisu: " + error.message);
                 }
             } else {
-                alert("Wpisz coś najpierw!");
+                alert("Wpisz nazwę produktu!");
             }
         };
 
+        // 5. USUWANIE ELEMENTU
+        window.deleteItem = async (id) => {
+            try {
+                await deleteDoc(doc(db, 'shoppingList', id));
+            } catch (error) {
+                alert("Błąd usuwania: " + error.message);
+            }
         };
 
-        // Nasłuchiwanie zmian w czasie rzeczywistym
-        onSnapshot(colRef, (snapshot) => {
+        // 6. NASŁUCHIWANIE ZMIAN (Z sortowaniem po czasie)
+        const q = query(colRef, orderBy("timestamp", "desc"));
+        onSnapshot(q, (snapshot) => {
             const listElement = document.getElementById('shoppingList');
             listElement.innerHTML = "";
+            
             snapshot.docs.forEach(docSnap => {
                 const item = docSnap.data();
                 const li = document.createElement('li');
-                li.className = "flex justify-between items-center bg-gray-50 p-2 rounded border";
+                li.className = "flex justify-between items-center bg-gray-50 p-3 rounded border border-gray-200 shadow-sm";
                 li.innerHTML = `
-                    <span>${item.name}</span>
-                    <button onclick="deleteItem('${docSnap.id}')" class="text-red-500 hover:text-red-700">Usuń</button>
+                    <span class="text-gray-700 font-medium">${item.name}</span>
+                    <button onclick="deleteItem('${docSnap.id}')" class="bg-red-100 text-red-600 px-3 py-1 rounded-md hover:bg-red-200 transition">Usuń</button>
                 `;
                 listElement.appendChild(li);
             });
+        }, (error) => {
+            alert("Błąd odczytu bazy: " + error.message);
         });
-
-        // Usuwanie elementu
-        window.deleteItem = async (id) => {
-            await deleteDoc(doc(db, 'shoppingList', id));
-        };
     </script>
 </body>
 </html>
