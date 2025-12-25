@@ -21,7 +21,7 @@
         <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition shadow-lg">Zaloguj</button>
     </div>
 
-    <div id="appSection" class="hidden max-w-4xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6">
+    <div id="appSection" class="hidden max-w-5xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <span>⚗️</span> Ewidencja Odczynników
@@ -41,12 +41,18 @@
                     <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 
-                <div class="flex items-center gap-2">
-                    <label class="text-[10px] font-bold text-gray-500 uppercase">Data ważności:</label>
-                    <input type="date" id="chemExpiry" class="flex-1 border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="flex flex-col">
+                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label>
+                        <input type="date" id="chemReceived" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[9px] font-bold text-gray-500 uppercase ml-1 text-red-400">Data ważności:</label>
+                        <input type="date" id="chemExpiry" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    </div>
                 </div>
                 
-                <div class="flex gap-2">
+                <div class="flex gap-2 mt-1">
                     <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md transition transform active:scale-95">
                         Dodaj do ewidencji
                     </button>
@@ -59,9 +65,9 @@
 
         <div class="grid grid-cols-12 gap-2 px-2 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
             <div class="col-span-1 text-center border-r">LP</div>
-            <div class="col-span-3">Grupa</div>
+            <div class="col-span-2">Grupa</div>
             <div class="col-span-4">Nazwa Odczynnika</div>
-            <div class="col-span-2 text-center">Ważność</div>
+            <div class="col-span-3 text-center">Przyjęcie / Ważność</div>
             <div class="col-span-2 text-right">Akcje</div>
         </div>
 
@@ -89,6 +95,12 @@
 
         let unsubscribe = null;
 
+        // Ustawianie dzisiejszej daty jako domyślnej daty przyjęcia
+        function setDefaultDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('chemReceived').value = today;
+        }
+
         window.handleLogin = async () => {
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPassword').value;
@@ -108,6 +120,7 @@
                 loginSec.classList.add('hidden');
                 appSec.classList.remove('hidden');
                 document.body.classList.remove('items-center');
+                setDefaultDate();
                 loadData();
             } else {
                 if (unsubscribe) { unsubscribe(); unsubscribe = null; }
@@ -138,7 +151,7 @@
                     const isExpiringSoon = diffDays !== null && diffDays <= 30 && diffDays >= 0;
                     
                     if (isExpiringSoon && !item.ordered) {
-                        expiringItemsList.push({ lp: index + 1, group: item.group || 'Brak grupy', name: item.name });
+                        expiringItemsList.push({ lp: index + 1, group: item.group || '?', name: item.name });
                     }
 
                     const dateColor = isExpired ? "text-red-600 font-bold" : (isExpiringSoon ? "text-orange-500 font-bold" : "text-gray-500");
@@ -148,15 +161,18 @@
                     
                     li.innerHTML = `
                         <div class="col-span-1 text-center font-mono text-gray-400 text-[10px] border-r">${index + 1}</div>
-                        <div class="col-span-3 text-[10px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div>
+                        <div class="col-span-2 text-[10px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div>
                         <div class="col-span-4 leading-tight">
                             <div class="font-bold text-gray-800 text-sm truncate">${item.name}</div>
                             <div class="text-[8px] text-gray-400 italic truncate">${item.usage || '-'}</div>
                         </div>
-                        <div class="col-span-2 text-center text-[10px] ${dateColor}">${item.expiry || 'brak'}</div>
+                        <div class="col-span-3 text-center flex flex-col">
+                            <span class="text-[9px] text-gray-400">P: ${item.received || '---'}</span>
+                            <span class="text-[10px] ${dateColor}">W: ${item.expiry || '---'}</span>
+                        </div>
                         <div class="col-span-2 text-right flex justify-end items-center gap-2">
                             <button onclick="toggleOrder('${itemId}', ${item.ordered || false})" class="text-base" title="Zamówione">${item.ordered ? '✅' : '🛒'}</button>
-                            <button onclick="startEdit('${itemId}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}')" class="text-gray-400 hover:text-blue-600 text-xs" title="Edytuj">✏️</button>
+                            <button onclick="startEdit('${itemId}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')" class="text-gray-400 hover:text-blue-600 text-xs">✏️</button>
                             <button onclick="deleteItem('${itemId}')" class="text-red-300 hover:text-red-600 text-sm">✕</button>
                         </div>
                     `;
@@ -178,13 +194,13 @@
             }
         }
 
-        // FUNKCJA EDYCJI - WCZYTYWANIE DANYCH
-        window.startEdit = (id, name, group, usage, expiry) => {
+        window.startEdit = (id, name, group, usage, expiry, received) => {
             document.getElementById('editId').value = id;
             document.getElementById('chemName').value = name;
             document.getElementById('chemGroup').value = group === 'undefined' ? '' : group;
             document.getElementById('chemUsage').value = usage === 'undefined' ? '' : usage;
-            document.getElementById('chemExpiry').value = expiry;
+            document.getElementById('chemExpiry').value = expiry === 'undefined' ? '' : expiry;
+            document.getElementById('chemReceived').value = received === 'undefined' ? '' : received;
             
             document.getElementById('submitBtn').innerText = "Zapisz zmiany";
             document.getElementById('submitBtn').className = "flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 shadow-md transition";
@@ -199,6 +215,7 @@
             document.getElementById('chemGroup').value = "";
             document.getElementById('chemUsage').value = "";
             document.getElementById('chemExpiry').value = "";
+            setDefaultDate();
             
             document.getElementById('submitBtn').innerText = "Dodaj do ewidencji";
             document.getElementById('submitBtn').className = "flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md transition";
@@ -212,19 +229,18 @@
             const group = document.getElementById('chemGroup').value;
             const usage = document.getElementById('chemUsage').value;
             const expiry = document.getElementById('chemExpiry').value;
+            const received = document.getElementById('chemReceived').value;
 
             if (name.trim()) {
                 try {
                     if (editId) {
-                        // TRYB AKTUALIZACJI
                         await updateDoc(doc(db, 'odczynniki', editId), {
-                            name, group, usage, expiry
+                            name, group, usage, expiry, received
                         });
                         cancelEdit();
                     } else {
-                        // TRYB DODAWANIA
                         await addDoc(colRef, { 
-                            name, group, usage, expiry, 
+                            name, group, usage, expiry, received,
                             timestamp: Date.now(), ordered: false 
                         });
                         cancelEdit();
