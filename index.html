@@ -3,56 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LabManager - System Wzorców</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>LabManager v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .ordered-row { background-color: #f0fdf4 !important; opacity: 0.9; }
-        .editable:hover { cursor: pointer; background-color: #fef9c3; }
-        .alert-warning { background-color: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; }
-        .alert-success { background-color: #f0fdf4; border-left: 4px solid #22c55e; color: #166534; }
-    </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-2 md:p-6 flex items-center justify-center font-sans text-slate-900">
+<body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
 
-    <div id="loginSection" class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 border border-slate-200">
-        <h2 class="text-3xl font-extrabold mb-6 text-center text-slate-800 tracking-tight">🧪 LabManager</h2>
-        <p class="text-center text-slate-500 mb-8 text-sm">Zaloguj się do bazy wzorców</p>
-        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded-xl mb-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded-xl mb-8 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-        <button onclick="handleLogin()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-all shadow-lg active:scale-95 text-lg">Zaloguj system</button>
+    <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8 mt-20">
+        <h2 class="text-2xl font-bold mb-6 text-center">🔐 Panel LabManager</h2>
+        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4">
+        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6">
+        <button id="btnLog" class="w-full bg-blue-600 text-white font-bold py-3 rounded">Zaloguj</button>
     </div>
 
-    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-2xl shadow-2xl p-4 md:p-8 border border-slate-200">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Zarządzanie Wzorcami i Materiałami</h1>
-                <p id="authStatus" class="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-semibold"></p>
-            </div>
-            <button onclick="handleLogout()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-xs font-bold">Wyloguj sesję</button>
+    <div id="appSection" class="hidden w-full max-w-5xl bg-white rounded-xl shadow-lg p-6">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h1 class="text-xl font-bold">🧪 Ewidencja Wzorców</h1>
+            <button id="btnOut" class="text-red-500 text-sm font-bold">Wyloguj</button>
         </div>
 
-        <div id="alert-section" class="p-4 rounded-xl mb-8 text-sm shadow-sm hidden"></div>
+        <div id="alert-section" class="p-4 rounded-lg mb-6 text-sm hidden"></div>
+        
+        <button id="btnAdd" class="bg-green-600 text-white px-4 py-2 rounded mb-4 text-sm">+ Dodaj nowy</button>
 
-        <div class="flex gap-4 mb-6">
-            <button onclick="addRow()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md active:scale-95 text-sm">➕ Dodaj Nowy</button>
-        </div>
-
-        <div class="overflow-x-auto rounded-xl border border-slate-200">
-            <table class="w-full border-collapse text-left">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
                 <thead>
-                    <tr class="bg-slate-800 text-white text-[10px] uppercase tracking-wider">
-                        <th class="p-4 w-12 text-center">LP</th>
-                        <th class="p-4 w-24">Grupa</th>
-                        <th class="p-4">Nazwa Wzorca</th>
-                        <th class="p-4 w-32">Ważność</th>
-                        <th class="p-4">Zastosowanie</th>
-                        <th class="p-4 w-24 text-right">Akcje</th>
+                    <tr class="bg-slate-800 text-white uppercase">
+                        <th class="p-3">LP</th>
+                        <th class="p-3">Grupa</th>
+                        <th class="p-3">Nazwa</th>
+                        <th class="p-3">Ważność</th>
+                        <th class="p-3">Zastosowanie</th>
+                        <th class="p-3 text-right">Akcje</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody" class="text-xs">
-                    </tbody>
+                <tbody id="tableBody"></tbody>
             </table>
         </div>
     </div>
@@ -74,42 +59,110 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
-        const csvRaw = `1,II-1/29,"Wzorzec barwy 500 Color Units (lot 945521, CPAchem, ISO 17034)",20.11.2026,"Oznaczanie barwy / Okresowe sprawdzanie"
-2,II-3/06,"Wzorzec jonów fosforanowych PO₄³⁻ (seria III/25 OUM PCA)",16.01.2026,"Oznaczanie fosforanów / Sprawdzanie okresowe"
-3,II-4/31,"Wzorzec jonów amonowych N–NH₄⁺ (seria I/25 OUM PCA)",27.01.2026,"Oznaczanie azotu amonowego / Sprawdzanie bieżące"
-4,II-5/06,"Wzorzec jonów amonowych N–NH₄⁺ (seria III/25 OUM PCA)",21.07.2026,"Oznaczanie azotu amonowego / Sprawdzanie okresowe"
-5,II-7/26,"Wzorzec jonów Mn²⁺ (seria I/25 OUM PCA)",07.03.2026,"Oznaczanie manganu / Bieżące sprawdzanie"
-6,II-8/32,"Wzorzec jonów Fe³⁺ (seria I/25 PCA)",04.03.2026,"Oznaczanie żelaza / Bieżące sprawdzanie"
-7,II-9/22,"CRM pH 4,00 (lot 1081870 CPAchem)",28.02.2026,"Okresowe sprawdzanie pH / Sprawdzanie bieżące"
-8,II-13/27,"CRM pH 10,00 (lot 1164060 CPAchem)",13.11.2026,"Sprawdzanie pH"
-9,II-15/21,"Wzorzec siarczanów SO₄²⁻ (seria IV/25 PCA–OUM Łódź)",22.08.2026,"Oznaczanie siarczanów / Sprawdzanie okresowe"
-10,II-16/15,"BOD 200 mg/l (lot LRADG875 Sigma-Aldrich)",31.05.2026,"Oznaczanie BZT₅ / Okresowe sprawdzanie"
-11,II-17/11,"Total Kjeldahl Nitrogen (lot LRAD7960 Sigma-Aldrich)",03.2027,"Oznaczanie azotu Kjeladala"
-12,II-18/02,"Dissolved Oxygen CRM (lot LRAE0605)",01.2027,"Oznaczanie tlenu rozpuszczonego"
-13,II-21/05,"Rezorcyna (materiał odniesienia, nr 240328093)",03.2028,"Oznaczanie indeksu nadmanganianowego"
-14,II-23/45,"Wzorzec N–NO₂⁻ (seria VII/25 OUM PCA)",19.03.2026,"Oznaczanie azotu azotynowego / Sprawdzanie bieżące"
-15,II-24/16,"Wzorzec chlorków Cl⁻ (seria I/25 PCA)",05.03.2026,"Oznaczanie jonów chlorkowych"
-16,II-26/24,"Wzorzec Mg²⁺ (seria I/25 OUM PCA)",07.02.2026,"Oznaczanie Mg / Ca+Mg"
-17,II-27/27,"Wzorzec CHZT 500 mg/l COD STANDARD (lot 1145361 CPAchem)",12.09.2027,"Oznaczanie CHZT / Sprawdzanie bieżące"
-18,II-28/28,"Wzorzec N–NO₃⁻ (seria III/25 PCA OUM)",19.08.2026,"Oznaczanie azotu azotanowego / Okresowe sprawdzanie"
-19,II-29/02,"Wzorzec konduktometryczny 5 μS/cm (lot 1146903 CPAchem)",21.03.2026,"Okresowe sprawdzanie przewodności"
-20,II-31/02,"Wzorzec konduktometryczny 100 μS/cm (lot 1073792)",06.02.2026,"Sprawdzanie przewodności"
-21,II-32/02,"Wzorzec konduktometryczny 1413 μS/cm (lot 1073788)",06.02.2026,"Okresowe sprawdzanie przewodności"
-22,II-33/02,"Wzorzec konduktometryczny 10000 μS/cm (lot 1073793)",06.02.2026,"Sprawdzanie przewodności"
-23,II-36/38-39,"Wzorzec Ca²⁺ (seria I/25 i III/25 PCA)",09.04.2026 / 17.10.2026,"Oznaczanie Ca+Mg"
-24,II-37/24,"Wzorzec konduktometryczny 100 μS/cm (lot 1115022)",09.06.2026,"Oznaczanie przewodności"
-25,II-38/20,"Wzorzec konduktometryczny 1413 μS/cm (lot 1115026)",09.06.2026,"Oznaczanie przewodności / Bieżące sprawdzanie"
-26,II-39/22,"Wzorzec konduktometryczny 10000 μS/cm (lot 1115047)",09.06.2026,"Sprawdzanie przewodności"
-27,II-40/20,"Wzorzec Al³⁺ (seria IV/25 PCA)",19.08.2026,"Oznaczanie glinu"
-28,II-44/12,"Wzorzec chloru wolnego (lot LRAE1141)",30.04.2028,"Okresowe sprawdzanie chloru"
-29,II-45/06,"Di-sodu β-glicerofosforan cz.d.a. (lot 10212980)",23.02.2028,"Oznaczanie fosforu"
-30,II-46/18,"Wzorzec Cu²⁺ (seria III/25 OUM PCA)",12.09.2026,"Oznaczanie miedzi / Sprawdzanie bieżące"
-31,II-47/17,"Wzorzec Ni²⁺ (seria III/25 OUM PCA)",10.09.2026,"Oznaczanie niklu / Bieżące sprawdzanie"
-32,II-48/17,"Wzorzec Zn²⁺ (seria I/25 OUM PCA)",29.04.2026,"Oznaczanie cynku / Sprawdzanie bieżące"
-33,II-49/17,"Wzorzec Cr³⁺ (seria III/25 OUM PCA)",21.10.2026,"Okresowe sprawdzanie chromu"
-34,II-50/03,"Wzorzec pH 4,00 (lot 1164073)",13.11.2026,"Sprawdzanie pH"
-35,II-51/09,"Wzorzec pH 2,00 (lot 1073794)",06.02.2026,"Okresowe sprawdzanie pH"
-36,II-53/13,"Wzorzec pH 12,6 (BLS 099-120)",26.03.2026,"Sprawdzanie pH"
-37,II-53/14,"Wzorzec pH 12,19 (lot 5E111H5)",02.2027,"Sprawdzanie pH"
-38,II-54/16,"
+        const docRef = doc(db, 'ewidencja', 'glowna');
+
+        let data = [];
+
+        // --- OBSŁUGA LOGOWANIA ---
+        document.getElementById('btnLog').onclick = async () => {
+            const e = document.getElementById('loginEmail').value;
+            const p = document.getElementById('loginPassword').value;
+            try { await signInWithEmailAndPassword(auth, e, p); } 
+            catch (err) { alert("Błąd: " + err.message); }
+        };
+
+        document.getElementById('btnOut').onclick = () => signOut(auth);
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('appSection').classList.remove('hidden');
+                startSync();
+            } else {
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('appSection').classList.add('hidden');
+            }
+        });
+
+        // --- SYNCHRONIZACJA ---
+        function startSync() {
+            onSnapshot(docRef, (snap) => {
+                if (snap.exists()) {
+                    data = snap.data().lista || [];
+                    render();
+                } else {
+                    // Jeśli pusto, zainicjuj listę
+                    data = [{lp: "1", grupa: "II-1/29", nazwa: "Wzorzec barwy", data: "20.11.2026", zastosowanie: "Barwa", zamowione: false}];
+                    save();
+                }
+            });
+        }
+
+        async function save() {
+            await setDoc(docRef, { lista: data });
+        }
+
+        function render() {
+            const body = document.getElementById('tableBody');
+            body.innerHTML = '';
+            data.forEach((item, i) => {
+                const tr = document.createElement('tr');
+                tr.className = `border-b ${item.zamowione ? 'bg-green-50' : ''}`;
+                tr.innerHTML = `
+                    <td class="p-3">${item.lp}</td>
+                    <td class="p-3 text-gray-500">${item.grupa}</td>
+                    <td class="p-3 font-bold cursor-pointer" onclick="window.edit(${i}, 'nazwa')">${item.nazwa} ${item.zamowione ? '✅' : ''}</td>
+                    <td class="p-3 cursor-pointer" onclick="window.edit(${i}, 'data')">${item.data}</td>
+                    <td class="p-3 text-gray-400 italic">${item.zastosowanie}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="window.toggle(${i})" class="mr-2">🛒</button>
+                        <button onclick="window.del(${i})">🗑️</button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+            checkDates();
+        }
+
+        // --- FUNKCJE OKNA (DOSTĘPNE DLA HTML) ---
+        window.edit = (i, klucz) => {
+            const val = prompt("Nowa wartość:", data[i][klucz]);
+            if (val) { data[i][klucz] = val; save(); }
+        };
+
+        window.toggle = (i) => {
+            data[i].zamowione = !data[i].zamowione;
+            save();
+        };
+
+        window.del = (i) => {
+            if (confirm("Usunąć?")) { data.splice(i, 1); save(); }
+        };
+
+        document.getElementById('btnAdd').onclick = () => {
+            data.push({lp: (data.length+1).toString(), grupa: "-", nazwa: "NOWY", data: "01.01.2026", zastosowanie: "-", zamowione: false});
+            save();
+        };
+
+        function checkDates() {
+            const alertBox = document.getElementById('alert-section');
+            const expiring = data.filter(item => {
+                const parts = item.data.split('.');
+                if(parts.length !== 3) return false;
+                const d = new Date(parts[2], parts[1]-1, parts[1]);
+                const limit = new Date();
+                limit.setDate(limit.getDate() + 42);
+                return d < limit && !item.zamowione;
+            });
+
+            if (expiring.length > 0) {
+                alertBox.innerHTML = `🚨 Wygasają wkrótce: ${expiring.length} wzorce.`;
+                alertBox.className = "p-4 bg-orange-100 text-orange-800 rounded-lg mb-6 block";
+            } else {
+                alertBox.innerHTML = "✅ Wszystkie dane aktualne.";
+                alertBox.className = "p-4 bg-green-100 text-green-800 rounded-lg mb-6 block";
+            }
+        }
+    </script>
+</body>
+</html>
