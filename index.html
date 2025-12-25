@@ -7,6 +7,9 @@
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+    </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-2 md:p-8 flex items-center justify-center">
 
@@ -18,12 +21,14 @@
     </div>
 
     <div id="appSection" class="hidden max-w-2xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6">
-        <div class="flex justify-between items-center mb-6">
+        <div class="flex justify-between items-center mb-4">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <span>⚗️</span> Ewidencja Odczynników
             </h1>
-            <button onclick="handleLogout()" class="text-sm text-red-500 hover:underline">Wyloguj</button>
+            <button onclick="handleLogout()" class="text-xs text-red-500 hover:underline">Wyloguj</button>
         </div>
+
+        <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm font-medium shadow-sm transition-all"></div>
         
         <div class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100">
             <div class="grid grid-cols-1 gap-3">
@@ -47,9 +52,9 @@
 
         <div class="grid grid-cols-12 gap-2 px-2 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
             <div class="col-span-1 text-center border-r">LP</div>
-            <div class="col-span-4">Odczynnik / Grupa</div>
-            <div class="col-span-4">Zastosowanie</div>
-            <div class="col-span-3 text-right">Ważność</div>
+            <div class="col-span-5">Odczynnik / Grupa</div>
+            <div class="col-span-3 text-center">Ważność</div>
+            <div class="col-span-3 text-right">Akcje</div>
         </div>
 
         <ul id="chemicalList" class="space-y-3"></ul>
@@ -58,7 +63,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -127,33 +132,73 @@
             unsubscribe = onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('chemicalList');
                 list.innerHTML = "";
+                let expiringCount = 0;
                 
                 snapshot.docs.forEach((docSnap, index) => {
                     const item = docSnap.data();
+                    const itemId = docSnap.id;
                     const li = document.createElement('li');
-                    li.className = "grid grid-cols-12 gap-2 items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm transition hover:border-blue-300";
                     
-                    const isExpired = item.expiry && new Date(item.expiry) < new Date();
-                    const dateColor = isExpired ? "text-red-600 font-bold" : "text-gray-500";
+                    // Logika daty
+                    const expiryDate = item.expiry ? new Date(item.expiry) : null;
+                    const today = new Date();
+                    const diffDays = expiryDate ? Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)) : null;
+                    
+                    const isExpired = diffDays !== null && diffDays < 0;
+                    const isExpiringSoon = diffDays !== null && diffDays <= 30 && diffDays >= 0;
+                    
+                    // Licznik dla alertu (tylko jeśli nie zamówione)
+                    if (isExpiringSoon && !item.ordered) expiringCount++;
 
+                    const dateColor = isExpired ? "text-red-600 font-bold" : (isExpiringSoon ? "text-orange-500 font-bold" : "text-gray-500");
+                    const statusClass = item.ordered ? "ordered-row" : "bg-white";
+
+                    li.className = `${statusClass} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border border-gray-200 shadow-sm transition hover:border-blue-300`;
+                    
                     li.innerHTML = `
                         <div class="col-span-1 text-center font-mono text-gray-400 text-[10px] border-r">${index + 1}</div>
-                        <div class="col-span-4 leading-tight pl-1">
+                        <div class="col-span-5 leading-tight pl-1">
                             <div class="font-bold text-gray-800 text-sm truncate">${item.name}</div>
                             <div class="text-[9px] text-blue-500 uppercase tracking-tighter">${item.group || '-'}</div>
                         </div>
-                        <div class="col-span-4 text-[11px] text-gray-600 italic truncate">${item.usage || '-'}</div>
-                        <div class="col-span-3 text-right flex flex-col items-end">
-                            <div class="text-[10px] ${dateColor}">${item.expiry || 'brak daty'}</div>
-                            <button onclick="deleteItem('${docSnap.id}')" class="text-[9px] text-red-300 mt-1 hover:text-red-600 uppercase">Usuń</button>
+                        <div class="col-span-3 text-center">
+                            <div class="text-[10px] ${dateColor}">${item.expiry || 'brak'}</div>
+                        </div>
+                        <div class="col-span-3 text-right flex justify-end gap-2">
+                            <button onclick="toggleOrder('${itemId}', ${item.ordered || false})" class="text-lg focus:outline-none transition transform active:scale-125" title="Zamówione">
+                                ${item.ordered ? '✅' : '🛒'}
+                            </button>
+                            <button onclick="deleteItem('${itemId}')" class="text-[9px] text-red-300 mt-1 hover:text-red-600 uppercase">Usuń</button>
                         </div>
                     `;
                     list.appendChild(li);
                 });
+                updateAlertBox(expiringCount);
             }, (error) => {
                 console.warn("Nasłuchiwanie przerwane.");
             });
         }
+
+        function updateAlertBox(count) {
+            const box = document.getElementById('alertBox');
+            if (count > 0) {
+                box.innerHTML = `🚨 Uwaga! <strong>${count}</strong> wzorców wygasa w ciągu 30 dni.`;
+                box.className = "mb-6 p-3 rounded-lg border text-sm bg-orange-50 border-orange-200 text-orange-800 block shadow-sm";
+            } else {
+                box.innerHTML = `✅ Wszystkie wzorce są aktualne.`;
+                box.className = "mb-6 p-3 rounded-lg border text-sm bg-green-50 border-green-200 text-green-800 block shadow-sm";
+            }
+        }
+
+        // FUNKCJA ZAMAWIANIA
+        window.toggleOrder = async (id, currentStatus) => {
+            try {
+                const docRef = doc(db, 'odczynniki', id);
+                await updateDoc(docRef, { ordered: !currentStatus });
+            } catch (e) {
+                console.error("Błąd aktualizacji zamówienia:", e);
+            }
+        };
 
         // DODAWANIE
         window.addItem = async () => {
@@ -169,7 +214,8 @@
                         group: group.value,
                         usage: usage.value,
                         expiry: expiry.value,
-                        timestamp: Date.now() 
+                        timestamp: Date.now(),
+                        ordered: false // Domyślnie nowy produkt nie jest zamówiony
                     });
                     name.value = ""; group.value = ""; usage.value = ""; expiry.value = "";
                 } catch (e) {
