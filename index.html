@@ -9,6 +9,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+        .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-2 md:p-8 flex items-center justify-center">
@@ -30,7 +31,8 @@
 
         <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all"></div>
         
-        <div class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100">
+        <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100">
+            <input type="hidden" id="editId" value="">
             <div class="grid grid-cols-1 gap-3">
                 <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                 
@@ -44,9 +46,14 @@
                     <input type="date" id="chemExpiry" class="flex-1 border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 
-                <button onclick="addItem()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md transition transform active:scale-95">
-                    Dodaj do ewidencji
-                </button>
+                <div class="flex gap-2">
+                    <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md transition transform active:scale-95">
+                        Dodaj do ewidencji
+                    </button>
+                    <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-500 shadow-md transition">
+                        Anuluj
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -107,7 +114,6 @@
                 loginSec.classList.remove('hidden');
                 appSec.classList.add('hidden');
                 document.body.classList.add('items-center');
-                document.getElementById('chemicalList').innerHTML = "";
             }
         });
 
@@ -128,17 +134,11 @@
                     const expiryDate = item.expiry ? new Date(item.expiry) : null;
                     const today = new Date();
                     const diffDays = expiryDate ? Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)) : null;
-                    
                     const isExpired = diffDays !== null && diffDays < 0;
                     const isExpiringSoon = diffDays !== null && diffDays <= 30 && diffDays >= 0;
                     
-                    // ALERT TERAZ ZAWIERA GRUPĘ I NAZWĘ
                     if (isExpiringSoon && !item.ordered) {
-                        expiringItemsList.push({
-                            lp: index + 1,
-                            group: item.group || 'Brak grupy',
-                            name: item.name
-                        });
+                        expiringItemsList.push({ lp: index + 1, group: item.group || 'Brak grupy', name: item.name });
                     }
 
                     const dateColor = isExpired ? "text-red-600 font-bold" : (isExpiringSoon ? "text-orange-500 font-bold" : "text-gray-500");
@@ -153,14 +153,11 @@
                             <div class="font-bold text-gray-800 text-sm truncate">${item.name}</div>
                             <div class="text-[8px] text-gray-400 italic truncate">${item.usage || '-'}</div>
                         </div>
-                        <div class="col-span-2 text-center">
-                            <div class="text-[10px] ${dateColor}">${item.expiry || 'brak'}</div>
-                        </div>
-                        <div class="col-span-2 text-right flex justify-end gap-2">
-                            <button onclick="toggleOrder('${itemId}', ${item.ordered || false})" class="text-lg focus:outline-none transition transform active:scale-125">
-                                ${item.ordered ? '✅' : '🛒'}
-                            </button>
-                            <button onclick="deleteItem('${itemId}')" class="text-red-300 hover:text-red-600 text-[10px]">✕</button>
+                        <div class="col-span-2 text-center text-[10px] ${dateColor}">${item.expiry || 'brak'}</div>
+                        <div class="col-span-2 text-right flex justify-end items-center gap-2">
+                            <button onclick="toggleOrder('${itemId}', ${item.ordered || false})" class="text-base" title="Zamówione">${item.ordered ? '✅' : '🛒'}</button>
+                            <button onclick="startEdit('${itemId}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}')" class="text-gray-400 hover:text-blue-600 text-xs" title="Edytuj">✏️</button>
+                            <button onclick="deleteItem('${itemId}')" class="text-red-300 hover:text-red-600 text-sm">✕</button>
                         </div>
                     `;
                     list.appendChild(li);
@@ -172,12 +169,8 @@
         function updateAlertBox(items) {
             const box = document.getElementById('alertBox');
             if (items.length > 0) {
-                // FORMATOWANIE ALERTU: [GRUPA] Nazwa
                 const itemsHtml = items.map(item => `<div class="mt-1">• <strong>[${item.group}]</strong> ${item.name} (LP ${item.lp})</div>`).join('');
-                box.innerHTML = `
-                    <div class="font-bold underline">🚨 Wygasające wzorce (30 dni):</div>
-                    ${itemsHtml}
-                `;
+                box.innerHTML = `<div class="font-bold underline">🚨 Wygasające wzorce (30 dni):</div>${itemsHtml}`;
                 box.className = "mb-6 p-3 rounded-lg border text-sm bg-orange-50 border-orange-200 text-orange-800 block shadow-sm";
             } else {
                 box.innerHTML = `✅ Wszystkie wzorce są aktualne.`;
@@ -185,33 +178,68 @@
             }
         }
 
-        window.toggleOrder = async (id, currentStatus) => {
-            try {
-                const docRef = doc(db, 'odczynniki', id);
-                await updateDoc(docRef, { ordered: !currentStatus });
-            } catch (e) { console.error("Błąd aktualizacji:", e); }
+        // FUNKCJA EDYCJI - WCZYTYWANIE DANYCH
+        window.startEdit = (id, name, group, usage, expiry) => {
+            document.getElementById('editId').value = id;
+            document.getElementById('chemName').value = name;
+            document.getElementById('chemGroup').value = group === 'undefined' ? '' : group;
+            document.getElementById('chemUsage').value = usage === 'undefined' ? '' : usage;
+            document.getElementById('chemExpiry').value = expiry;
+            
+            document.getElementById('submitBtn').innerText = "Zapisz zmiany";
+            document.getElementById('submitBtn').className = "flex-1 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 shadow-md transition";
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            document.getElementById('formContainer').classList.add('editing-mode');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.cancelEdit = () => {
+            document.getElementById('editId').value = "";
+            document.getElementById('chemName').value = "";
+            document.getElementById('chemGroup').value = "";
+            document.getElementById('chemUsage').value = "";
+            document.getElementById('chemExpiry').value = "";
+            
+            document.getElementById('submitBtn').innerText = "Dodaj do ewidencji";
+            document.getElementById('submitBtn').className = "flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md transition";
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('formContainer').classList.remove('editing-mode');
         };
 
         window.addItem = async () => {
-            const name = document.getElementById('chemName');
-            const group = document.getElementById('chemGroup');
-            const usage = document.getElementById('chemUsage');
-            const expiry = document.getElementById('chemExpiry');
-            if (name.value.trim()) {
+            const editId = document.getElementById('editId').value;
+            const name = document.getElementById('chemName').value;
+            const group = document.getElementById('chemGroup').value;
+            const usage = document.getElementById('chemUsage').value;
+            const expiry = document.getElementById('chemExpiry').value;
+
+            if (name.trim()) {
                 try {
-                    await addDoc(colRef, { 
-                        name: name.value, group: group.value, usage: usage.value, 
-                        expiry: expiry.value, timestamp: Date.now(), ordered: false 
-                    });
-                    name.value = ""; group.value = ""; usage.value = ""; expiry.value = "";
+                    if (editId) {
+                        // TRYB AKTUALIZACJI
+                        await updateDoc(doc(db, 'odczynniki', editId), {
+                            name, group, usage, expiry
+                        });
+                        cancelEdit();
+                    } else {
+                        // TRYB DODAWANIA
+                        await addDoc(colRef, { 
+                            name, group, usage, expiry, 
+                            timestamp: Date.now(), ordered: false 
+                        });
+                        cancelEdit();
+                    }
                 } catch (e) { alert("Błąd: " + e.message); }
             }
         };
 
+        window.toggleOrder = async (id, currentStatus) => {
+            await updateDoc(doc(db, 'odczynniki', id), { ordered: !currentStatus });
+        };
+
         window.deleteItem = async (id) => {
             if(confirm("Czy na pewno usunąć?")) {
-                try { await deleteDoc(doc(db, 'odczynniki', id)); } 
-                catch (e) { alert("Błąd usuwania: " + e.message); }
+                await deleteDoc(doc(db, 'odczynniki', id));
             }
         };
     </script>
