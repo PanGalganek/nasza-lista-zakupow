@@ -8,7 +8,7 @@
     <style>
         .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
-        .task-done { opacity: 0.5; background-color: #f3f4f6; }
+        .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
     </style>
 </head>
@@ -36,7 +36,6 @@
 
         <div id="tabContentOdczynniki" class="block">
             <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all text-left"></div>
-            
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
                 <div class="grid grid-cols-1 gap-3">
@@ -46,51 +45,34 @@
                         <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <div class="flex flex-col">
-                            <label class="text-[9px] font-bold text-gray-500 uppercase ml-1 tracking-tighter">Data przyjęcia:</label>
-                            <input type="date" id="chemReceived" class="border p-2 rounded">
-                        </div>
-                        <div class="flex flex-col">
-                            <label class="text-[9px] font-bold text-red-400 uppercase ml-1 tracking-tighter">Data ważności:</label>
-                            <input type="date" id="chemExpiry" class="border p-2 rounded">
-                        </div>
+                        <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
+                        <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
                     </div>
-                    <div class="flex gap-2">
-                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg">Dodaj</button>
-                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button>
-                    </div>
+                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
                 </div>
-            </div>
-
-            <div class="grid grid-cols-12 gap-2 px-2 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                <div class="col-span-1 text-center border-r tracking-tighter">LP</div>
-                <div class="col-span-2 tracking-tighter">Grupa</div>
-                <div class="col-span-4 tracking-tighter">Nazwa</div>
-                <div class="col-span-3 text-center tracking-tighter">P / W</div>
-                <div class="col-span-2 text-right tracking-tighter">Akcje</div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
         </div>
 
         <div id="tabContentWoda" class="hidden space-y-4 text-left">
-            <div id="statusWoda" class="p-3 rounded-lg text-sm font-bold text-center"></div>
+            <div id="monthStatusWoda" class="p-3 rounded-lg text-[11px] font-bold border"></div>
+            <div id="statusWoda" class="p-3 rounded-lg text-xs font-bold text-center"></div>
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <h3 class="font-bold text-blue-800 mb-2 uppercase text-[10px] tracking-widest">📦 Próbka archiwalna - Woda</h3>
                 <div class="flex gap-2">
-                    <input type="text" id="taskInputWoda" placeholder="Nowe oznaczenie (np. Żelazo)" class="flex-1 border p-2 rounded text-sm">
-                    <button onclick="addTask('woda')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                    <input type="text" id="taskInputWoda" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
                 </div>
             </div>
             <div id="taskListWoda" class="space-y-2"></div>
         </div>
 
         <div id="tabContentScieki" class="hidden space-y-4 text-left">
-            <div id="statusScieki" class="p-3 rounded-lg text-sm font-bold text-center"></div>
+            <div id="monthStatusScieki" class="p-3 rounded-lg text-[11px] font-bold border"></div>
+            <div id="statusScieki" class="p-3 rounded-lg text-xs font-bold text-center"></div>
             <div class="bg-green-50 p-4 rounded-lg border border-green-200">
                 <h3 class="font-bold text-green-800 mb-2 uppercase text-[10px] tracking-widest">📦 Próbka archiwalna - Ścieki</h3>
                 <div class="flex gap-2">
-                    <input type="text" id="taskInputScieki" placeholder="Nowe oznaczenie (np. ChZT)" class="flex-1 border p-2 rounded text-sm">
-                    <button onclick="addTask('scieki')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                    <input type="text" id="taskInputScieki" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
                 </div>
             </div>
             <div id="taskListScieki" class="space-y-2"></div>
@@ -102,25 +84,15 @@
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
-            authDomain: "nasza-lista-zakupow.firebaseapp.com",
-            projectId: "nasza-lista-zakupow",
-            storageBucket: "nasza-lista-zakupow.firebasestorage.app",
-            messagingSenderId: "516283526174",
-            appId: "1:516283526174:web:f42c9c38333e821da5520f"
-        };
-
+        const firebaseConfig = { apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8", authDomain: "nasza-lista-zakupow.firebaseapp.com", projectId: "nasza-lista-zakupow", storageBucket: "nasza-lista-zakupow.firebasestorage.app", messagingSenderId: "516283526174", appId: "1:516283526174:web:f42c9c38333e821da5520f" };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
         const colOdczynniki = collection(db, 'odczynniki');
         const colTasks = collection(db, 'harmonogram');
 
-        let unsubscribeOdczynniki = null;
+        let unsubO = null;
 
-        // --- NAWIGACJA ---
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki'].forEach(t => {
                 document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('hidden');
@@ -131,179 +103,129 @@
             document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
         };
 
-        // --- ODCZYNNIKI LOGIKA (NAPRAWIONA) ---
-        function loadOdczynniki() {
-            if (unsubscribeOdczynniki) unsubscribeOdczynniki();
-            const q = query(colOdczynniki, orderBy("timestamp", "asc"));
-            unsubscribeOdczynniki = onSnapshot(q, (snapshot) => {
-                const list = document.getElementById('chemicalList');
-                list.innerHTML = "";
-                let alertItems = [];
-                snapshot.docs.forEach((docSnap, index) => {
-                    const item = docSnap.data();
-                    const itemId = docSnap.id;
-                    const li = document.createElement('li');
-                    
-                    const expiry = item.expiry ? new Date(item.expiry) : null;
-                    const today = new Date();
-                    const diff = expiry ? Math.ceil((expiry - today) / 86400000) : null;
-                    
-                    if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) {
-                        alertItems.push({ lp: index + 1, group: item.group || '?', name: item.name });
-                    }
+        // --- HARMONOGRAM LOGIKA ---
+        window.addTask = async (lab) => {
+            const input = document.getElementById(`taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}`);
+            if (input.value.trim()) {
+                await addDoc(colTasks, { name: input.value.trim(), lab, doneDate: null, timestamp: Date.now() });
+                input.value = "";
+            }
+        };
 
-                    const dColor = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
-                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border shadow-sm transition hover:border-blue-300`;
-                    
-                    li.innerHTML = `
-                        <div class="col-span-1 text-center font-mono text-gray-400 text-[10px] border-r tracking-tighter">${index + 1}</div>
-                        <div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1 tracking-tighter">${item.group || '-'}</div>
-                        <div class="col-span-4 leading-tight">
-                            <div class="font-bold text-gray-800 text-sm truncate">${item.name}</div>
-                            <div class="text-[8px] text-gray-400 italic truncate">${item.usage || '-'}</div>
+        window.toggleTask = async (id, isCurrentlyDone) => {
+            const dateStr = isCurrentlyDone ? null : new Date().toISOString().split('T')[0];
+            await updateDoc(doc(db, 'harmonogram', id), { doneDate: dateStr });
+        };
+
+        window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
+
+        function loadTasks() {
+            onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snapshot) => {
+                const labs = { woda: 'taskListWoda', scieki: 'taskListScieki' };
+                let stats = { woda: { t: 0, d: 0, m: false }, scieki: { t: 0, d: 0, m: false } };
+                const today = new Date();
+                const curY = today.getFullYear();
+                const curM = today.getMonth();
+
+                Object.values(labs).forEach(id => document.getElementById(id).innerHTML = "");
+
+                snapshot.docs.forEach(docSnap => {
+                    const t = docSnap.data();
+                    const dDate = t.doneDate ? new Date(t.doneDate) : null;
+                    const isDoneThisYear = dDate && dDate.getFullYear() === curY;
+                    const isDoneThisMonth = dDate && dDate.getFullYear() === curY && dDate.getMonth() === curM;
+
+                    stats[t.lab].t++;
+                    if(isDoneThisYear) stats[t.lab].d++;
+                    if(isDoneThisMonth) stats[t.lab].m = true;
+
+                    const div = document.createElement('div');
+                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isDoneThisYear ? 'task-done' : 'bg-white shadow-sm'}`;
+                    div.innerHTML = `
+                        <div class="flex flex-col leading-tight">
+                            <span class="text-sm ${isDoneThisYear ? 'line-through text-gray-400' : 'font-semibold'}">${t.name}</span>
+                            ${isDoneThisYear ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}
                         </div>
-                        <div class="col-span-3 text-center flex flex-col tracking-tighter">
-                            <span class="text-[8px] text-gray-400 leading-none">P: ${item.received || '---'}</span>
-                            <span class="text-[9px] ${dColor} leading-tight mt-0.5 font-mono">W: ${item.expiry || '---'}</span>
-                        </div>
-                        <div class="col-span-2 text-right flex justify-end items-center gap-2">
-                            <button onclick="toggleOrder('${itemId}', ${item.ordered || false})" class="text-base">${item.ordered ? '✅' : '🛒'}</button>
-                            <button onclick="startEdit('${itemId}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')" class="text-gray-400 text-xs">✏️</button>
-                            <button onclick="deleteItem('${itemId}')" class="text-red-300 text-sm">✕</button>
+                        <div class="flex gap-4">
+                            <button onclick="toggleTask('${docSnap.id}', ${isDoneThisYear})" class="text-xl">${isDoneThisYear ? '✅' : '⬜'}</button>
+                            <button onclick="deleteTask('${docSnap.id}')" class="text-red-300 text-sm">✕</button>
                         </div>
                     `;
+                    document.getElementById(labs[t.lab]).appendChild(div);
+                });
+
+                ['woda', 'scieki'].forEach(l => {
+                    const mEl = document.getElementById(`monthStatus${l.charAt(0).toUpperCase() + l.slice(1)}`);
+                    const sEl = document.getElementById(`status${l.charAt(0).toUpperCase() + l.slice(1)}`);
+                    
+                    if (stats[l].t === 0) { mEl.className = "hidden"; sEl.className = "hidden"; return; }
+                    
+                    // Alert miesięczny
+                    if(stats[l].m) {
+                        mEl.innerHTML = "✅ Próbka archiwalna na ten miesiąc została wykonana.";
+                        mEl.className = "p-3 rounded-lg text-[10px] font-bold border bg-green-50 border-green-200 text-green-700 mb-4 text-center";
+                    } else {
+                        mEl.innerHTML = "⚠️ W tym miesiącu nie wykonano jeszcze żadnej próbki archiwalnej!";
+                        mEl.className = "p-3 rounded-lg text-[10px] font-bold border bg-orange-50 border-orange-200 text-orange-800 mb-4 text-center animate-pulse";
+                    }
+
+                    // Status roczny
+                    if (stats[l].d === stats[l].t) {
+                        sEl.innerText = "⭐ Wszystko zrobione na ten rok!";
+                        sEl.className = "p-3 rounded-lg text-xs font-bold text-center bg-green-100 text-green-700 block mb-4 border border-green-200";
+                        mEl.className = "hidden";
+                    } else {
+                        sEl.innerText = `📅 Pozostało do wykonania w tym roku: ${stats[l].t - stats[l].d} oznaczeń`;
+                        sEl.className = "p-3 rounded-lg text-[10px] font-bold text-center bg-slate-100 text-slate-600 block mb-4 border border-slate-200 uppercase tracking-tighter";
+                    }
+                });
+            });
+        }
+
+        // --- ODCZYNNIKI LOGIKA (Z poprzedniej poprawki) ---
+        function loadOdczynniki() {
+            if (unsubO) unsubO();
+            unsubO = onSnapshot(query(colOdczynniki, orderBy("timestamp", "asc")), (snap) => {
+                const list = document.getElementById('chemicalList');
+                list.innerHTML = ""; let alertItems = [];
+                snap.docs.forEach((d, i) => {
+                    const item = d.data(); const expiry = item.expiry ? new Date(item.expiry) : null;
+                    const diff = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
+                    if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alertItems.push({ lp: i+1, group: item.group, name: item.name });
+                    const dCol = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
+                    const li = document.createElement('li');
+                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border shadow-sm text-[11px]`;
+                    li.innerHTML = `<div class="col-span-1 text-center font-mono text-gray-400 border-r">${i+1}</div><div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 leading-tight font-bold text-gray-800 truncate">${item.name}</div><div class="col-span-3 text-center flex flex-col"><span class="text-[8px] text-gray-400">P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 text-right flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered || false})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
                     list.appendChild(li);
                 });
                 updateAlertBox(alertItems);
             });
         }
-
-        window.startEdit = (id, n, g, u, e, r) => {
-            document.getElementById('editId').value = id;
-            document.getElementById('chemName').value = n;
-            document.getElementById('chemGroup').value = g === 'undefined' ? '' : g;
-            document.getElementById('chemUsage').value = u === 'undefined' ? '' : u;
-            document.getElementById('chemExpiry').value = e === 'undefined' ? '' : e;
-            document.getElementById('chemReceived').value = r === 'undefined' ? '' : r;
-            document.getElementById('submitBtn').innerText = "Zapisz zmiany";
-            document.getElementById('submitBtn').className = "flex-1 bg-green-600 text-white font-bold py-3 rounded-lg";
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
-            document.getElementById('formContainer').classList.add('editing-mode');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        };
-
-        window.cancelEdit = () => {
-            document.getElementById('editId').value = "";
-            document.getElementById('chemName').value = "";
-            document.getElementById('chemGroup').value = "";
-            document.getElementById('chemUsage').value = "";
-            document.getElementById('chemExpiry').value = "";
-            document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0];
-            document.getElementById('submitBtn').innerText = "Dodaj";
-            document.getElementById('submitBtn').className = "flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg";
-            document.getElementById('cancelEditBtn').classList.add('hidden');
-            document.getElementById('formContainer').classList.remove('editing-mode');
-        };
-
         window.addItem = async () => {
             const editId = document.getElementById('editId').value;
-            const payload = {
-                name: document.getElementById('chemName').value,
-                group: document.getElementById('chemGroup').value,
-                usage: document.getElementById('chemUsage').value,
-                expiry: document.getElementById('chemExpiry').value,
-                received: document.getElementById('chemReceived').value
-            };
+            const payload = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: document.getElementById('chemReceived').value };
             if (payload.name.trim()) {
                 if (editId) await updateDoc(doc(db, 'odczynniki', editId), payload);
                 else await addDoc(colOdczynniki, { ...payload, timestamp: Date.now(), ordered: false });
                 cancelEdit();
             }
         };
-
-        function updateAlertBox(items) {
-            const box = document.getElementById('alertBox');
-            if (items.length > 0) {
-                const html = items.map(i => `<div class="mt-1 font-mono text-[11px]">• <strong>[${i.group}]</strong> ${i.name} (LP ${i.lp})</div>`).join('');
-                box.innerHTML = `<div class="font-bold underline text-xs tracking-tight">🚨 Wygasające wzorce (30 dni):</div>${html}`;
-                box.className = "mb-6 p-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-800 block shadow-sm";
-            } else {
-                box.innerHTML = `✅ Wszystkie wzorce są aktualne.`;
-                box.className = "mb-6 p-3 rounded-lg border bg-green-50 border-green-200 text-green-800 block shadow-sm font-medium";
-            }
-        }
-
+        window.startEdit = (id, n, g, u, e, r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('submitBtn').innerText = "Zapisz"; document.getElementById('cancelEditBtn').classList.remove('hidden'); document.getElementById('formContainer').classList.add('editing-mode'); };
+        window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('chemName').value = ""; document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; document.getElementById('submitBtn').innerText = "Dodaj"; document.getElementById('cancelEditBtn').classList.add('hidden'); document.getElementById('formContainer').classList.remove('editing-mode'); };
+        function updateAlertBox(items) { const box = document.getElementById('alertBox'); if (items.length > 0) { box.innerHTML = `<div class="font-bold underline text-xs">🚨 Wygasające (30 dni):</div>${items.map(i => `<div class="text-[10px]">• [${i.group}] ${i.name}</div>`).join('')}`; box.className = "mb-6 p-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-800 block"; } else { box.className = "hidden"; } }
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
-        window.deleteItem = async (id) => { if(confirm("Usunąć odczynnik?")) await deleteDoc(doc(db, 'odczynniki', id)); };
-
-        // --- HARMONOGRAM LOGIKA (Pozostaje sprawna) ---
-        window.addTask = async (lab) => {
-            const input = document.getElementById(`taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}`);
-            if (input.value.trim()) {
-                await addDoc(colTasks, { name: input.value.trim(), lab, lastDoneYear: null, timestamp: Date.now() });
-                input.value = "";
-            }
-        };
-
-        window.toggleTask = async (id, isDone) => {
-            const currentYear = new Date().getFullYear();
-            await updateDoc(doc(db, 'harmonogram', id), { lastDoneYear: isDone ? null : currentYear });
-        };
-
-        window.deleteTask = async (id) => { if(confirm("Usunąć to oznaczenie?")) await deleteDoc(doc(db, 'harmonogram', id)); };
-
-        function loadTasks() {
-            onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snapshot) => {
-                const labs = { woda: { el: 'taskListWoda', stat: 'statusWoda' }, scieki: { el: 'taskListScieki', stat: 'statusScieki' } };
-                let stats = { woda: { t: 0, d: 0 }, scieki: { t: 0, d: 0 } };
-                const currentYear = new Date().getFullYear();
-
-                Object.values(labs).forEach(l => document.getElementById(l.el).innerHTML = "");
-
-                snapshot.docs.forEach(docSnap => {
-                    const t = docSnap.data();
-                    const isD = t.lastDoneYear === currentYear;
-                    stats[t.lab].t++; if(isD) stats[t.lab].d++;
-                    
-                    const div = document.createElement('div');
-                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isD ? 'task-done' : 'bg-white shadow-sm'}`;
-                    div.innerHTML = `<span class="text-sm ${isD ? 'line-through' : 'font-medium'}">${t.name}</span><div class="flex gap-4"><button onclick="toggleTask('${docSnap.id}', ${isD})" class="text-xl">${isD ? '✅' : '⬜'}</button><button onclick="deleteTask('${docSnap.id}')" class="text-red-300">✕</button></div>`;
-                    document.getElementById(labs[t.lab].el).appendChild(div);
-                });
-
-                ['woda', 'scieki'].forEach(l => {
-                    const el = document.getElementById(labs[l].stat);
-                    if (stats[l].t === 0) el.className = "hidden";
-                    else if (stats[l].d === stats[l].t) {
-                        el.innerText = "⭐ Wszystko zrobione na ten rok!";
-                        el.className = "p-3 rounded-lg text-sm font-bold text-center bg-green-100 text-green-700 block mb-4 border border-green-200";
-                    } else {
-                        el.innerText = `📅 Pozostało do wykonania: ${stats[l].t - stats[l].d} oznaczeń`;
-                        el.className = "p-3 rounded-lg text-sm font-bold text-center bg-blue-100 text-blue-700 block mb-4 border border-blue-200";
-                    }
-                });
-            });
-        }
+        window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
         // --- INIT ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('appSection').classList.remove('hidden');
+                document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden');
                 document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0];
                 loadOdczynniki(); loadTasks();
-            } else {
-                document.getElementById('loginSection').classList.remove('hidden');
-                document.getElementById('appSection').classList.add('hidden');
-            }
+            } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
         });
-
-        window.handleLogin = async () => {
-            const e = document.getElementById('loginEmail').value;
-            const p = document.getElementById('loginPassword').value;
-            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { alert(err.message); }
-        };
-        window.handleLogout = async () => { if (unsubscribeOdczynniki) unsubscribeOdczynniki(); await signOut(auth); location.reload(); };
+        window.handleLogin = async () => { const e = document.getElementById('loginEmail').value, p = document.getElementById('loginPassword').value; try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { alert(err.message); } };
+        window.handleLogout = async () => { if (unsubO) unsubO(); await signOut(auth); location.reload(); };
     </script>
 </body>
 </html>
