@@ -28,7 +28,7 @@
             <button onclick="handleLogout()" class="text-xs text-red-500 hover:underline">Wyloguj</button>
         </div>
 
-        <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm font-medium shadow-sm transition-all"></div>
+        <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all"></div>
         
         <div class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100">
             <div class="grid grid-cols-1 gap-3">
@@ -81,41 +81,28 @@
 
         let unsubscribe = null;
 
-        // LOGOWANIE
         window.handleLogin = async () => {
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPassword').value;
-            try {
-                await signInWithEmailAndPassword(auth, email, pass);
-            } catch (err) {
-                alert("Błąd logowania: " + err.message);
-            }
+            try { await signInWithEmailAndPassword(auth, email, pass); } 
+            catch (err) { alert("Błąd logowania: " + err.message); }
         };
 
-        // WYLOGOWANIE
         window.handleLogout = async () => {
-            if (unsubscribe) {
-                unsubscribe();
-                unsubscribe = null;
-            }
+            if (unsubscribe) { unsubscribe(); unsubscribe = null; }
             await signOut(auth);
         };
 
-        // MONITOROWANIE SESJI
         onAuthStateChanged(auth, (user) => {
             const loginSec = document.getElementById('loginSection');
             const appSec = document.getElementById('appSection');
-            
             if (user) {
                 loginSec.classList.add('hidden');
                 appSec.classList.remove('hidden');
                 document.body.classList.remove('items-center');
                 loadData();
             } else {
-                if (unsubscribe) {
-                    unsubscribe();
-                    unsubscribe = null;
-                }
+                if (unsubscribe) { unsubscribe(); unsubscribe = null; }
                 loginSec.classList.remove('hidden');
                 appSec.classList.add('hidden');
                 document.body.classList.add('items-center');
@@ -123,23 +110,20 @@
             }
         });
 
-        // POBIERANIE DANYCH
         function loadData() {
             if (unsubscribe) unsubscribe();
-
             const q = query(colRef, orderBy("timestamp", "asc"));
             
             unsubscribe = onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('chemicalList');
                 list.innerHTML = "";
-                let expiringCount = 0;
+                let expiringItemsList = []; // Tablica na nazwy wygasających odczynników
                 
                 snapshot.docs.forEach((docSnap, index) => {
                     const item = docSnap.data();
                     const itemId = docSnap.id;
                     const li = document.createElement('li');
                     
-                    // Logika daty
                     const expiryDate = item.expiry ? new Date(item.expiry) : null;
                     const today = new Date();
                     const diffDays = expiryDate ? Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)) : null;
@@ -147,8 +131,10 @@
                     const isExpired = diffDays !== null && diffDays < 0;
                     const isExpiringSoon = diffDays !== null && diffDays <= 30 && diffDays >= 0;
                     
-                    // Licznik dla alertu (tylko jeśli nie zamówione)
-                    if (isExpiringSoon && !item.ordered) expiringCount++;
+                    // Jeśli wygasa i nie jest jeszcze zamówiony, dodaj do listy alertów
+                    if (isExpiringSoon && !item.ordered) {
+                        expiringItemsList.push(`LP ${index + 1}: ${item.name}`);
+                    }
 
                     const dateColor = isExpired ? "text-red-600 font-bold" : (isExpiringSoon ? "text-orange-500 font-bold" : "text-gray-500");
                     const statusClass = item.ordered ? "ordered-row" : "bg-white";
@@ -173,65 +159,55 @@
                     `;
                     list.appendChild(li);
                 });
-                updateAlertBox(expiringCount);
+                updateAlertBox(expiringItemsList);
             }, (error) => {
                 console.warn("Nasłuchiwanie przerwane.");
             });
         }
 
-        function updateAlertBox(count) {
+        function updateAlertBox(items) {
             const box = document.getElementById('alertBox');
-            if (count > 0) {
-                box.innerHTML = `🚨 Uwaga! <strong>${count}</strong> wzorców wygasa w ciągu 30 dni.`;
-                box.className = "mb-6 p-3 rounded-lg border text-sm bg-orange-50 border-orange-200 text-orange-800 block shadow-sm";
+            if (items.length > 0) {
+                // Generowanie listy nazw odczynników wewnątrz alertu
+                const itemsHtml = items.map(name => `<div class="mt-1">• ${name}</div>`).join('');
+                box.innerHTML = `
+                    <div class="font-bold">🚨 Uwaga! Następujące wzorce wygasają w ciągu 30 dni:</div>
+                    ${itemsHtml}
+                `;
+                box.className = "mb-6 p-3 rounded-lg border text-sm bg-orange-50 border-orange-200 text-orange-800 block shadow-sm transition-all";
             } else {
                 box.innerHTML = `✅ Wszystkie wzorce są aktualne.`;
-                box.className = "mb-6 p-3 rounded-lg border text-sm bg-green-50 border-green-200 text-green-800 block shadow-sm";
+                box.className = "mb-6 p-3 rounded-lg border text-sm bg-green-50 border-green-200 text-green-800 block shadow-sm transition-all";
             }
         }
 
-        // FUNKCJA ZAMAWIANIA
         window.toggleOrder = async (id, currentStatus) => {
             try {
                 const docRef = doc(db, 'odczynniki', id);
                 await updateDoc(docRef, { ordered: !currentStatus });
-            } catch (e) {
-                console.error("Błąd aktualizacji zamówienia:", e);
-            }
+            } catch (e) { console.error("Błąd aktualizacji zamówienia:", e); }
         };
 
-        // DODAWANIE
         window.addItem = async () => {
             const name = document.getElementById('chemName');
             const group = document.getElementById('chemGroup');
             const usage = document.getElementById('chemUsage');
             const expiry = document.getElementById('chemExpiry');
-
             if (name.value.trim()) {
                 try {
                     await addDoc(colRef, { 
-                        name: name.value, 
-                        group: group.value,
-                        usage: usage.value,
-                        expiry: expiry.value,
-                        timestamp: Date.now(),
-                        ordered: false // Domyślnie nowy produkt nie jest zamówiony
+                        name: name.value, group: group.value, usage: usage.value, 
+                        expiry: expiry.value, timestamp: Date.now(), ordered: false 
                     });
                     name.value = ""; group.value = ""; usage.value = ""; expiry.value = "";
-                } catch (e) {
-                    alert("Błąd: " + e.message);
-                }
+                } catch (e) { alert("Błąd: " + e.message); }
             }
         };
 
-        // USUWANIE
         window.deleteItem = async (id) => {
             if(confirm("Czy na pewno usunąć ten odczynnik?")) {
-                try {
-                    await deleteDoc(doc(db, 'odczynniki', id));
-                } catch (e) {
-                    alert("Błąd usuwania: " + e.message);
-                }
+                try { await deleteDoc(doc(db, 'odczynniki', id)); } 
+                catch (e) { alert("Błąd usuwania: " + e.message); }
             }
         };
     </script>
