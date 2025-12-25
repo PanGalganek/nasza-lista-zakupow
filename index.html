@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Zarządzania Wzorcami</title>
+    <title>LabManager - System Wzorców</title>
     <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,7 @@
 
     <div id="loginSection" class="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 border border-slate-200">
         <h2 class="text-3xl font-extrabold mb-6 text-center text-slate-800 tracking-tight">🧪 LabManager</h2>
-        <p class="text-center text-slate-500 mb-8">Zaloguj się do bazy wzorców</p>
+        <p class="text-center text-slate-500 mb-8 text-sm">Zaloguj się do bazy wzorców</p>
         <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded-xl mb-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
         <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded-xl mb-8 outline-none focus:ring-2 focus:ring-blue-500 transition-all">
         <button onclick="handleLogin()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-900 transition-all shadow-lg active:scale-95 text-lg">Zaloguj system</button>
@@ -28,39 +28,39 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Zarządzanie Wzorcami i Materiałami</h1>
-                <p id="authStatus" class="text-xs text-slate-400 mt-1 uppercase tracking-widest font-semibold"></p>
+                <p id="authStatus" class="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-semibold"></p>
             </div>
-            <button onclick="handleLogout()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-sm font-bold">Wyloguj sesję</button>
+            <button onclick="handleLogout()" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-all text-xs font-bold">Wyloguj sesję</button>
         </div>
 
         <div id="alert-section" class="p-4 rounded-xl mb-8 text-sm shadow-sm hidden"></div>
 
         <div class="flex gap-4 mb-6">
-            <button onclick="addRow()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md active:scale-95">➕ Dodaj Nowy Wzorzec</button>
+            <button onclick="addRow()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md active:scale-95 text-sm">➕ Dodaj Nowy</button>
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-slate-200">
             <table class="w-full border-collapse text-left">
                 <thead>
-                    <tr class="bg-slate-800 text-white text-[11px] uppercase tracking-wider">
+                    <tr class="bg-slate-800 text-white text-[10px] uppercase tracking-wider">
                         <th class="p-4 w-12 text-center">LP</th>
                         <th class="p-4 w-24">Grupa</th>
                         <th class="p-4">Nazwa Wzorca</th>
                         <th class="p-4 w-32">Ważność</th>
                         <th class="p-4">Zastosowanie</th>
-                        <th class="p-4 w-32 text-right">Akcje</th>
+                        <th class="p-4 w-24 text-right">Akcje</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody" class="text-sm">
+                <tbody id="tableBody" class="text-xs">
                     </tbody>
             </table>
         </div>
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -75,7 +75,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // TWOJE DANE CSV
         const csvRaw = `1,II-1/29,"Wzorzec barwy 500 Color Units (lot 945521, CPAchem, ISO 17034)",20.11.2026,"Oznaczanie barwy / Okresowe sprawdzanie"
 2,II-3/06,"Wzorzec jonów fosforanowych PO₄³⁻ (seria III/25 OUM PCA)",16.01.2026,"Oznaczanie fosforanów / Sprawdzanie okresowe"
 3,II-4/31,"Wzorzec jonów amonowych N–NH₄⁺ (seria I/25 OUM PCA)",27.01.2026,"Oznaczanie azotu amonowego / Sprawdzanie bieżące"
@@ -113,100 +112,4 @@
 35,II-51/09,"Wzorzec pH 2,00 (lot 1073794)",06.02.2026,"Okresowe sprawdzanie pH"
 36,II-53/13,"Wzorzec pH 12,6 (BLS 099-120)",26.03.2026,"Sprawdzanie pH"
 37,II-53/14,"Wzorzec pH 12,19 (lot 5E111H5)",02.2027,"Sprawdzanie pH"
-38,II-54/16,"Wzorzec siarczanów SO₄²⁻ (seria V/25 OUM PCA)",05.11.2026,"Sprawdzanie bieżące / Oznaczanie siarczanów"
-39,II-55/07,"Wzorzec Fe³⁺ (seria III/25 OUM PCA)",17.09.2026,"Oznaczanie żelaza / Okresowe sprawdzanie"
-40,,"Brak danych","", "Oznaczanie BZT₅ / okresowe-granice"
-41,II-57/06,"Total Suspended Solids 1000 mg/l (lot LRAD9354)",31.07.2027,"Oznaczanie zawiesiny"
-42,II-59/06,"Wzorzec CHZT 10000 mg/l (lot 1164059)",14.11.2027,"Oznaczanie CHZT / Okresowe sprawdzanie"
-43,II-61/07,"Wzorzec pH 7,00 (lot 1073785)",06.02.2026,"Sprawdzanie pH"
-44,II-64/06,"Wzorzec Cr³⁺ (seria I/25 OUM Łódź PCA)",26.02.2026,"Bieżące oznaczanie chromu"
-45,II-65/13,"Wzorcowy roztwór barwy wody (seria VII/25 OUM Łódź)",21.04.2026,"Oznaczanie barwy wody / Bieżące sprawdzanie"
-46,II-66/05,"Wzorzec Al³⁺ (seria III/25 PCA OUM Łódź)",06.03.2026,"Sprawdzanie krzywej / nowa partia testów"
-47,II-67/05,"Wzorzec Mn²⁺ (seria I/25 OUM PCA)",07.03.2026,"Oznaczanie manganu / Okresowe sprawdzanie krzywej"
-48,II-69/06,"Wzorzec N–NO₃⁻ (seria III/25 PCA)",19.08.2026,"Oznaczanie azotu azotanowego / Bieżące sprawdzanie"
-49,II-70/10,"Wzorzec N–NO₂⁻ (seria VII/25 OUM PCA)",19.03.2026,"Oznaczanie azotu azotynowego / Okresowe sprawdzanie"
-50,II-71/05,"Wzorzec Ni²⁺ (seria I/25 OUM Łódź PCA)",03.02.2026,"Oznaczanie niklu / Okresowe sprawdzanie"
-51,II-72/05,"Wzorzec Zn²⁺ (seria I/25 OUM PCA)",27.01.2026,"Oznaczanie cynku / Okresowe sprawdzanie"
-52,II-73/05,"Wzorzec Cu²⁺ (seria I/25 OUM PCA)",14.02.2026,"Oznaczanie miedzi / Okresowe sprawdzanie"
-53,II-74/03,"Wzorzec pH 9,00 (lot 1164062)",13.11.2026,"Okresowe sprawdzanie pH"`;
-
-        let currentData = [];
-        let unsubscribe = null;
-        const docRef = doc(db, 'config', 'main_data');
-
-        // FUNKCJE AUTORYZACJI
-        window.handleLogin = async () => {
-            const email = document.getElementById('loginEmail').value;
-            const pass = document.getElementById('loginPassword').value;
-            try { await signInWithEmailAndPassword(auth, email, pass); } 
-            catch (e) { alert("Błąd: " + e.message); }
-        };
-
-        window.handleLogout = () => signOut(auth);
-
-        onAuthStateChanged(auth, (user) => {
-            const loginSec = document.getElementById('loginSection');
-            const appSec = document.getElementById('appSection');
-            if (user) {
-                loginSec.classList.add('hidden');
-                appSec.classList.remove('hidden');
-                document.getElementById('authStatus').textContent = `Zalogowano: ${user.email}`;
-                startDataListener();
-            } else {
-                loginSec.classList.remove('hidden');
-                appSec.classList.add('hidden');
-                if (unsubscribe) unsubscribe();
-            }
-        });
-
-        // LISTENER DANYCH
-        function startDataListener() {
-            unsubscribe = onSnapshot(docRef, (snap) => {
-                if (snap.exists()) {
-                    currentData = snap.data().data || [];
-                    renderTable();
-                } else {
-                    console.log("Baza pusta, ładuję CSV...");
-                    const initial = parseCSV(csvRaw);
-                    saveToDb(initial);
-                }
-            });
-        }
-
-        // PARSER CSV
-        function parseCSV(csv) {
-            const lines = csv.split('\n').filter(l => l.trim());
-            return lines.map(line => {
-                const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
-                return {
-                    lp: parts[0] || '',
-                    grupa: parts[1] || '',
-                    nazwa: (parts[2] || '').replace(/"/g, ''),
-                    data: (parts[3] || '').replace(/"/g, ''),
-                    zastosowanie: (parts[4] || '').replace(/"/g, ''),
-                    zamowione: false
-                };
-            });
-        }
-
-        async function saveToDb(data) {
-            try { await setDoc(docRef, { data }); } catch (e) { console.error(e); }
-        }
-
-        // RENDEROWANIE TABELI
-        function renderTable() {
-            const body = document.getElementById('tableBody');
-            body.innerHTML = '';
-            
-            currentData.forEach((item, idx) => {
-                const tr = document.createElement('tr');
-                tr.className = `border-b border-slate-100 hover:bg-slate-50 transition-colors ${item.zamowione ? 'ordered-row' : ''}`;
-                
-                tr.innerHTML = `
-                    <td class="p-4 text-center font-mono text-slate-400 text-xs">${item.lp}</td>
-                    <td class="p-4 text-xs font-semibold text-slate-600">${item.grupa}</td>
-                    <td class="p-4 editable font-medium" onclick="editCell(${idx}, 'nazwa')">${item.nazwa} ${item.zamowione ? '<span class="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] rounded-full uppercase tracking-tighter font-bold">ZAMÓWIONO</span>' : ''}</td>
-                    <td class="p-4 editable text-slate-500 font-mono text-xs" onclick="editCell(${idx}, 'data')">${item.data}</td>
-                    <td class="p-4 editable text-slate-500 text-xs italic" onclick="editCell(${idx}, 'zastosowanie')">${item.zastosowanie}</td>
-                    <td class="p-4 text-right space-x-2">
-                        <button onclick="toggleOrder(${idx})" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+38,II-54/16,"
