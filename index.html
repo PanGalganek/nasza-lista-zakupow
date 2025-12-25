@@ -20,7 +20,7 @@
         <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition shadow-lg">Zaloguj</button>
     </div>
 
-    <div id="appSection" class="hidden max-w-2xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6">
+    <div id="appSection" class="hidden max-w-4xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6">
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
                 <span>⚗️</span> Ewidencja Odczynników
@@ -35,7 +35,7 @@
                 <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                 
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="text" id="chemGroup" placeholder="Grupa (np. Zasady)" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <input type="text" id="chemGroup" placeholder="Grupa (np. Kwasy)" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                     <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                 </div>
                 
@@ -52,9 +52,10 @@
 
         <div class="grid grid-cols-12 gap-2 px-2 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
             <div class="col-span-1 text-center border-r">LP</div>
-            <div class="col-span-5">Odczynnik / Grupa</div>
-            <div class="col-span-3 text-center">Ważność</div>
-            <div class="col-span-3 text-right">Akcje</div>
+            <div class="col-span-3">Grupa</div>
+            <div class="col-span-4">Nazwa Odczynnika</div>
+            <div class="col-span-2 text-center">Ważność</div>
+            <div class="col-span-2 text-right">Akcje</div>
         </div>
 
         <ul id="chemicalList" class="space-y-3"></ul>
@@ -117,7 +118,7 @@
             unsubscribe = onSnapshot(q, (snapshot) => {
                 const list = document.getElementById('chemicalList');
                 list.innerHTML = "";
-                let expiringItemsList = []; // Tablica na nazwy wygasających odczynników
+                let expiringItemsList = []; 
                 
                 snapshot.docs.forEach((docSnap, index) => {
                     const item = docSnap.data();
@@ -131,9 +132,13 @@
                     const isExpired = diffDays !== null && diffDays < 0;
                     const isExpiringSoon = diffDays !== null && diffDays <= 30 && diffDays >= 0;
                     
-                    // Jeśli wygasa i nie jest jeszcze zamówiony, dodaj do listy alertów
+                    // ALERT TERAZ ZAWIERA GRUPĘ I NAZWĘ
                     if (isExpiringSoon && !item.ordered) {
-                        expiringItemsList.push(`LP ${index + 1}: ${item.name}`);
+                        expiringItemsList.push({
+                            lp: index + 1,
+                            group: item.group || 'Brak grupy',
+                            name: item.name
+                        });
                     }
 
                     const dateColor = isExpired ? "text-red-600 font-bold" : (isExpiringSoon ? "text-orange-500 font-bold" : "text-gray-500");
@@ -143,41 +148,40 @@
                     
                     li.innerHTML = `
                         <div class="col-span-1 text-center font-mono text-gray-400 text-[10px] border-r">${index + 1}</div>
-                        <div class="col-span-5 leading-tight pl-1">
+                        <div class="col-span-3 text-[10px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div>
+                        <div class="col-span-4 leading-tight">
                             <div class="font-bold text-gray-800 text-sm truncate">${item.name}</div>
-                            <div class="text-[9px] text-blue-500 uppercase tracking-tighter">${item.group || '-'}</div>
+                            <div class="text-[8px] text-gray-400 italic truncate">${item.usage || '-'}</div>
                         </div>
-                        <div class="col-span-3 text-center">
+                        <div class="col-span-2 text-center">
                             <div class="text-[10px] ${dateColor}">${item.expiry || 'brak'}</div>
                         </div>
-                        <div class="col-span-3 text-right flex justify-end gap-2">
-                            <button onclick="toggleOrder('${itemId}', ${item.ordered || false})" class="text-lg focus:outline-none transition transform active:scale-125" title="Zamówione">
+                        <div class="col-span-2 text-right flex justify-end gap-2">
+                            <button onclick="toggleOrder('${itemId}', ${item.ordered || false})" class="text-lg focus:outline-none transition transform active:scale-125">
                                 ${item.ordered ? '✅' : '🛒'}
                             </button>
-                            <button onclick="deleteItem('${itemId}')" class="text-[9px] text-red-300 mt-1 hover:text-red-600 uppercase">Usuń</button>
+                            <button onclick="deleteItem('${itemId}')" class="text-red-300 hover:text-red-600 text-[10px]">✕</button>
                         </div>
                     `;
                     list.appendChild(li);
                 });
                 updateAlertBox(expiringItemsList);
-            }, (error) => {
-                console.warn("Nasłuchiwanie przerwane.");
             });
         }
 
         function updateAlertBox(items) {
             const box = document.getElementById('alertBox');
             if (items.length > 0) {
-                // Generowanie listy nazw odczynników wewnątrz alertu
-                const itemsHtml = items.map(name => `<div class="mt-1">• ${name}</div>`).join('');
+                // FORMATOWANIE ALERTU: [GRUPA] Nazwa
+                const itemsHtml = items.map(item => `<div class="mt-1">• <strong>[${item.group}]</strong> ${item.name} (LP ${item.lp})</div>`).join('');
                 box.innerHTML = `
-                    <div class="font-bold">🚨 Uwaga! Następujące wzorce wygasają w ciągu 30 dni:</div>
+                    <div class="font-bold underline">🚨 Wygasające wzorce (30 dni):</div>
                     ${itemsHtml}
                 `;
-                box.className = "mb-6 p-3 rounded-lg border text-sm bg-orange-50 border-orange-200 text-orange-800 block shadow-sm transition-all";
+                box.className = "mb-6 p-3 rounded-lg border text-sm bg-orange-50 border-orange-200 text-orange-800 block shadow-sm";
             } else {
                 box.innerHTML = `✅ Wszystkie wzorce są aktualne.`;
-                box.className = "mb-6 p-3 rounded-lg border text-sm bg-green-50 border-green-200 text-green-800 block shadow-sm transition-all";
+                box.className = "mb-6 p-3 rounded-lg border text-sm bg-green-50 border-green-200 text-green-800 block shadow-sm";
             }
         }
 
@@ -185,7 +189,7 @@
             try {
                 const docRef = doc(db, 'odczynniki', id);
                 await updateDoc(docRef, { ordered: !currentStatus });
-            } catch (e) { console.error("Błąd aktualizacji zamówienia:", e); }
+            } catch (e) { console.error("Błąd aktualizacji:", e); }
         };
 
         window.addItem = async () => {
@@ -205,7 +209,7 @@
         };
 
         window.deleteItem = async (id) => {
-            if(confirm("Czy na pewno usunąć ten odczynnik?")) {
+            if(confirm("Czy na pewno usunąć?")) {
                 try { await deleteDoc(doc(db, 'odczynniki', id)); } 
                 catch (e) { alert("Błąd usuwania: " + e.message); }
             }
