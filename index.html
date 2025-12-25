@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>e-Laboratorium</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
-        .task-done { text-decoration: line-through; color: #9ca3af; background-color: #f9fafb; }
+        .task-done { opacity: 0.5; background-color: #f3f4f6; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-2 md:p-8 flex items-center justify-center">
@@ -36,8 +34,8 @@
         </div>
 
         <div id="tabContentOdczynniki" class="block">
-            <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm bg-orange-50 border-orange-200 text-orange-800"></div>
-            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 text-sm">
+            <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm bg-orange-50 border-orange-200 text-orange-800 text-left"></div>
+            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
                 <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded mb-2">
                 <div class="grid grid-cols-2 gap-2 mb-2">
@@ -50,31 +48,31 @@
                 </div>
                 <button id="submitBtn" onclick="addItem()" class="w-full bg-blue-600 text-white font-bold py-2 rounded">Dodaj odczynnik</button>
             </div>
-            <ul id="chemicalList" class="space-y-2"></ul>
+            <ul id="chemicalList" class="space-y-2 text-left"></ul>
         </div>
 
-        <div id="tabContentWoda" class="hidden space-y-6 text-left">
+        <div id="tabContentWoda" class="hidden space-y-4 text-left">
+            <div id="statusWoda" class="p-3 rounded-lg text-sm font-bold text-center"></div>
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <h3 class="font-bold text-blue-800 mb-2 uppercase text-sm">📦 Próbka archiwalna - Woda</h3>
+                <h3 class="font-bold text-blue-800 mb-2 uppercase text-xs">📦 Próbka archiwalna - Woda</h3>
                 <div class="flex gap-2">
                     <input type="text" id="taskInputWoda" placeholder="Nowe oznaczenie (np. Żelazo)" class="flex-1 border p-2 rounded text-sm">
                     <button onclick="addTask('woda')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
                 </div>
             </div>
-            <div id="taskListWoda" class="space-y-2">
-                </div>
+            <div id="taskListWoda" class="space-y-2"></div>
         </div>
 
-        <div id="tabContentScieki" class="hidden space-y-6 text-left">
+        <div id="tabContentScieki" class="hidden space-y-4 text-left">
+            <div id="statusScieki" class="p-3 rounded-lg text-sm font-bold text-center"></div>
             <div class="bg-green-50 p-4 rounded-lg border border-green-200">
-                <h3 class="font-bold text-green-800 mb-2 uppercase text-sm">📦 Próbka archiwalna - Ścieki</h3>
+                <h3 class="font-bold text-green-800 mb-2 uppercase text-xs">📦 Próbka archiwalna - Ścieki</h3>
                 <div class="flex gap-2">
                     <input type="text" id="taskInputScieki" placeholder="Nowe oznaczenie (np. ChZT)" class="flex-1 border p-2 rounded text-sm">
                     <button onclick="addTask('scieki')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
                 </div>
             </div>
-            <div id="taskListScieki" class="space-y-2">
-                </div>
+            <div id="taskListScieki" class="space-y-2"></div>
         </div>
 
     </div>
@@ -82,7 +80,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -98,9 +96,9 @@
         const db = getFirestore(app);
         
         const colOdczynniki = collection(db, 'odczynniki');
-        const colTasks = collection(db, 'harmonogram'); // NOWA KOLEKCJA
+        const colTasks = collection(db, 'harmonogram');
 
-        // --- NAWIGACJA ---
+        // NAWIGACJA
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki'].forEach(t => {
                 document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('hidden');
@@ -111,103 +109,126 @@
             document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
         };
 
-        // --- ZADANIA (HARMONOGRAM) ---
+        // ZADANIA
         window.addTask = async (lab) => {
             const input = document.getElementById(`taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}`);
             if (input.value.trim()) {
                 await addDoc(colTasks, {
                     name: input.value.trim(),
-                    lab: lab, // 'woda' lub 'scieki'
-                    category: 'archiwalna',
-                    lastDone: null, // tu będziemy zapisywać datę ostatniego wykonania
+                    lab: lab,
+                    lastDoneYear: null,
                     timestamp: Date.now()
                 });
                 input.value = "";
             }
         };
 
-        window.toggleTask = async (id, currentStatus) => {
-            // Tymczasowo: po prostu odznaczamy zadanie jako "zrobione dzisiaj"
-            const today = new Date().toISOString().split('T')[0];
+        window.toggleTask = async (id, isDone) => {
+            const currentYear = new Date().getFullYear();
             await updateDoc(doc(db, 'harmonogram', id), {
-                lastDone: currentStatus ? null : today
+                lastDoneYear: isDone ? null : currentYear
             });
         };
 
         window.deleteTask = async (id) => {
-            if(confirm("Usunąć to oznaczenie z listy stałej?")) await deleteDoc(doc(db, 'harmonogram', id));
+            if(confirm("Usunąć oznaczenie?")) await deleteDoc(doc(db, 'harmonogram', id));
         };
 
-        // --- MONITOROWANIE ZADAŃ ---
         function loadTasks() {
             onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snapshot) => {
                 const listWoda = document.getElementById('taskListWoda');
                 const listScieki = document.getElementById('taskListScieki');
+                const statusWoda = document.getElementById('statusWoda');
+                const statusScieki = document.getElementById('statusScieki');
+                
                 listWoda.innerHTML = ""; listScieki.innerHTML = "";
+                
+                let stats = { woda: { total: 0, done: 0 }, scieki: { total: 0, done: 0 } };
+                const currentYear = new Date().getFullYear();
 
                 snapshot.docs.forEach(docSnap => {
                     const task = docSnap.data();
-                    const li = document.createElement('div');
-                    const isDoneThisMonth = task.lastDone && task.lastDone.substring(0, 7) === new Date().toISOString().substring(0, 7);
+                    const isDone = task.lastDoneYear === currentYear;
                     
-                    li.className = `flex justify-between items-center p-3 border rounded-lg ${isDoneThisMonth ? 'task-done' : 'bg-white shadow-sm'}`;
+                    stats[task.lab].total++;
+                    if(isDone) stats[task.lab].done++;
+
+                    const li = document.createElement('div');
+                    li.className = `flex justify-between items-center p-3 border rounded-lg ${isDone ? 'task-done' : 'bg-white shadow-sm'}`;
                     li.innerHTML = `
-                        <span class="font-medium text-sm">${task.name}</span>
-                        <div class="flex gap-3">
-                            <button onclick="toggleTask('${docSnap.id}', ${isDoneThisMonth})" class="text-xl">
-                                ${isDoneThisMonth ? '✅' : '⬜'}
-                            </button>
-                            <button onclick="deleteTask('${docSnap.id}')" class="text-red-300 text-xs">✕</button>
+                        <span class="text-sm ${isDone ? 'line-through' : 'font-medium'}">${task.name}</span>
+                        <div class="flex gap-4">
+                            <button onclick="toggleTask('${docSnap.id}', ${isDone})" class="text-xl">${isDone ? '✅' : '⬜'}</button>
+                            <button onclick="deleteTask('${docSnap.id}')" class="text-red-300">✕</button>
                         </div>
                     `;
                     
                     if (task.lab === 'woda') listWoda.appendChild(li);
                     else listScieki.appendChild(li);
                 });
+
+                // Aktualizacja statusów
+                updateStatusUI('woda', stats.woda);
+                updateStatusUI('scieki', stats.scieki);
             });
         }
 
-        // --- RESZTA LOGIKI (ODCZYNNIKI) ---
+        function updateStatusUI(lab, stat) {
+            const el = document.getElementById(`status${lab.charAt(0).toUpperCase() + lab.slice(1)}`);
+            if (stat.total === 0) {
+                el.className = "hidden";
+                return;
+            }
+            if (stat.done === stat.total) {
+                el.innerText = "⭐ Wszystko zrobione na ten rok!";
+                el.className = "p-3 rounded-lg text-sm font-bold text-center bg-green-100 text-green-700 block mb-4 border border-green-200";
+            } else {
+                const left = stat.total - stat.done;
+                el.innerText = `📅 Pozostało do wykonania: ${left} oznaczeń`;
+                el.className = "p-3 rounded-lg text-sm font-bold text-center bg-blue-100 text-blue-700 block mb-4 border border-blue-200";
+            }
+        }
+
+        // LOGOWANIE I ODCZYNNIKI (Pozostaje jak w poprzedniej wersji)
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('loginSection').classList.add('hidden');
                 document.getElementById('appSection').classList.remove('hidden');
-                loadData(); // odczynniki
-                loadTasks(); // harmonogram
+                loadData(); loadTasks();
                 document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0];
             }
         });
-
-        // (Tu zachowujemy wszystkie funkcje: loadData, addItem, toggleOrder, deleteItem z poprzedniej wersji)
-        // [Skrócone dla przejrzystości, ale w pełnym pliku będą identyczne jak wcześniej]
         
-        // --- FUNKCJA ODCZYNNIKÓW ---
+        window.handleLogin = async () => {
+            const e = document.getElementById('loginEmail').value;
+            const p = document.getElementById('loginPassword').value;
+            try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { alert(err.message); }
+        };
+        window.handleLogout = async () => { await signOut(auth); location.reload(); };
+        
         function loadData() {
-            onSnapshot(query(colOdczynniki, orderBy("timestamp", "asc")), (snapshot) => {
+            onSnapshot(query(colOdczynniki, orderBy("timestamp", "asc")), (snap) => {
                 const list = document.getElementById('chemicalList');
                 list.innerHTML = "";
-                snapshot.docs.forEach((docSnap, index) => {
-                    const item = docSnap.data();
+                snap.docs.forEach((d, i) => {
+                    const item = d.data();
                     const li = document.createElement('li');
-                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-2 rounded-lg border text-[11px]`;
-                    li.innerHTML = `<div class="col-span-1 text-gray-400">${index+1}</div>
-                                    <div class="col-span-2 font-bold text-blue-600 truncate">${item.group || '-'}</div>
-                                    <div class="col-span-5 font-bold">${item.name}</div>
-                                    <div class="col-span-2 text-center text-gray-500">${item.expiry || '-'}</div>
-                                    <div class="col-span-2 text-right flex gap-1">
-                                        <button onclick="toggleOrder('${docSnap.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button>
-                                        <button onclick="deleteItem('${docSnap.id}')">✕</button>
-                                    </div>`;
+                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-2 rounded-lg border text-[11px] mb-2`;
+                    li.innerHTML = `<div class="col-span-1">${i+1}</div><div class="col-span-7 font-bold">${item.name}</div><div class="col-span-2">${item.expiry || '-'}</div><div class="col-span-2 text-right"><button onclick="toggleOrder('${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button></div>`;
                     list.appendChild(li);
                 });
             });
         }
-        window.addItem = async () => { /* ... identycznie jak wcześniej ... */ };
-        window.handleLogin = async () => { /* ... identycznie jak wcześniej ... */ };
-        window.handleLogout = async () => { await signOut(auth); location.reload(); };
-        window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
-        window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
-
+        window.addItem = async () => { 
+            const n = document.getElementById('chemName').value;
+            const g = document.getElementById('chemGroup').value;
+            const u = document.getElementById('chemUsage').value;
+            const e = document.getElementById('chemExpiry').value;
+            const r = document.getElementById('chemReceived').value;
+            if(n) { await addDoc(colOdczynniki, {name:n, group:g, usage:u, expiry:e, received:r, timestamp:Date.now(), ordered:false}); cancelEdit(); }
+        };
+        function cancelEdit() { document.getElementById('chemName').value = ""; document.getElementById('chemGroup').value = ""; document.getElementById('chemUsage').value = ""; document.getElementById('chemExpiry').value = ""; }
+        window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), {ordered:!s});
     </script>
 </body>
 </html>
