@@ -3,49 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LabManager v2</title>
+    <title>Ewidencja Odczynników</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
+<body class="bg-gray-100 min-h-screen p-2 md:p-8 flex items-center justify-center">
 
-    <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8 mt-20">
-        <h2 class="text-2xl font-bold mb-6 text-center">🔐 Panel LabManager</h2>
-        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4">
-        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6">
-        <button id="btnLog" class="w-full bg-blue-600 text-white font-bold py-3 rounded">Zaloguj</button>
+    <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 Logowanie do Bazy</h2>
+        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition shadow-lg">Zaloguj</button>
     </div>
 
-    <div id="appSection" class="hidden w-full max-w-5xl bg-white rounded-xl shadow-lg p-6">
-        <div class="flex justify-between items-center mb-6 border-b pb-4">
-            <h1 class="text-xl font-bold">🧪 Ewidencja Wzorców</h1>
-            <button id="btnOut" class="text-red-500 text-sm font-bold">Wyloguj</button>
+    <div id="appSection" class="hidden max-w-2xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <span>⚗️</span> Ewidencja Odczynników
+            </h1>
+            <button onclick="handleLogout()" class="text-sm text-red-500 hover:underline">Wyloguj</button>
         </div>
-
-        <div id="alert-section" class="p-4 rounded-lg mb-6 text-sm hidden"></div>
         
-        <button id="btnAdd" class="bg-green-600 text-white px-4 py-2 rounded mb-4 text-sm">+ Dodaj nowy</button>
-
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-xs">
-                <thead>
-                    <tr class="bg-slate-800 text-white uppercase">
-                        <th class="p-3">LP</th>
-                        <th class="p-3">Grupa</th>
-                        <th class="p-3">Nazwa</th>
-                        <th class="p-3">Ważność</th>
-                        <th class="p-3">Zastosowanie</th>
-                        <th class="p-3 text-right">Akcje</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
+        <div class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100">
+            <div class="grid grid-cols-1 gap-3">
+                <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="chemGroup" placeholder="Grupa (np. Zasady)" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <label class="text-[10px] font-bold text-gray-500 uppercase">Data ważności:</label>
+                    <input type="date" id="chemExpiry" class="flex-1 border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                
+                <button onclick="addItem()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 shadow-md transition transform active:scale-95">
+                    Dodaj do ewidencji
+                </button>
+            </div>
         </div>
+
+        <div class="grid grid-cols-12 gap-2 px-2 mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            <div class="col-span-1 text-center border-r">LP</div>
+            <div class="col-span-4">Odczynnik / Grupa</div>
+            <div class="col-span-4">Zastosowanie</div>
+            <div class="col-span-3 text-right">Ważność</div>
+        </div>
+
+        <ul id="chemicalList" class="space-y-3"></ul>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -59,110 +72,122 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const docRef = doc(db, 'ewidencja', 'glowna');
+        const colRef = collection(db, 'odczynniki');
 
-        let data = [];
+        let unsubscribe = null;
 
-        // --- OBSŁUGA LOGOWANIA ---
-        document.getElementById('btnLog').onclick = async () => {
-            const e = document.getElementById('loginEmail').value;
-            const p = document.getElementById('loginPassword').value;
-            try { await signInWithEmailAndPassword(auth, e, p); } 
-            catch (err) { alert("Błąd: " + err.message); }
+        // LOGOWANIE
+        window.handleLogin = async () => {
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (err) {
+                alert("Błąd logowania: " + err.message);
+            }
         };
 
-        document.getElementById('btnOut').onclick = () => signOut(auth);
+        // WYLOGOWANIE
+        window.handleLogout = async () => {
+            if (unsubscribe) {
+                unsubscribe();
+                unsubscribe = null;
+            }
+            await signOut(auth);
+        };
 
+        // MONITOROWANIE SESJI
         onAuthStateChanged(auth, (user) => {
+            const loginSec = document.getElementById('loginSection');
+            const appSec = document.getElementById('appSection');
+            
             if (user) {
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('appSection').classList.remove('hidden');
-                startSync();
+                loginSec.classList.add('hidden');
+                appSec.classList.remove('hidden');
+                document.body.classList.remove('items-center');
+                loadData();
             } else {
-                document.getElementById('loginSection').classList.remove('hidden');
-                document.getElementById('appSection').classList.add('hidden');
+                if (unsubscribe) {
+                    unsubscribe();
+                    unsubscribe = null;
+                }
+                loginSec.classList.remove('hidden');
+                appSec.classList.add('hidden');
+                document.body.classList.add('items-center');
+                document.getElementById('chemicalList').innerHTML = "";
             }
         });
 
-        // --- SYNCHRONIZACJA ---
-        function startSync() {
-            onSnapshot(docRef, (snap) => {
-                if (snap.exists()) {
-                    data = snap.data().lista || [];
-                    render();
-                } else {
-                    // Jeśli pusto, zainicjuj listę
-                    data = [{lp: "1", grupa: "II-1/29", nazwa: "Wzorzec barwy", data: "20.11.2026", zastosowanie: "Barwa", zamowione: false}];
-                    save();
+        // POBIERANIE DANYCH
+        function loadData() {
+            if (unsubscribe) unsubscribe();
+
+            const q = query(colRef, orderBy("timestamp", "asc"));
+            
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                const list = document.getElementById('chemicalList');
+                list.innerHTML = "";
+                
+                snapshot.docs.forEach((docSnap, index) => {
+                    const item = docSnap.data();
+                    const li = document.createElement('li');
+                    li.className = "grid grid-cols-12 gap-2 items-center bg-white p-3 rounded-lg border border-gray-200 shadow-sm transition hover:border-blue-300";
+                    
+                    const isExpired = item.expiry && new Date(item.expiry) < new Date();
+                    const dateColor = isExpired ? "text-red-600 font-bold" : "text-gray-500";
+
+                    li.innerHTML = `
+                        <div class="col-span-1 text-center font-mono text-gray-400 text-[10px] border-r">${index + 1}</div>
+                        <div class="col-span-4 leading-tight pl-1">
+                            <div class="font-bold text-gray-800 text-sm truncate">${item.name}</div>
+                            <div class="text-[9px] text-blue-500 uppercase tracking-tighter">${item.group || '-'}</div>
+                        </div>
+                        <div class="col-span-4 text-[11px] text-gray-600 italic truncate">${item.usage || '-'}</div>
+                        <div class="col-span-3 text-right flex flex-col items-end">
+                            <div class="text-[10px] ${dateColor}">${item.expiry || 'brak daty'}</div>
+                            <button onclick="deleteItem('${docSnap.id}')" class="text-[9px] text-red-300 mt-1 hover:text-red-600 uppercase">Usuń</button>
+                        </div>
+                    `;
+                    list.appendChild(li);
+                });
+            }, (error) => {
+                console.warn("Nasłuchiwanie przerwane.");
+            });
+        }
+
+        // DODAWANIE
+        window.addItem = async () => {
+            const name = document.getElementById('chemName');
+            const group = document.getElementById('chemGroup');
+            const usage = document.getElementById('chemUsage');
+            const expiry = document.getElementById('chemExpiry');
+
+            if (name.value.trim()) {
+                try {
+                    await addDoc(colRef, { 
+                        name: name.value, 
+                        group: group.value,
+                        usage: usage.value,
+                        expiry: expiry.value,
+                        timestamp: Date.now() 
+                    });
+                    name.value = ""; group.value = ""; usage.value = ""; expiry.value = "";
+                } catch (e) {
+                    alert("Błąd: " + e.message);
                 }
-            });
-        }
-
-        async function save() {
-            await setDoc(docRef, { lista: data });
-        }
-
-        function render() {
-            const body = document.getElementById('tableBody');
-            body.innerHTML = '';
-            data.forEach((item, i) => {
-                const tr = document.createElement('tr');
-                tr.className = `border-b ${item.zamowione ? 'bg-green-50' : ''}`;
-                tr.innerHTML = `
-                    <td class="p-3">${item.lp}</td>
-                    <td class="p-3 text-gray-500">${item.grupa}</td>
-                    <td class="p-3 font-bold cursor-pointer" onclick="window.edit(${i}, 'nazwa')">${item.nazwa} ${item.zamowione ? '✅' : ''}</td>
-                    <td class="p-3 cursor-pointer" onclick="window.edit(${i}, 'data')">${item.data}</td>
-                    <td class="p-3 text-gray-400 italic">${item.zastosowanie}</td>
-                    <td class="p-3 text-right">
-                        <button onclick="window.toggle(${i})" class="mr-2">🛒</button>
-                        <button onclick="window.del(${i})">🗑️</button>
-                    </td>
-                `;
-                body.appendChild(tr);
-            });
-            checkDates();
-        }
-
-        // --- FUNKCJE OKNA (DOSTĘPNE DLA HTML) ---
-        window.edit = (i, klucz) => {
-            const val = prompt("Nowa wartość:", data[i][klucz]);
-            if (val) { data[i][klucz] = val; save(); }
-        };
-
-        window.toggle = (i) => {
-            data[i].zamowione = !data[i].zamowione;
-            save();
-        };
-
-        window.del = (i) => {
-            if (confirm("Usunąć?")) { data.splice(i, 1); save(); }
-        };
-
-        document.getElementById('btnAdd').onclick = () => {
-            data.push({lp: (data.length+1).toString(), grupa: "-", nazwa: "NOWY", data: "01.01.2026", zastosowanie: "-", zamowione: false});
-            save();
-        };
-
-        function checkDates() {
-            const alertBox = document.getElementById('alert-section');
-            const expiring = data.filter(item => {
-                const parts = item.data.split('.');
-                if(parts.length !== 3) return false;
-                const d = new Date(parts[2], parts[1]-1, parts[1]);
-                const limit = new Date();
-                limit.setDate(limit.getDate() + 42);
-                return d < limit && !item.zamowione;
-            });
-
-            if (expiring.length > 0) {
-                alertBox.innerHTML = `🚨 Wygasają wkrótce: ${expiring.length} wzorce.`;
-                alertBox.className = "p-4 bg-orange-100 text-orange-800 rounded-lg mb-6 block";
-            } else {
-                alertBox.innerHTML = "✅ Wszystkie dane aktualne.";
-                alertBox.className = "p-4 bg-green-100 text-green-800 rounded-lg mb-6 block";
             }
-        }
+        };
+
+        // USUWANIE
+        window.deleteItem = async (id) => {
+            if(confirm("Czy na pewno usunąć ten odczynnik?")) {
+                try {
+                    await deleteDoc(doc(db, 'odczynniki', id));
+                } catch (e) {
+                    alert("Błąd usuwania: " + e.message);
+                }
+            }
+        };
     </script>
 </body>
 </html>
