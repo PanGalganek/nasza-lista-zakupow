@@ -23,24 +23,25 @@
         <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
     </div>
 
-    <div id="appSection" class="hidden max-w-5xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6 self-start">
+    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6 self-start">
         
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">⚗️ e-Lab</h1>
             <button onclick="handleLogout()" class="text-xs text-red-500 font-bold uppercase tracking-tighter">Wyloguj</button>
         </div>
 
-        <div class="flex border-b mb-6 bg-gray-50 rounded-t-lg">
-            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 py-3 text-sm uppercase tracking-wider active-tab">🧪 Odczynniki</button>
-            <button id="btnHarmonogram" onclick="switchTab('harmonogram')" class="flex-1 py-3 text-sm uppercase tracking-wider text-gray-400">📅 Harmonogram</button>
+        <div class="flex border-b mb-6 bg-gray-50 rounded-t-lg overflow-x-auto whitespace-nowrap">
+            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 px-4 py-3 text-[10px] md:text-sm uppercase tracking-wider active-tab">🧪 Odczynniki</button>
+            <button id="btnWoda" onclick="switchTab('woda')" class="flex-1 px-4 py-3 text-[10px] md:text-sm uppercase tracking-wider text-gray-400">💧 Woda</button>
+            <button id="btnScieki" onclick="switchTab('scieki')" class="flex-1 px-4 py-3 text-[10px] md:text-sm uppercase tracking-wider text-gray-400">☣️ Ścieki</button>
         </div>
 
         <div id="tabContentOdczynniki" class="block">
-            <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all"></div>
+            <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all text-left"></div>
             
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm">
                 <input type="hidden" id="editId" value="">
-                <div class="grid grid-cols-1 gap-3">
+                <div class="grid grid-cols-1 gap-3 text-left">
                     <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="chemGroup" placeholder="Grupa (np. Kwasy)" class="border p-2 rounded">
@@ -58,7 +59,7 @@
                     </div>
                     <div class="flex gap-2">
                         <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg">Dodaj</button>
-                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button>
+                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg text-sm">Anuluj</button>
                     </div>
                 </div>
             </div>
@@ -70,13 +71,19 @@
                 <div class="col-span-3 text-center">Przyjęcie / Ważność</div>
                 <div class="col-span-2 text-right">Akcje</div>
             </div>
-            <ul id="chemicalList" class="space-y-3"></ul>
+            <ul id="chemicalList" class="space-y-3 text-left"></ul>
         </div>
 
-        <div id="tabContentHarmonogram" class="hidden min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8">
-            <span class="text-4xl mb-4">📅</span>
-            <h3 class="font-bold text-gray-700">Harmonogram Laboratorium</h3>
-            <p class="text-gray-400 text-sm text-center mt-2">To miejsce na Twoje kategorie: Woda, Ścieki i zadania roczne.<br>W następnym kroku zaprojektujemy tutaj system rozwijanych list.</p>
+        <div id="tabContentWoda" class="hidden min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-blue-100 rounded-xl p-8 bg-blue-50/30">
+            <span class="text-4xl mb-4 text-blue-500">💧</span>
+            <h3 class="font-bold text-blue-900">Laboratorium Wody</h3>
+            <p class="text-blue-700/60 text-sm text-center mt-2 max-w-sm">Tu znajdzie się harmonogram próbkobrania i analiz rocznych dla wody.</p>
+        </div>
+
+        <div id="tabContentScieki" class="hidden min-h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-green-100 rounded-xl p-8 bg-green-50/30">
+            <span class="text-4xl mb-4 text-green-500">☣️</span>
+            <h3 class="font-bold text-green-900">Laboratorium Ścieków</h3>
+            <p class="text-green-700/60 text-sm text-center mt-2 max-w-sm">Tu znajdzie się harmonogram próbkobrania i analiz rocznych dla ścieków.</p>
         </div>
 
     </div>
@@ -102,31 +109,31 @@
 
         let unsubscribe = null;
 
-        // PRZEŁĄCZANIE ZAKŁADEK
+        // PRZEŁĄCZANIE TRZECH ZAKŁADEK
         window.switchTab = (target) => {
-            const tabO = document.getElementById('tabContentOdczynniki');
-            const tabH = document.getElementById('tabContentHarmonogram');
-            const btnO = document.getElementById('btnOdczynniki');
-            const btnH = document.getElementById('btnHarmonogram');
-
-            if (target === 'odczynniki') {
-                tabO.classList.remove('hidden'); tabH.classList.add('hidden');
-                btnO.classList.add('active-tab'); btnO.classList.remove('text-gray-400');
-                btnH.classList.remove('active-tab'); btnH.classList.add('text-gray-400');
-            } else {
-                tabO.classList.add('hidden'); tabH.classList.remove('hidden');
-                btnH.classList.add('active-tab'); btnH.classList.remove('text-gray-400');
-                btnO.classList.remove('active-tab'); btnO.classList.add('text-gray-400');
-            }
+            const tabs = ['odczynniki', 'woda', 'scieki'];
+            
+            tabs.forEach(tab => {
+                const content = document.getElementById(`tabContent${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+                const btn = document.getElementById(`btn${tab.charAt(0).toUpperCase() + tab.slice(1)}`);
+                
+                if (tab === target) {
+                    content.classList.remove('hidden');
+                    btn.classList.add('active-tab');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    content.classList.add('hidden');
+                    btn.classList.remove('active-tab');
+                    btn.classList.add('text-gray-400');
+                }
+            });
         };
 
-        // DOMYŚLNA DATA PRZYJĘCIA
         function setDefaultDate() {
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('chemReceived').value = today;
         }
 
-        // LOGOWANIE I MONITOROWANIE
         window.handleLogin = async () => {
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPassword').value;
@@ -147,7 +154,6 @@
             }
         });
 
-        // WCZYTYWANIE DANYCH
         function loadData() {
             if (unsubscribe) unsubscribe();
             const q = query(colRef, orderBy("timestamp", "asc"));
@@ -161,14 +167,18 @@
                     const li = document.createElement('li');
                     
                     const expiry = item.expiry ? new Date(item.expiry) : null;
-                    const diff = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
-                    if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alertItems.push({ lp: index + 1, group: item.group, name: item.name });
+                    const today = new Date();
+                    const diff = expiry ? Math.ceil((expiry - today) / 86400000) : null;
+                    
+                    if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) {
+                        alertItems.push({ lp: index + 1, group: item.group || '?', name: item.name });
+                    }
 
                     const dColor = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
                     li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border shadow-sm`;
                     li.innerHTML = `
                         <div class="col-span-1 text-center font-mono text-gray-400 text-[10px] border-r">${index + 1}</div>
-                        <div class="col-span-2 text-[10px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div>
+                        <div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div>
                         <div class="col-span-4 leading-tight">
                             <div class="font-bold text-gray-800 text-sm truncate">${item.name}</div>
                             <div class="text-[8px] text-gray-400 italic truncate">${item.usage || '-'}</div>
@@ -192,22 +202,22 @@
         function updateAlertBox(items) {
             const box = document.getElementById('alertBox');
             if (items.length > 0) {
-                const html = items.map(i => `<div class="mt-1">• <strong>[${i.group || '?'}]</strong> ${i.name} (LP ${i.lp})</div>`).join('');
-                box.innerHTML = `<div class="font-bold underline text-xs">🚨 Wygasające (30 dni):</div>${html}`;
+                const html = items.map(i => `<div class="mt-1">• <strong>[${i.group}]</strong> ${i.name} (LP ${i.lp})</div>`).join('');
+                box.innerHTML = `<div class="font-bold underline text-xs tracking-tight">🚨 Wygasające (30 dni):</div>${html}`;
                 box.className = "mb-6 p-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-800 block shadow-sm";
             } else {
-                box.innerHTML = `✅ Wszystkie wzorce aktualne.`;
-                box.className = "mb-6 p-3 rounded-lg border bg-green-50 border-green-200 text-green-800 block shadow-sm";
+                box.className = "hidden";
             }
         }
 
         window.startEdit = (id, n, g, u, e, r) => {
-            document.getElementById('editId').value = id; document.getElementById('chemName').value = n;
+            document.getElementById('editId').value = id;
+            document.getElementById('chemName').value = n;
             document.getElementById('chemGroup').value = g === 'undefined' ? '' : g;
             document.getElementById('chemUsage').value = u === 'undefined' ? '' : u;
             document.getElementById('chemExpiry').value = e === 'undefined' ? '' : e;
             document.getElementById('chemReceived').value = r === 'undefined' ? '' : r;
-            document.getElementById('submitBtn').innerText = "Zapisz zmiany";
+            document.getElementById('submitBtn').innerText = "Zapisz";
             document.getElementById('submitBtn').className = "flex-1 bg-green-600 text-white font-bold py-3 rounded-lg";
             document.getElementById('cancelEditBtn').classList.remove('hidden');
             document.getElementById('formContainer').classList.add('editing-mode');
@@ -215,10 +225,13 @@
         };
 
         window.cancelEdit = () => {
-            document.getElementById('editId').value = ""; document.getElementById('chemName').value = "";
-            document.getElementById('chemGroup').value = ""; document.getElementById('chemUsage').value = "";
-            document.getElementById('chemExpiry').value = ""; setDefaultDate();
-            document.getElementById('submitBtn').innerText = "Dodaj do ewidencji";
+            document.getElementById('editId').value = "";
+            document.getElementById('chemName').value = "";
+            document.getElementById('chemGroup').value = "";
+            document.getElementById('chemUsage').value = "";
+            document.getElementById('chemExpiry').value = "";
+            setDefaultDate();
+            document.getElementById('submitBtn').innerText = "Dodaj";
             document.getElementById('submitBtn').className = "flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg";
             document.getElementById('cancelEditBtn').classList.add('hidden');
             document.getElementById('formContainer').classList.remove('editing-mode');
@@ -231,6 +244,7 @@
             const usage = document.getElementById('chemUsage').value;
             const expiry = document.getElementById('chemExpiry').value;
             const received = document.getElementById('chemReceived').value;
+
             if (name.trim()) {
                 if (editId) await updateDoc(doc(db, 'odczynniki', editId), { name, group, usage, expiry, received });
                 else await addDoc(colRef, { name, group, usage, expiry, received, timestamp: Date.now(), ordered: false });
