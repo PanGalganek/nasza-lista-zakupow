@@ -39,8 +39,8 @@
             <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all text-left"></div>
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
-                <div class="grid grid-cols-1 gap-3 text-sm">
-                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded">
+                <div class="grid grid-cols-1 gap-3">
+                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
                         <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
@@ -49,7 +49,7 @@
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
                     </div>
-                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg">Zapisz / Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white px-4 rounded-lg">Anuluj</button></div>
+                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
                 </div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
@@ -59,33 +59,45 @@
             <div class="space-y-2">
                 <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
                 <div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <details class="group bg-blue-50 border border-blue-200 rounded-lg overflow-hidden shadow-sm" open>
+                <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm" open>
                     <summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest">
                         <span>📦 Próbka archiwalna</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
                     <div class="p-4 bg-white border-t border-blue-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm">
-                            <button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                            <input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
                         </div>
                         <div id="taskListWodaArchiwalna" class="space-y-2"></div>
                     </div>
                 </details>
             </div>
-
             <div class="space-y-2">
                 <div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
                 <div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <details class="group bg-blue-50 border border-blue-200 rounded-lg overflow-hidden shadow-sm">
+                <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
                     <summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest">
                         <span>⚪ Próbka ślepa</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
                     <div class="p-4 bg-white border-t border-blue-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputWodaSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm">
-                            <button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                            <input type="text" id="taskInputWodaSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
                         </div>
                         <div id="taskListWodaSlepa" class="space-y-2"></div>
+                    </div>
+                </details>
+            </div>
+            <div class="space-y-2">
+                <div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+                    <summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest">
+                        <span>🧺 Próbkobranie</span><span class="group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div class="p-4 bg-white border-t border-blue-100">
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce/Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                        </div>
+                        <div id="taskListWodaProbkobranie" class="space-y-2"></div>
                     </div>
                 </details>
             </div>
@@ -95,33 +107,45 @@
             <div class="space-y-2">
                 <div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
                 <div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <details class="group bg-green-50 border border-green-200 rounded-lg overflow-hidden shadow-sm" open>
+                <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm" open>
                     <summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest">
                         <span>📦 Próbka archiwalna</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
                     <div class="p-4 bg-white border-t border-green-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputSciekiArchiwalna" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm">
-                            <button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                            <input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
                         </div>
                         <div id="taskListSciekiArchiwalna" class="space-y-2"></div>
                     </div>
                 </details>
             </div>
-
             <div class="space-y-2">
                 <div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
                 <div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <details class="group bg-green-50 border border-green-200 rounded-lg overflow-hidden shadow-sm">
+                <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm">
                     <summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest">
                         <span>⚪ Próbka ślepa</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
                     <div class="p-4 bg-white border-t border-green-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputSciekiSlepa" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm">
-                            <button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                            <input type="text" id="taskInputSciekiSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
                         </div>
                         <div id="taskListSciekiSlepa" class="space-y-2"></div>
+                    </div>
+                </details>
+            </div>
+            <div class="space-y-2">
+                <div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm">
+                    <summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest">
+                        <span>🧺 Próbkobranie</span><span class="group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div class="p-4 bg-white border-t border-green-100">
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce/Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                        </div>
+                        <div id="taskListSciekiProbkobranie" class="space-y-2"></div>
                     </div>
                 </details>
             </div>
@@ -156,7 +180,7 @@
         window.addTask = async (lab, cat) => {
             const inputId = `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`;
             const input = document.getElementById(inputId);
-            if (input.value.trim()) {
+            if (input && input.value.trim()) {
                 await addDoc(colTasks, { name: input.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() });
                 input.value = "";
             }
@@ -171,15 +195,14 @@
         function loadTasks() {
             onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snap) => {
                 const containers = {
-                    wodaArchiwalna: 'taskListWodaArchiwalna', wodaSlepa: 'taskListWodaSlepa',
-                    sciekiArchiwalna: 'taskListSciekiArchiwalna', sciekiSlepa: 'taskListSciekiSlepa'
+                    wodaArchiwalna: 'taskListWodaArchiwalna', wodaSlepa: 'taskListWodaSlepa', wodaProbkobranie: 'taskListWodaProbkobranie',
+                    sciekiArchiwalna: 'taskListSciekiArchiwalna', sciekiSlepa: 'taskListSciekiSlepa', sciekiProbkobranie: 'taskListSciekiProbkobranie'
                 };
-                Object.values(containers).forEach(id => document.getElementById(id).innerHTML = "");
+                Object.values(containers).forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = ""; });
 
-                // Statystyki rozdzielone na 4 liczniki
                 let stats = {
-                    wodaArchiwalna: { t: 0, d: 0, m: false }, wodaSlepa: { t: 0, d: 0, m: false },
-                    sciekiArchiwalna: { t: 0, d: 0, m: false }, sciekiSlepa: { t: 0, d: 0, m: false }
+                    wodaArchiwalna: { t: 0, d: 0, m: false }, wodaSlepa: { t: 0, d: 0, m: false }, wodaProbkobranie: { t: 0, d: 0, m: false },
+                    sciekiArchiwalna: { t: 0, d: 0, m: false }, sciekiSlepa: { t: 0, d: 0, m: false }, sciekiProbkobranie: { t: 0, d: 0, m: false }
                 };
                 
                 const now = new Date();
@@ -191,7 +214,6 @@
                     const dDate = t.doneDate ? new Date(t.doneDate) : null;
                     const isY = dDate && dDate.getFullYear() === curY;
                     const isM = dDate && dDate.getFullYear() === curY && dDate.getMonth() === curM;
-                    
                     const cat = t.category || 'Archiwalna';
                     const key = t.lab + cat;
 
@@ -211,12 +233,11 @@
                     if(document.getElementById(containers[key])) document.getElementById(containers[key]).appendChild(div);
                 });
 
-                // Renderowanie 4 zestawów liczników
                 Object.keys(stats).forEach(key => {
                     const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
                     const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
                     const s = stats[key];
-
+                    if(!mEl || !yEl) return;
                     if(s.t === 0) { mEl.className = "hidden"; yEl.className = "hidden"; return; }
                     
                     mEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-1";
@@ -227,16 +248,11 @@
                         mEl.innerHTML = "⚠️ Brak zadania w tym miesiącu!";
                         mEl.classList.add('bg-orange-50', 'border-orange-200', 'text-orange-800', 'animate-pulse');
                     }
-
                     yEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-2 bg-slate-50 text-slate-500 uppercase";
                     if(s.d === s.t) {
                         yEl.innerHTML = "⭐ Plan roczny zakończony!";
-                        yEl.classList.replace('text-slate-500', 'text-green-700');
-                        yEl.classList.add('bg-green-50');
-                        mEl.className = "hidden";
-                    } else {
-                        yEl.innerHTML = `Plan Roczny: ${s.d} / ${s.t} ZROBIONE`;
-                    }
+                        yEl.classList.replace('text-slate-500', 'text-green-700'); yEl.classList.add('bg-green-50'); mEl.className = "hidden";
+                    } else { yEl.innerHTML = `Plan Roczny: ${s.d} / ${s.t} ZROBIONE`; }
                 });
             });
         }
@@ -261,10 +277,10 @@
             });
         }
         window.addItem = async () => {
-            const id = document.getElementById('editId').value;
+            const editId = document.getElementById('editId').value;
             const payload = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: document.getElementById('chemReceived').value };
             if (payload.name.trim()) {
-                if (id) await updateDoc(doc(db, 'odczynniki', id), payload);
+                if (editId) await updateDoc(doc(db, 'odczynniki', editId), payload);
                 else await addDoc(colOdczynniki, { ...payload, timestamp: Date.now(), ordered: false });
                 cancelEdit();
             }
