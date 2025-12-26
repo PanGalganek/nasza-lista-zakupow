@@ -1,15 +1,16 @@
 {
-  "name": "Nasza Lista Zakupów",
-  "short_name": "Zakupy",
+  "name": "e-Laboratorium",
+  "short_name": "e-Lab",
   "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#f3f4f6",
+  "background_color": "#ffffff",
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081840.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/3062/3062250.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
