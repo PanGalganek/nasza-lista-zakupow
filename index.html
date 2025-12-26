@@ -10,7 +10,6 @@
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
-        /* Styl dla strzałek w rozwijanych listach */
         summary::-webkit-details-marker { display: none; }
         summary { list-style: none; }
     </style>
@@ -37,36 +36,41 @@
         </div>
 
         <div id="tabContentOdczynniki" class="block">
-            <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all text-left"></div>
-            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 text-sm text-left">
+            <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm text-left"></div>
+            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100 text-sm text-left text-sm">
                 <input type="hidden" id="editId" value="">
-                <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded mb-2 outline-none focus:ring-2 focus:ring-blue-500">
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
-                    <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
+                <div class="grid grid-cols-1 gap-3">
+                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
+                        <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="date" id="chemReceived" class="border p-2 rounded" title="Data przyjęcia">
+                        <input type="date" id="chemExpiry" class="border p-2 rounded" title="Data ważności">
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg">Dodaj</button>
+                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <input type="date" id="chemReceived" class="border p-2 rounded">
-                    <input type="date" id="chemExpiry" class="border p-2 rounded">
-                </div>
-                <button id="submitBtn" onclick="addItem()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg">Dodaj</button>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
         </div>
 
         <div id="tabContentWoda" class="hidden space-y-4 text-left">
-            <div id="statusWoda" class="p-3 rounded-lg text-xs font-bold text-center border bg-slate-50"></div>
-            <div id="monthStatusWoda" class="p-3 rounded-lg text-[10px] font-bold border"></div>
+            <div id="statusWoda" class="p-3 rounded-lg text-[10px] font-bold text-center border bg-slate-50 uppercase tracking-tighter"></div>
+            <div id="monthStatusWoda" class="p-3 rounded-lg text-[10px] font-bold border text-center"></div>
             
             <div class="space-y-2">
                 <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm" open>
-                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-blue-800 text-xs uppercase tracking-widest">
+                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-blue-800 text-[10px] uppercase tracking-widest">
                         <span>📦 Próbki Archiwalne</span>
-                        <span class="group-open:rotate-180 transition-transform">▼</span>
+                        <span class="group-open:rotate-180">▼</span>
                     </summary>
                     <div class="p-3 bg-white border-t border-blue-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputWodaArchiwalna" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                            <input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-400">
                             <button onclick="addTask('woda', 'archiwalna')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button>
                         </div>
                         <div id="taskListWodaArchiwalna" class="space-y-2"></div>
@@ -74,13 +78,13 @@
                 </details>
 
                 <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-blue-800 text-xs uppercase tracking-widest">
+                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-blue-800 text-[10px] uppercase tracking-widest">
                         <span>⚪ Próbki Ślepe</span>
-                        <span class="group-open:rotate-180 transition-transform">▼</span>
+                        <span class="group-open:rotate-180">▼</span>
                     </summary>
                     <div class="p-3 bg-white border-t border-blue-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputWodaSlepa" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                            <input type="text" id="taskInputWodaSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-400">
                             <button onclick="addTask('woda', 'slepa')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button>
                         </div>
                         <div id="taskListWodaSlepa" class="space-y-2"></div>
@@ -90,18 +94,18 @@
         </div>
 
         <div id="tabContentScieki" class="hidden space-y-4 text-left">
-            <div id="statusScieki" class="p-3 rounded-lg text-xs font-bold text-center border bg-slate-50"></div>
-            <div id="monthStatusScieki" class="p-3 rounded-lg text-[10px] font-bold border"></div>
+            <div id="statusScieki" class="p-3 rounded-lg text-[10px] font-bold text-center border bg-slate-50 uppercase tracking-tighter"></div>
+            <div id="monthStatusScieki" class="p-3 rounded-lg text-[10px] font-bold border text-center"></div>
 
             <div class="space-y-2">
                 <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm" open>
-                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-green-800 text-xs uppercase tracking-widest">
+                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-green-800 text-[10px] uppercase tracking-widest">
                         <span>📦 Próbki Archiwalne</span>
-                        <span class="group-open:rotate-180 transition-transform">▼</span>
+                        <span class="group-open:rotate-180">▼</span>
                     </summary>
                     <div class="p-3 bg-white border-t border-green-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputSciekiArchiwalna" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                            <input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm outline-none focus:ring-1 focus:ring-green-400">
                             <button onclick="addTask('scieki', 'archiwalna')" class="bg-green-600 text-white px-4 rounded font-bold">+</button>
                         </div>
                         <div id="taskListSciekiArchiwalna" class="space-y-2"></div>
@@ -109,13 +113,13 @@
                 </details>
 
                 <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm">
-                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-green-800 text-xs uppercase tracking-widest">
+                    <summary class="flex justify-between items-center p-3 cursor-pointer font-bold text-green-800 text-[10px] uppercase tracking-widest">
                         <span>⚪ Próbki Ślepe</span>
-                        <span class="group-open:rotate-180 transition-transform">▼</span>
+                        <span class="group-open:rotate-180">▼</span>
                     </summary>
                     <div class="p-3 bg-white border-t border-green-100">
                         <div class="flex gap-2 mb-3">
-                            <input type="text" id="taskInputSciekiSlepa" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                            <input type="text" id="taskInputSciekiSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm outline-none focus:ring-1 focus:ring-green-400">
                             <button onclick="addTask('scieki', 'slepa')" class="bg-green-600 text-white px-4 rounded font-bold">+</button>
                         </div>
                         <div id="taskListSciekiSlepa" class="space-y-2"></div>
@@ -142,26 +146,27 @@
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki'].forEach(t => {
                 document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('hidden');
-                document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.remove('active-tab');
-                document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('text-gray-400');
+                document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.remove('active-tab', 'text-gray-400');
+                if (t === target) {
+                    document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.remove('hidden');
+                    document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('active-tab');
+                } else {
+                    document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add('text-gray-400');
+                }
             });
-            document.getElementById(`tabContent${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.remove('hidden');
-            document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
         };
 
-        // --- HARMONOGRAM ---
+        // --- ZADANIA ---
         window.addTask = async (lab, type) => {
             const inputId = `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${type.charAt(0).toUpperCase() + type.slice(1)}`;
             const input = document.getElementById(inputId);
-            if (input.value.trim()) {
-                await addDoc(colTasks, { 
-                    name: input.value.trim(), 
-                    lab, 
-                    type, // archiwalna lub slepa
-                    doneDate: null, 
-                    timestamp: Date.now() 
-                });
-                input.value = "";
+            if (input && input.value.trim()) {
+                try {
+                    await addDoc(colTasks, { 
+                        name: input.value.trim(), lab, type, doneDate: null, timestamp: Date.now() 
+                    });
+                    input.value = "";
+                } catch(e) { alert("Błąd zapisu: " + e.message); }
             }
         };
 
@@ -180,7 +185,7 @@
                     sciekiArchiwalna: document.getElementById('taskListSciekiArchiwalna'),
                     sciekiSlepa: document.getElementById('taskListSciekiSlepa')
                 };
-                Object.values(containers).forEach(c => c.innerHTML = "");
+                Object.values(containers).forEach(c => { if(c) c.innerHTML = ""; });
 
                 let stats = { woda: { t: 0, d: 0, m: false }, scieki: { t: 0, d: 0, m: false } };
                 const today = new Date();
@@ -201,23 +206,19 @@
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-2 border rounded mb-2 ${isDoneThisYear ? 'task-done' : 'bg-white shadow-sm'}`;
                     div.innerHTML = `
-                        <div class="flex flex-col">
-                            <span class="text-xs ${isDoneThisYear ? 'line-through text-gray-400 font-normal' : 'font-bold text-gray-700'}">${t.name}</span>
-                            ${isDoneThisYear ? `<span class="text-[8px] text-green-600 font-bold uppercase">Zrobiono: ${t.doneDate}</span>` : ''}
-                        </div>
-                        <div class="flex gap-3">
-                            <button onclick="toggleTask('${docSnap.id}', ${isDoneThisYear})" class="text-lg">${isDoneThisYear ? '✅' : '⬜'}</button>
-                            <button onclick="deleteTask('${docSnap.id}')" class="text-red-300 text-xs">✕</button>
-                        </div>
-                    `;
+                        <div class="flex flex-col"><span class="text-xs ${isDoneThisYear ? 'line-through text-gray-400' : 'font-bold text-gray-700'}">${t.name}</span>
+                        ${isDoneThisYear ? `<span class="text-[8px] text-green-600 font-bold uppercase tracking-tighter">Zrobiono: ${t.doneDate}</span>` : ''}</div>
+                        <div class="flex gap-3"><button onclick="toggleTask('${docSnap.id}', ${isDoneThisYear})" class="text-lg">${isDoneThisYear ? '✅' : '⬜'}</button>
+                        <button onclick="deleteTask('${docSnap.id}')" class="text-red-300 text-xs">✕</button></div>`;
                     if(containers[containerKey]) containers[containerKey].appendChild(div);
                 });
 
                 ['woda', 'scieki'].forEach(l => {
                     const mEl = document.getElementById(`monthStatus${l.charAt(0).toUpperCase() + l.slice(1)}`);
                     const sEl = document.getElementById(`status${l.charAt(0).toUpperCase() + l.slice(1)}`);
-                    if (stats[l].t === 0) { mEl.className = "hidden"; sEl.className = "hidden"; return; }
+                    if (stats[l].t === 0) { mEl.classList.add('hidden'); sEl.classList.add('hidden'); return; }
                     
+                    mEl.classList.remove('hidden'); sEl.classList.remove('hidden');
                     if(stats[l].m) {
                         mEl.innerHTML = "✅ W tym miesiącu zadanie zostało wykonane.";
                         mEl.className = "p-2 rounded-lg text-[9px] font-bold border bg-green-50 border-green-200 text-green-700 mb-2 text-center";
@@ -229,7 +230,7 @@
                     if (stats[l].d === stats[l].t) {
                         sEl.innerText = "⭐ Wszystko zrobione na ten rok!";
                         sEl.className = "p-2 rounded-lg text-[10px] font-bold text-center bg-green-100 text-green-700 block mb-2 border border-green-200 uppercase";
-                        mEl.className = "hidden";
+                        mEl.classList.add('hidden');
                     } else {
                         sEl.innerText = `📅 Plan Roczny: ${stats[l].d} / ${stats[l].t} zrobione`;
                         sEl.className = "p-2 rounded-lg text-[10px] font-bold text-center bg-slate-100 text-slate-500 block mb-2 border border-slate-200 uppercase";
@@ -251,7 +252,7 @@
                     const dCol = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
                     const li = document.createElement('li');
                     li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border shadow-sm text-[11px]`;
-                    li.innerHTML = `<div class="col-span-1 text-center font-mono text-gray-400 border-r">${i+1}</div><div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 leading-tight font-bold text-gray-800 truncate">${item.name}</div><div class="col-span-3 text-center flex flex-col"><span class="text-[8px] text-gray-400">P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 text-right flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered || false})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
+                    li.innerHTML = `<div class="col-span-1 text-center font-mono text-gray-400 border-r tracking-tighter">${i+1}</div><div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 leading-tight font-bold text-gray-800 truncate">${item.name}</div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span class="text-[8px] text-gray-400 leading-none">P: ${item.received || '--'}</span><span class="${dCol} leading-tight mt-0.5">W: ${item.expiry || '--'}</span></div><div class="col-span-2 text-right flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered || false})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')" class="text-xs">✏️</button><button onclick="deleteItem('${d.id}')" class="text-red-300">✕</button></div>`;
                     list.appendChild(li);
                 });
                 updateAlertBox(alertItems);
@@ -266,19 +267,15 @@
                 cancelEdit();
             }
         };
-        window.startEdit = (id, n, g, u, e, r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('submitBtn').innerText = "Zapisz"; document.getElementById('cancelEditBtn').classList.remove('hidden'); document.getElementById('formContainer').classList.add('editing-mode'); };
+        window.startEdit = (id, n, g, u, e, r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('submitBtn').innerText = "Zapisz"; document.getElementById('cancelEditBtn').classList.remove('hidden'); document.getElementById('formContainer').classList.add('editing-mode'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
         window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('chemName').value = ""; document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; document.getElementById('submitBtn').innerText = "Dodaj"; document.getElementById('cancelEditBtn').classList.add('hidden'); document.getElementById('formContainer').classList.remove('editing-mode'); };
         function updateAlertBox(items) { const box = document.getElementById('alertBox'); if (items.length > 0) { box.innerHTML = `<div class="font-bold underline text-xs">🚨 Wygasające (30 dni):</div>${items.map(i => `<div class="text-[10px]">• [${i.group}] ${i.name}</div>`).join('')}`; box.className = "mb-6 p-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-800 block"; } else { box.className = "hidden"; } }
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- INIT ---
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden');
-                document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0];
-                loadOdczynniki(); loadTasks();
-            } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
+            if (user) { document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; loadOdczynniki(); loadTasks(); }
+            else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
         });
         window.handleLogin = async () => { const e = document.getElementById('loginEmail').value, p = document.getElementById('loginPassword').value; try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { alert(err.message); } };
         window.handleLogout = async () => { if (unsubO) unsubO(); await signOut(auth); location.reload(); };
