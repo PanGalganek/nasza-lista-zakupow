@@ -10,7 +10,6 @@
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
-        /* Styl dla czystego wyglądu sekcji zwijanych */
         summary { cursor: pointer; list-style: none; outline: none; }
         summary::-webkit-details-marker { display: none; }
     </style>
@@ -25,7 +24,6 @@
     </div>
 
     <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6 self-start">
-        
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">⚗️ e-Lab</h1>
             <button onclick="handleLogout()" class="text-xs text-red-500 font-bold uppercase">Wyloguj</button>
@@ -41,8 +39,8 @@
             <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all text-left"></div>
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
-                <div class="grid grid-cols-1 gap-3">
-                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="grid grid-cols-1 gap-3 text-sm">
+                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
                         <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
@@ -51,18 +49,17 @@
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
                     </div>
-                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
+                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg">Zapisz / Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white px-4 rounded-lg">Anuluj</button></div>
                 </div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
         </div>
 
-        <div id="tabContentWoda" class="hidden space-y-4 text-left">
-            <div id="monthStatusWoda" class="p-3 rounded-lg text-[11px] font-bold border"></div>
-            <div id="statusWoda" class="p-3 rounded-lg text-xs font-bold text-center"></div>
-            
+        <div id="tabContentWoda" class="hidden space-y-6 text-left">
             <div class="space-y-2">
-                <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm" open>
+                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-blue-50 border border-blue-200 rounded-lg overflow-hidden shadow-sm" open>
                     <summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest">
                         <span>📦 Próbka archiwalna</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
@@ -74,8 +71,12 @@
                         <div id="taskListWodaArchiwalna" class="space-y-2"></div>
                     </div>
                 </details>
+            </div>
 
-                <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
+            <div class="space-y-2">
+                <div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-blue-50 border border-blue-200 rounded-lg overflow-hidden shadow-sm">
                     <summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest">
                         <span>⚪ Próbka ślepa</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
@@ -90,12 +91,11 @@
             </div>
         </div>
 
-        <div id="tabContentScieki" class="hidden space-y-4 text-left">
-            <div id="monthStatusScieki" class="p-3 rounded-lg text-[11px] font-bold border"></div>
-            <div id="statusScieki" class="p-3 rounded-lg text-xs font-bold text-center"></div>
-            
+        <div id="tabContentScieki" class="hidden space-y-6 text-left">
             <div class="space-y-2">
-                <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm" open>
+                <div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-green-50 border border-green-200 rounded-lg overflow-hidden shadow-sm" open>
                     <summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest">
                         <span>📦 Próbka archiwalna</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
@@ -107,8 +107,12 @@
                         <div id="taskListSciekiArchiwalna" class="space-y-2"></div>
                     </div>
                 </details>
+            </div>
 
-                <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm">
+            <div class="space-y-2">
+                <div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-green-50 border border-green-200 rounded-lg overflow-hidden shadow-sm">
                     <summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest">
                         <span>⚪ Próbka ślepa</span><span class="group-open:rotate-180 transition-transform">▼</span>
                     </summary>
@@ -149,88 +153,89 @@
         };
 
         // --- HARMONOGRAM ---
-        window.addTask = async (lab, category) => {
-            const inputId = `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${category}`;
+        window.addTask = async (lab, cat) => {
+            const inputId = `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`;
             const input = document.getElementById(inputId);
             if (input.value.trim()) {
-                await addDoc(colTasks, { 
-                    name: input.value.trim(), 
-                    lab: lab, 
-                    category: category, // 'Archiwalna' lub 'Slepa'
-                    doneDate: null, 
-                    timestamp: Date.now() 
-                });
+                await addDoc(colTasks, { name: input.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() });
                 input.value = "";
             }
         };
 
-        window.toggleTask = async (id, isCurrentlyDone) => {
-            const dateStr = isCurrentlyDone ? null : new Date().toISOString().split('T')[0];
-            await updateDoc(doc(db, 'harmonogram', id), { doneDate: dateStr });
+        window.toggleTask = async (id, isDone) => {
+            await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
         };
 
         window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
 
         function loadTasks() {
-            onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snapshot) => {
+            onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snap) => {
                 const containers = {
                     wodaArchiwalna: 'taskListWodaArchiwalna', wodaSlepa: 'taskListWodaSlepa',
                     sciekiArchiwalna: 'taskListSciekiArchiwalna', sciekiSlepa: 'taskListSciekiSlepa'
                 };
                 Object.values(containers).forEach(id => document.getElementById(id).innerHTML = "");
 
-                let stats = { woda: { t: 0, d: 0, m: false }, scieki: { t: 0, d: 0, m: false } };
-                const today = new Date();
-                const curY = today.getFullYear();
-                const curM = today.getMonth();
+                // Statystyki rozdzielone na 4 liczniki
+                let stats = {
+                    wodaArchiwalna: { t: 0, d: 0, m: false }, wodaSlepa: { t: 0, d: 0, m: false },
+                    sciekiArchiwalna: { t: 0, d: 0, m: false }, sciekiSlepa: { t: 0, d: 0, m: false }
+                };
+                
+                const now = new Date();
+                const curY = now.getFullYear();
+                const curM = now.getMonth();
 
-                snapshot.docs.forEach(docSnap => {
+                snap.docs.forEach(docSnap => {
                     const t = docSnap.data();
                     const dDate = t.doneDate ? new Date(t.doneDate) : null;
-                    const isDoneThisYear = dDate && dDate.getFullYear() === curY;
-                    const isDoneThisMonth = dDate && dDate.getFullYear() === curY && dDate.getMonth() === curM;
+                    const isY = dDate && dDate.getFullYear() === curY;
+                    const isM = dDate && dDate.getFullYear() === curY && dDate.getMonth() === curM;
+                    
+                    const cat = t.category || 'Archiwalna';
+                    const key = t.lab + cat;
 
-                    // Przypisanie do kategorii (jeśli brak kategorii w starych danych, daj Archiwalna)
-                    const category = t.category || 'Archiwalna';
-                    const listId = containers[t.lab + category];
-
-                    stats[t.lab].t++;
-                    if(isDoneThisYear) stats[t.lab].d++;
-                    if(isDoneThisMonth) stats[t.lab].m = true;
+                    if(stats[key]) {
+                        stats[key].t++;
+                        if(isY) stats[key].d++;
+                        if(isM) stats[key].m = true;
+                    }
 
                     const div = document.createElement('div');
-                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isDoneThisYear ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
+                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
                     div.innerHTML = `
-                        <div class="flex flex-col leading-tight">
-                            <span class="text-sm ${isDoneThisYear ? 'line-through text-gray-400' : 'font-semibold'}">${t.name}</span>
-                            ${isDoneThisYear ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}
-                        </div>
-                        <div class="flex gap-4">
-                            <button onclick="toggleTask('${docSnap.id}', ${isDoneThisYear})" class="text-xl">${isDoneThisYear ? '✅' : '⬜'}</button>
-                            <button onclick="deleteTask('${docSnap.id}')" class="text-red-300 text-sm">✕</button>
-                        </div>
-                    `;
-                    if(document.getElementById(listId)) document.getElementById(listId).appendChild(div);
+                        <div class="flex flex-col leading-tight"><span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${t.name}</span>
+                        ${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}</div>
+                        <div class="flex gap-4"><button onclick="toggleTask('${docSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button>
+                        <button onclick="deleteTask('${docSnap.id}')" class="text-red-300">✕</button></div>`;
+                    if(document.getElementById(containers[key])) document.getElementById(containers[key]).appendChild(div);
                 });
 
-                ['woda', 'scieki'].forEach(l => {
-                    const mEl = document.getElementById(`monthStatus${l.charAt(0).toUpperCase() + l.slice(1)}`);
-                    const sEl = document.getElementById(`status${l.charAt(0).toUpperCase() + l.slice(1)}`);
-                    if (stats[l].t === 0) { mEl.className = "hidden"; sEl.className = "hidden"; return; }
-                    if(stats[l].m) {
-                        mEl.innerHTML = "✅ W tym miesiącu wykonano próbkę archiwalną/ślepą.";
-                        mEl.className = "p-3 rounded-lg text-[10px] font-bold border bg-green-50 border-green-200 text-green-700 mb-4 text-center";
+                // Renderowanie 4 zestawów liczników
+                Object.keys(stats).forEach(key => {
+                    const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                    const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                    const s = stats[key];
+
+                    if(s.t === 0) { mEl.className = "hidden"; yEl.className = "hidden"; return; }
+                    
+                    mEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-1";
+                    if(s.m) {
+                        mEl.innerHTML = "✅ Wykonano w tym miesiącu";
+                        mEl.classList.add('bg-green-50', 'border-green-200', 'text-green-700');
                     } else {
-                        mEl.innerHTML = "⚠️ Brak wykonanych zadań w tym miesiącu!";
-                        mEl.className = "p-3 rounded-lg text-[10px] font-bold border bg-orange-50 border-orange-200 text-orange-800 mb-4 text-center animate-pulse";
+                        mEl.innerHTML = "⚠️ Brak zadania w tym miesiącu!";
+                        mEl.classList.add('bg-orange-50', 'border-orange-200', 'text-orange-800', 'animate-pulse');
                     }
-                    if (stats[l].d === stats[l].t) {
-                        sEl.innerText = "⭐ Wszystko zrobione na ten rok!";
-                        sEl.className = "p-3 rounded-lg text-xs font-bold text-center bg-green-100 text-green-700 block mb-4 border border-green-200";
+
+                    yEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-2 bg-slate-50 text-slate-500 uppercase";
+                    if(s.d === s.t) {
+                        yEl.innerHTML = "⭐ Plan roczny zakończony!";
+                        yEl.classList.replace('text-slate-500', 'text-green-700');
+                        yEl.classList.add('bg-green-50');
                         mEl.className = "hidden";
                     } else {
-                        sEl.innerText = `📅 POZOSTAŁO: ${stats[l].t - stats[l].d} OZNACZEŃ W ROKU`;
-                        sEl.className = "p-3 rounded-lg text-[10px] font-bold text-center bg-slate-100 text-slate-600 block mb-4 border border-slate-200 uppercase tracking-tighter";
+                        yEl.innerHTML = `Plan Roczny: ${s.d} / ${s.t} ZROBIONE`;
                     }
                 });
             });
@@ -256,10 +261,10 @@
             });
         }
         window.addItem = async () => {
-            const editId = document.getElementById('editId').value;
+            const id = document.getElementById('editId').value;
             const payload = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: document.getElementById('chemReceived').value };
             if (payload.name.trim()) {
-                if (editId) await updateDoc(doc(db, 'odczynniki', editId), payload);
+                if (id) await updateDoc(doc(db, 'odczynniki', id), payload);
                 else await addDoc(colOdczynniki, { ...payload, timestamp: Date.now(), ordered: false });
                 cancelEdit();
             }
@@ -270,7 +275,6 @@
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // INIT
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden');
