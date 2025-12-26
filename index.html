@@ -57,20 +57,25 @@
         </div>
 
         <div id="tabContentWoda" class="hidden space-y-6 text-left">
-            <div id="sectionWoda_A" class="space-y-2">
+            <div class="space-y-2">
                 <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
                 <div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
                 <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm" open><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>📦 Próbka archiwalna</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div></div></details>
             </div>
-            <div id="sectionWoda_S" class="space-y-2">
+            <div class="space-y-2">
                 <div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
                 <div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
                 <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>⚪ Próbka ślepa</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div></details>
             </div>
-            <div id="sectionWoda_P" class="space-y-2">
+            <div class="space-y-2">
                 <div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
                 <div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
                 <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>🧺 Próbkobranie</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce/Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div></details>
+            </div>
+            <div class="space-y-2">
+                <div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>🤝 Porównania wewnątrzlaboratoryjne</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Analit/Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div></details>
             </div>
         </div>
 
@@ -90,27 +95,25 @@
                 <div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
                 <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest"><span>🧺 Próbkobranie</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-green-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce/Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div></details>
             </div>
+            <div class="space-y-2">
+                <div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest"><span>🤝 Porównania wewnątrzlaboratoryjne</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-green-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Analit/Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div></details>
+            </div>
         </div>
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
             <div id="statusWzorcowanie" class="p-3 rounded-lg text-[10px] font-bold text-center border bg-white shadow-sm uppercase"></div>
-            
             <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <h3 class="font-bold text-purple-800 mb-2 uppercase text-[10px] tracking-widest">📅 Harmonogram wzorcowania sprzętu</h3>
                 <div class="grid grid-cols-1 gap-2">
                     <input type="text" id="equipName" placeholder="Nazwa sprzętu (np. Waga)" class="border p-2 rounded text-sm">
                     <div class="flex gap-2">
-                        <select id="equipMonth" class="flex-1 border p-2 rounded text-sm bg-white">
-                            <option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option>
-                            <option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option>
-                            <option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option>
-                            <option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option>
-                        </select>
+                        <select id="equipMonth" class="flex-1 border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select>
                         <button onclick="addEquipment()" class="bg-purple-600 text-white px-6 py-2 rounded font-bold">+</button>
                     </div>
                 </div>
             </div>
-
             <div id="equipmentList" class="space-y-2"></div>
         </div>
     </div>
@@ -142,7 +145,7 @@
             document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
         };
 
-        // --- HARMONOGRAM WZORCOWANIA ---
+        // --- WZORCOWANIE ---
         window.addEquipment = async () => {
             const name = document.getElementById('equipName').value;
             const month = document.getElementById('equipMonth').value;
@@ -151,57 +154,32 @@
                 document.getElementById('equipName').value = "";
             }
         };
-
-        window.toggleEquip = async (id, isDone) => {
-            await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
-        };
-
-        window.deleteEquip = async (id) => { if(confirm("Usunąć sprzęt z harmonogramu?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
+        window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
+        window.deleteEquip = async (id) => { if(confirm("Usunąć sprzęt?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
 
         function loadWzorcowanie() {
             const monthsNames = { "01":"Styczeń", "02":"Luty", "03":"Marzec", "04":"Kwiecień", "05":"Maj", "06":"Czerwiec", "07":"Lipiec", "08":"Sierpień", "09":"Wrzesień", "10":"Październik", "11":"Listopad", "12":"Grudzień" };
-            
             onSnapshot(query(colWzorcowanie, orderBy("month", "asc")), (snap) => {
                 const list = document.getElementById('equipmentList');
                 list.innerHTML = "";
                 let total = 0, done = 0;
                 const curY = new Date().getFullYear();
-
                 snap.docs.forEach(docSnap => {
                     const eq = docSnap.data();
-                    const dDate = eq.doneDate ? new Date(eq.doneDate) : null;
-                    const isY = dDate && dDate.getFullYear() === curY;
+                    const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
                     total++; if(isY) done++;
-
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
-                    div.innerHTML = `
-                        <div class="flex flex-col leading-tight">
-                            <span class="text-[10px] font-bold text-purple-600 uppercase">${monthsNames[eq.month]}</span>
-                            <span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span>
-                            ${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}
-                        </div>
-                        <div class="flex gap-4">
-                            <button onclick="toggleEquip('${docSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button>
-                            <button onclick="deleteEquip('${docSnap.id}')" class="text-red-300">✕</button>
-                        </div>
-                    `;
+                    div.innerHTML = `<div class="flex flex-col leading-tight"><span class="text-[10px] font-bold text-purple-600 uppercase">${monthsNames[eq.month]}</span><span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleEquip('${docSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteEquip('${docSnap.id}')" class="text-red-300">✕</button></div>`;
                     list.appendChild(div);
                 });
-
                 const st = document.getElementById('statusWzorcowanie');
                 if(total === 0) st.className = "hidden";
-                else if(done === total) {
-                    st.innerText = "⭐ Wszystkie wzorcowania na ten rok wykonane!";
-                    st.className = "p-3 rounded-lg text-xs font-bold text-center bg-green-100 text-green-700 block mb-4 border border-green-200";
-                } else {
-                    st.innerText = `📏 Wzorcowanie: ${done} / ${total} wykonane w tym roku`;
-                    st.className = "p-3 rounded-lg text-[10px] font-bold text-center bg-slate-100 text-slate-500 block mb-4 border border-slate-200";
-                }
+                else { st.innerText = done === total ? "⭐ Wszystkie wzorcowania wykonane!" : `📏 Wzorcowanie: ${done} / ${total} wykonane`; st.className = `p-3 rounded-lg text-xs font-bold text-center border mb-4 ${done === total ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`; }
             });
         }
 
-        // --- RESZTA LOGIKI (BEZ ZMIAN) ---
+        // --- HARMONOGRAM ORAZ NOWA KATEGORIA ---
         window.addTask = async (lab, cat) => {
             const id = `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`;
             const input = document.getElementById(id);
@@ -210,37 +188,43 @@
                 input.value = "";
             }
         };
-
-        window.toggleTask = async (id, isDone) => {
-            await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
-        };
-
+        window.toggleTask = async (id, isDone) => { await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
 
         function loadTasks() {
             onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snap) => {
-                const containers = { wodaArchiwalna: 'taskListWodaArchiwalna', wodaSlepa: 'taskListWodaSlepa', wodaProbkobranie: 'taskListWodaProbkobranie', sciekiArchiwalna: 'taskListSciekiArchiwalna', sciekiSlepa: 'taskListSciekiSlepa', sciekiProbkobranie: 'taskListSciekiProbkobranie' };
+                const containers = {
+                    wodaArchiwalna: 'taskListWodaArchiwalna', wodaSlepa: 'taskListWodaSlepa', wodaProbkobranie: 'taskListWodaProbkobranie', wodaPorownania: 'taskListWodaPorownania',
+                    sciekiArchiwalna: 'taskListSciekiArchiwalna', sciekiSlepa: 'taskListSciekiSlepa', sciekiProbkobranie: 'taskListSciekiProbkobranie', sciekiPorownania: 'taskListSciekiPorownania'
+                };
                 Object.values(containers).forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = ""; });
-                let stats = { wodaArchiwalna: { t: 0, d: 0, m: false }, wodaSlepa: { t: 0, d: 0, m: false }, wodaProbkobranie: { t: 0, d: 0, m: false }, sciekiArchiwalna: { t: 0, d: 0, m: false }, sciekiSlepa: { t: 0, d: 0, m: false }, sciekiProbkobranie: { t: 0, d: 0, m: false } };
+                
+                let stats = {
+                    wodaArchiwalna: { t: 0, d: 0, m: false }, wodaSlepa: { t: 0, d: 0, m: false }, wodaProbkobranie: { t: 0, d: 0, m: false }, wodaPorownania: { t: 0, d: 0, m: false },
+                    sciekiArchiwalna: { t: 0, d: 0, m: false }, sciekiSlepa: { t: 0, d: 0, m: false }, sciekiProbkobranie: { t: 0, d: 0, m: false }, sciekiPorownania: { t: 0, d: 0, m: false }
+                };
+                
                 const now = new Date(); const curY = now.getFullYear(); const curM = now.getMonth();
+
                 snap.docs.forEach(docSnap => {
-                    const t = docSnap.data(); const dDate = t.doneDate ? new Date(t.doneDate) : null;
-                    const isY = dDate && dDate.getFullYear() === curY; const isM = dDate && dDate.getFullYear() === curY && dDate.getMonth() === curM;
-                    const cat = t.category || 'Archiwalna'; const key = t.lab + cat;
+                    const t = docSnap.data();
+                    const isY = t.doneDate && new Date(t.doneDate).getFullYear() === curY;
+                    const isM = isY && new Date(t.doneDate).getMonth() === curM;
+                    const key = t.lab + (t.category || 'Archiwalna');
                     if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
                     div.innerHTML = `<div class="flex flex-col leading-tight"><span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${t.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleTask('${docSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteTask('${docSnap.id}')" class="text-red-300">✕</button></div>`;
                     if(document.getElementById(containers[key])) document.getElementById(containers[key]).appendChild(div);
                 });
+
                 Object.keys(stats).forEach(key => {
                     const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
                     const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
                     const s = stats[key]; if(!mEl || !yEl) return;
                     if(s.t === 0) { mEl.className = "hidden"; yEl.className = "hidden"; return; }
-                    mEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-1";
-                    if(s.m) { mEl.innerHTML = "✅ Wykonano w tym miesiącu"; mEl.classList.add('bg-green-50', 'border-green-200', 'text-green-700'); }
-                    else { mEl.innerHTML = "⚠️ Brak zadania w tym miesiącu!"; mEl.classList.add('bg-orange-50', 'border-orange-200', 'text-orange-800', 'animate-pulse'); }
+                    mEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-1 " + (s.m ? "bg-green-50 border-green-200 text-green-700" : "bg-orange-50 border-orange-200 text-orange-800 animate-pulse");
+                    mEl.innerHTML = s.m ? "✅ Wykonano w tym miesiącu" : "⚠️ Brak zadania w tym miesiącu!";
                     yEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-2 bg-slate-50 text-slate-500 uppercase";
                     if(s.d === s.t) { yEl.innerHTML = "⭐ Plan roczny zakończony!"; yEl.classList.replace('text-slate-500', 'text-green-700'); yEl.classList.add('bg-green-50'); mEl.className = "hidden"; }
                     else { yEl.innerHTML = `Plan Roczny: ${s.d} / ${s.t} ZROBIONE`; }
@@ -248,6 +232,7 @@
             });
         }
 
+        // --- ODCZYNNIKI ORAZ INIT ---
         function loadOdczynniki() {
             if (unsubO) unsubO();
             unsubO = onSnapshot(query(colOdczynniki, orderBy("timestamp", "asc")), (snap) => {
@@ -260,26 +245,23 @@
                     const dCol = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
                     const li = document.createElement('li');
                     li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border shadow-sm text-[11px]`;
-                    li.innerHTML = `<div class="col-span-1 text-center font-mono text-gray-400 border-r tracking-tighter">${i+1}</div><div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 leading-tight font-bold text-gray-800 truncate">${item.name}</div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span class="text-[8px] text-gray-400 leading-none">P: ${item.received || '--'}</span><span class="${dCol} leading-tight mt-0.5">W: ${item.expiry || '--'}</span></div><div class="col-span-2 text-right flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered || false})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')" class="text-xs">✏️</button><button onclick="deleteItem('${d.id}')" class="text-red-300">✕</button></div>`;
+                    li.innerHTML = `<div class="col-span-1 text-center font-mono text-gray-400 border-r tracking-tighter">${i+1}</div><div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 leading-tight font-bold text-gray-800 truncate">${item.name}</div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span class="text-[8px] text-gray-400 leading-none">P: ${item.received || '--'}</span><span class="${dCol} leading-tight mt-0.5">W: ${item.expiry || '--'}</span></div><div class="col-span-2 text-right flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered || false})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')" class="text-xs">✏️</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
                     list.appendChild(li);
                 });
                 const ab = document.getElementById('alertBox');
-                if (alertItems.length > 0) { ab.innerHTML = `<div class="font-bold underline text-xs">🚨 Wygasające (30 dni):</div>${alertItems.map(i => `<div class="text-[10px]">• [${i.group}] ${i.name}</div>`).join('')}`; ab.className = "mb-6 p-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-800 block"; } else { ab.className = "hidden"; }
+                if (alertItems.length > 0) { ab.innerHTML = `<div class="font-bold underline text-xs">🚨 Wygasające (30 dni):</div>${alertItems.map(i => `<div class="text-[10px]">• [${i.group}] ${i.name}</div>`).join('')}`; ab.className = "mb-6 p-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-800 block text-left"; } else { ab.className = "hidden"; }
             });
         }
-
         window.addItem = async () => {
             const id = document.getElementById('editId').value;
             const p = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: document.getElementById('chemReceived').value };
             if (p.name.trim()) { if (id) await updateDoc(doc(db, 'odczynniki', id), p); else await addDoc(colOdczynniki, { ...p, timestamp: Date.now(), ordered: false }); cancelEdit(); }
         };
-
         window.startEdit = (id, n, g, u, e, r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('submitBtn').innerText = "Zapisz"; document.getElementById('cancelEditBtn').classList.remove('hidden'); document.getElementById('formContainer').classList.add('editing-mode'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
         window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('chemName').value = ""; document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; document.getElementById('submitBtn').innerText = "Dodaj"; document.getElementById('cancelEditBtn').classList.add('hidden'); document.getElementById('formContainer').classList.remove('editing-mode'); };
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // INIT
         onAuthStateChanged(auth, (user) => {
             if (user) { document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; loadOdczynniki(); loadTasks(); loadWzorcowanie(); }
             else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
