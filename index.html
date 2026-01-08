@@ -14,6 +14,7 @@
     <style>
         .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
+        .active-month { background-color: #9333ea !important; color: white !important; border-color: #9333ea !important; }
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
         .editing-mode-equip { border: 2px solid #9333ea !important; background-color: #f5f3ff !important; }
@@ -47,8 +48,8 @@
             <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all text-left"></div>
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
-                <div class="grid grid-cols-1 gap-3 text-sm">
-                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded">
+                <div class="grid grid-cols-1 gap-3">
+                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
                         <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
@@ -57,7 +58,7 @@
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
                     </div>
-                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
+                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
                 </div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
@@ -67,12 +68,15 @@
             <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm" open><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>📦 Próbka archiwalna</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div></div></details>
+            
             <div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>⚪ Próbka ślepa</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div></details>
+            
             <div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>🧺 Próbkobranie</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div></details>
+            
             <div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-blue-50 border border-blue-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-blue-800 text-[10px] uppercase tracking-widest"><span>🤝 Porównania</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-blue-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div></details>
@@ -82,24 +86,44 @@
             <div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm" open><summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest"><span>📦 Próbka archiwalna</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-green-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div></details>
+            
             <div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest"><span>⚪ Próbka ślepa</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-green-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Nowe oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div></details>
+            
             <div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest"><span>🧺 Próbkobranie</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-green-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div></details>
+            
             <div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
             <div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
             <details class="group bg-green-50 border border-green-200 rounded-lg shadow-sm"><summary class="flex justify-between items-center p-3 font-bold text-green-800 text-[10px] uppercase tracking-widest"><span>🤝 Porównania</span><span class="group-open:rotate-180 transition-transform">▼</span></summary><div class="p-4 bg-white border-t border-green-100"><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div></details>
         </div>
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
-            <div id="statusWzorcowanie" class="p-3 rounded-lg text-[10px] font-bold text-center border bg-white shadow-sm uppercase"></div>
+            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-yellow-50 border-yellow-200 text-yellow-800 text-[10px] font-bold mb-2"></div>
+            
+            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar">
+                <button onclick="setWzorcowanieMonth('01')" id="mBtn01" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Sty</button>
+                <button onclick="setWzorcowanieMonth('02')" id="mBtn02" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lut</button>
+                <button onclick="setWzorcowanieMonth('03')" id="mBtn03" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Mar</button>
+                <button onclick="setWzorcowanieMonth('04')" id="mBtn04" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Kwi</button>
+                <button onclick="setWzorcowanieMonth('05')" id="mBtn05" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Maj</button>
+                <button onclick="setWzorcowanieMonth('06')" id="mBtn06" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Cze</button>
+                <button onclick="setWzorcowanieMonth('07')" id="mBtn07" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lip</button>
+                <button onclick="setWzorcowanieMonth('08')" id="mBtn08" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Sie</button>
+                <button onclick="setWzorcowanieMonth('09')" id="mBtn09" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Wrz</button>
+                <button onclick="setWzorcowanieMonth('10')" id="mBtn10" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Paź</button>
+                <button onclick="setWzorcowanieMonth('11')" id="mBtn11" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lis</button>
+                <button onclick="setWzorcowanieMonth('12')" id="mBtn12" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Gru</button>
+            </div>
+
+            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
+
             <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <h3 class="font-bold text-purple-800 mb-2 uppercase text-[10px] tracking-widest">📅 Harmonogram sprzętu</h3>
                 <input type="hidden" id="editIdEquip" value="">
                 <div class="grid grid-cols-1 gap-2">
-                    <input type="text" id="equipName" placeholder="Nazwa sprzętu (np. Waga)" class="border p-2 rounded text-sm">
+                    <input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm">
                     <div class="grid grid-cols-2 gap-2">
                         <select id="equipType" class="border p-2 rounded text-sm bg-white">
                             <option value="Wzorcowanie">Wzorcowanie</option>
@@ -114,11 +138,12 @@
                         </select>
                     </div>
                     <div class="flex gap-2">
-                        <button id="submitEquipBtn" onclick="addEquipment()" class="flex-1 bg-purple-600 text-white px-6 py-2 rounded font-bold text-sm">Zapisz / Dodaj</button>
+                        <button id="submitEquipBtn" onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button>
                         <button id="cancelEquipBtn" onclick="cancelEditEquip()" class="hidden bg-gray-400 text-white px-4 py-2 rounded font-bold text-sm">✕</button>
                     </div>
                 </div>
             </div>
+
             <div id="equipmentList" class="space-y-2"></div>
         </div>
     </div>
@@ -138,6 +163,7 @@
         const colWzorcowanie = collection(db, 'wzorcowanie');
 
         let unsubO = null;
+        let selectedWMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
 
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki', 'wzorcowanie'].forEach(t => {
@@ -150,20 +176,20 @@
             document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
         };
 
-        // --- WZORCOWANIE, SPRAWDZENIE, KALIBRACJA ---
+        // --- WZORCOWANIE ---
+        window.setWzorcowanieMonth = (m) => {
+            selectedWMonth = m;
+            loadWzorcowanie();
+        };
+
         window.addEquipment = async () => {
             const id = document.getElementById('editIdEquip').value;
             const name = document.getElementById('equipName').value;
             const month = document.getElementById('equipMonth').value;
             const type = document.getElementById('equipType').value;
             if(name.trim()) {
-                if (id) {
-                    await updateDoc(doc(db, 'wzorcowanie', id), { name, month, type });
-                    cancelEditEquip();
-                } else {
-                    await addDoc(colWzorcowanie, { name, month, type, doneDate: null, timestamp: Date.now() });
-                    document.getElementById('equipName').value = "";
-                }
+                if (id) { await updateDoc(doc(db, 'wzorcowanie', id), { name, month, type }); cancelEditEquip(); }
+                else { await addDoc(colWzorcowanie, { name, month, type, doneDate: null, timestamp: Date.now() }); document.getElementById('equipName').value = ""; }
             }
         };
 
@@ -179,60 +205,76 @@
         };
 
         window.cancelEditEquip = () => {
-            document.getElementById('editIdEquip').value = "";
-            document.getElementById('equipName').value = "";
+            document.getElementById('editIdEquip').value = ""; document.getElementById('equipName').value = "";
             document.getElementById('submitEquipBtn').innerText = "Zapisz / Dodaj";
             document.getElementById('cancelEquipBtn').classList.add('hidden');
             document.getElementById('formWzorcowanie').classList.remove('editing-mode-equip');
         };
 
-        window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
-        window.deleteEquip = async (id) => { if(confirm("Usunąć sprzęt?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
+        window.toggleEquip = async (id, isDone) => {
+            await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
+        };
+
+        window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
 
         function loadWzorcowanie() {
             const monthsNames = { "01":"Styczeń", "02":"Luty", "03":"Marzec", "04":"Kwiecień", "05":"Maj", "06":"Czerwiec", "07":"Lipiec", "08":"Sierpień", "09":"Wrzesień", "10":"Październik", "11":"Listopad", "12":"Grudzień" };
-            onSnapshot(query(colWzorcowanie, orderBy("month", "asc")), (snap) => {
+            
+            // Podświetlanie przycisku miesiąca
+            for(let i=1; i<=12; i++) {
+                const id = i.toString().padStart(2, '0');
+                document.getElementById(`mBtn${id}`).className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`;
+            }
+
+            onSnapshot(query(colWzorcowanie, orderBy("timestamp", "asc")), (snap) => {
                 const list = document.getElementById('equipmentList');
                 list.innerHTML = "";
-                let total = 0, done = 0;
+                let mTotal = 0, mDone = 0;
                 const curY = new Date().getFullYear();
+                const curM = (new Date().getMonth() + 1).toString().padStart(2, '0');
+                const nextM = ((new Date().getMonth() + 1) % 12 + 1).toString().padStart(2, '0');
+                
+                let upcomingNames = [];
+
                 snap.docs.forEach(docSnap => {
                     const eq = docSnap.data();
-                    const id = docSnap.id;
-                    const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
-                    total++; if(isY) done++;
+                    const isDoneThisYear = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
 
-                    let typeLabel = "";
-                    if (eq.type === "Sprawdzenie") {
-                        typeLabel = '<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>';
-                    } else if (eq.type === "Kalibracja") {
-                        typeLabel = '<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>';
-                    } else {
-                        typeLabel = '<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">WZORCOWANIE</span>';
+                    // Alert "Miesiąc przed"
+                    if (eq.month === nextM && !isDoneThisYear) upcomingNames.push(eq.name);
+
+                    // Tylko wybrany miesiąc do listy
+                    if (eq.month === selectedWMonth) {
+                        mTotal++; if(isDoneThisYear) mDone++;
+                        
+                        let typeLabel = "";
+                        if (eq.type === "Sprawdzenie") typeLabel = '<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>';
+                        else if (eq.type === "Kalibracja") typeLabel = '<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>';
+                        else typeLabel = '<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">WZORCOWANIE</span>';
+
+                        const div = document.createElement('div');
+                        div.className = `flex justify-between items-center p-3 border rounded-lg ${isDoneThisYear ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-left`;
+                        div.innerHTML = `<div class="flex flex-col leading-tight"><div class="flex items-center">${typeLabel}<span class="text-sm ${isDoneThisYear ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span></div>${isDoneThisYear ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-3"><button onclick="toggleEquip('${docSnap.id}', ${isDoneThisYear})" class="text-xl">${isDoneThisYear ? '✅' : '⬜'}</button><button onclick="startEditEquip('${docSnap.id}', \`${eq.name}\`, '${eq.month}', '${eq.type}')" class="text-gray-400">✏️</button><button onclick="deleteEquip('${docSnap.id}')" class="text-red-300">✕</button></div>`;
+                        list.appendChild(div);
                     }
-
-                    const div = document.createElement('div');
-                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
-                    div.innerHTML = `
-                        <div class="flex flex-col leading-tight text-left">
-                            <span class="text-[10px] font-bold text-gray-400 uppercase">${monthsNames[eq.month]}</span>
-                            <div class="flex items-center">
-                                ${typeLabel}
-                                <span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span>
-                            </div>
-                            ${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}
-                        </div>
-                        <div class="flex gap-3">
-                            <button onclick="toggleEquip('${id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button>
-                            <button onclick="startEditEquip('${id}', \`${eq.name}\`, '${eq.month}', '${eq.type}')" class="text-gray-400">✏️</button>
-                            <button onclick="deleteEquip('${id}')" class="text-red-300">✕</button>
-                        </div>
-                    `;
-                    list.appendChild(div);
                 });
-                const st = document.getElementById('statusWzorcowanie');
-                if(total === 0) st.className = "hidden";
-                else { st.innerText = done === total ? "⭐ Plan roczny wykonany!" : `📏 Sprzęt: ${done} / ${total} wykonane`; st.className = `p-3 rounded-lg text-xs font-bold text-center border mb-4 ${done === total ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`; }
+
+                // Licznik miesiąca
+                const counter = document.getElementById('monthlyWzorcowanieCounter');
+                if (mTotal === 0) {
+                    counter.innerText = `Brak zadań w miesiącu: ${monthsNames[selectedWMonth]}`;
+                    counter.className = "p-3 rounded-lg text-[11px] font-bold text-center border bg-gray-50 text-gray-400 uppercase";
+                } else {
+                    counter.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrealizowane`;
+                    counter.className = `p-3 rounded-lg text-[11px] font-bold text-center border uppercase ${mDone === mTotal ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-100'}`;
+                }
+
+                // Alert przyszłego miesiąca
+                const alertBox = document.getElementById('upcomingWzorcowanieAlert');
+                if (upcomingNames.length > 0) {
+                    alertBox.innerHTML = `⚠️ UWAGA: W przyszłym miesiącu (${monthsNames[nextM]}) przypada: ${upcomingNames.join(', ')}`;
+                    alertBox.classList.remove('hidden');
+                } else { alertBox.classList.add('hidden'); }
             });
         }
 
@@ -308,7 +350,6 @@
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // INIT
         onAuthStateChanged(auth, (user) => {
             if (user) { document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; loadOdczynniki(); loadTasks(); loadWzorcowanie(); }
             else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
