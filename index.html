@@ -47,8 +47,8 @@
             <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm transition-all text-left"></div>
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
-                <div class="grid grid-cols-1 gap-3">
-                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="grid grid-cols-1 gap-3 text-sm">
+                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
                         <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
@@ -57,7 +57,7 @@
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
                     </div>
-                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
+                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
                 </div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
@@ -104,6 +104,7 @@
                         <select id="equipType" class="border p-2 rounded text-sm bg-white">
                             <option value="Wzorcowanie">Wzorcowanie</option>
                             <option value="Sprawdzenie">Sprawdzenie</option>
+                            <option value="Kalibracja">Kalibracja</option>
                         </select>
                         <select id="equipMonth" class="border p-2 rounded text-sm bg-white">
                             <option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option>
@@ -149,7 +150,7 @@
             document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
         };
 
-        // --- WZORCOWANIE I SPRAWDZENIE ---
+        // --- WZORCOWANIE, SPRAWDZENIE, KALIBRACJA ---
         window.addEquipment = async () => {
             const id = document.getElementById('editIdEquip').value;
             const name = document.getElementById('equipName').value;
@@ -201,9 +202,14 @@
                     const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
                     total++; if(isY) done++;
 
-                    const typeLabel = eq.type === "Sprawdzenie" 
-                        ? '<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>'
-                        : '<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">WZORCOWANIE</span>';
+                    let typeLabel = "";
+                    if (eq.type === "Sprawdzenie") {
+                        typeLabel = '<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>';
+                    } else if (eq.type === "Kalibracja") {
+                        typeLabel = '<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>';
+                    } else {
+                        typeLabel = '<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">WZORCOWANIE</span>';
+                    }
 
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
