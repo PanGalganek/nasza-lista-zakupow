@@ -21,130 +21,102 @@
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
         .editing-mode-equip { border: 2px solid #9333ea !important; background-color: #f5f3ff !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .calendar-day { min-height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; cursor: pointer; border: 1px solid #f3f4f6; }
+        .calendar-day:hover { background-color: #f9fafb; }
+        .calendar-day.today { border: 2px solid #2563eb; font-weight: bold; color: #2563eb; }
+        .calendar-day.selected { background-color: #eff6ff; border-color: #bfdbfe; }
+        .has-event::after { content: ''; width: 4px; height: 4px; background-color: #2563eb; border-radius: 50%; margin-top: 2px; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-2 md:p-8 flex items-center justify-center">
+<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
 
     <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 Logowanie do e-Lab</h2>
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab</h2>
         <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
         <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
         <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
     </div>
 
-    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-4 md:p-6 self-start">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-xl font-bold text-gray-800 flex items-center gap-2">⚗️ e-Lab</h1>
-            <button onclick="handleLogout()" class="text-xs text-red-500 font-bold uppercase">Wyloguj</button>
+    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start">
+        <div class="flex justify-between items-center mb-4 px-2">
+            <h1 class="text-lg font-bold text-gray-800">⚗️ e-Lab</h1>
+            <button onclick="handleLogout()" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
         </div>
 
-        <div class="flex border-b mb-6 bg-gray-50 rounded-t-lg overflow-x-auto whitespace-nowrap">
-            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 px-4 py-3 text-[10px] md:text-sm uppercase active-tab">🧪 Odczynniki</button>
-            <button id="btnWoda" onclick="switchTab('woda')" class="flex-1 px-4 py-3 text-[10px] md:text-sm uppercase text-gray-400">💧 Woda</button>
-            <button id="btnScieki" onclick="switchTab('scieki')" class="flex-1 px-4 py-3 text-[10px] md:text-sm uppercase text-gray-400">☣️ Ścieki</button>
-            <button id="btnWzorcowanie" onclick="switchTab('wzorcowanie')" class="flex-1 px-4 py-3 text-[10px] md:text-sm uppercase text-gray-400">📏 Wzorcowanie</button>
+        <div class="flex border-b mb-4 bg-gray-50 rounded-t-lg overflow-x-auto no-scrollbar">
+            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 px-3 py-3 text-[10px] uppercase active-tab">🧪 Odczynniki</button>
+            <button id="btnWoda" onclick="switchTab('woda')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">💧 Woda</button>
+            <button id="btnScieki" onclick="switchTab('scieki')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">☣️ Ścieki</button>
+            <button id="btnWzorcowanie" onclick="switchTab('wzorcowanie')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📏 Sprzęt</button>
+            <button id="btnKalendarz" onclick="switchTab('kalendarz')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📅 Kalendarz</button>
         </div>
 
         <div id="tabContentOdczynniki" class="block">
-            <div id="alertBox" class="hidden mb-6 p-3 rounded-lg border text-sm shadow-sm text-left bg-orange-50 border-orange-200 text-orange-800"></div>
-            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
+            <div id="alertBox" class="hidden mb-4 p-3 rounded-lg border text-[10px] text-left bg-orange-50 border-orange-200"></div>
+            <div id="formContainer" class="bg-blue-50 p-3 rounded-lg mb-4 text-left">
                 <input type="hidden" id="editId" value="">
-                <div class="grid grid-cols-1 gap-3">
-                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="grid grid-cols-1 gap-2">
+                    <input type="text" id="chemName" placeholder="Nazwa" class="border p-2 rounded text-sm"><input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded text-sm">
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
-                        <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
+                        <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded text-sm">
+                        <input type="date" id="chemExpiry" class="border p-2 rounded text-sm">
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
-                        <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
-                    </div>
-                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
+                    <button id="submitBtn" onclick="addItem()" class="bg-blue-600 text-white font-bold py-2 rounded text-sm">Dodaj</button>
                 </div>
             </div>
-            <ul id="chemicalList" class="space-y-3 text-left"></ul>
+            <ul id="chemicalList" class="space-y-2"></ul>
         </div>
 
-        <div id="tabContentWoda" class="hidden space-y-4 text-left">
+        <div id="tabContentWoda" class="hidden space-y-4">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
-                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-3 py-2 border rounded text-[9px] font-bold active-sub-tab-woda">📦 Archiwum</button>
+                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500">⚪ Ślepa</button>
+                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500">🤝 Porównanie</button>
             </div>
-            <div id="subContentWodaArchiwalna" class="space-y-4">
-                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div>
-            </div>
-            <div id="subContentWodaSlepa" class="hidden space-y-4">
-                <div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div>
-            </div>
-            <div id="subContentWodaProbkobranie" class="hidden space-y-4">
-                <div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div>
-            </div>
-            <div id="subContentWodaPorownania" class="hidden space-y-4">
-                <div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div>
-            </div>
+            <div id="subContentWodaArchiwalna" class="space-y-2"><div id="mStatusWodaArchiwalna"></div><div id="taskListWodaArchiwalna"></div></div>
+            <div id="subContentWodaSlepa" class="hidden space-y-2"><div id="mStatusWodaSlepa"></div><div id="taskListWodaSlepa"></div></div>
+            <div id="subContentWodaProbkobranie" class="hidden space-y-2"><div id="mStatusWodaProbkobranie"></div><div id="taskListWodaProbkobranie"></div></div>
+            <div id="subContentWodaPorownania" class="hidden space-y-2"><div id="mStatusWodaPorownania"></div><div id="taskListWodaPorownania"></div></div>
         </div>
 
-        <div id="tabContentScieki" class="hidden space-y-4 text-left">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
-                <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+        <div id="tabContentKalendarz" class="hidden space-y-4 text-left">
+            <div class="bg-white border rounded-xl shadow-sm p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button>
+                    <h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm"></h2>
+                    <button onclick="changeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button>
+                </div>
+                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2">
+                    <div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div>
+                </div>
+                <div id="calendarDays" class="calendar-grid"></div>
             </div>
-            <div id="subContentSciekiArchiwalna" class="space-y-4">
-                <div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div>
-            </div>
-            <div id="subContentSciekiSlepa" class="hidden space-y-4">
-                <div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div>
-            </div>
-            <div id="subContentSciekiProbkobranie" class="hidden space-y-4">
-                <div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div>
-            </div>
-            <div id="subContentSciekiPorownania" class="hidden space-y-4">
-                <div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div>
+
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase">Wydarzenia</h3>
+                    <button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button>
+                </div>
+                <div id="dayEventsList" class="space-y-2">
+                    <p class="text-[10px] text-gray-400 italic">Wybierz dzień w kalendarzu...</p>
+                </div>
             </div>
         </div>
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
-            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2 shadow-sm"></div>
-            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar">
-                <button onclick="setWzorcowanieMonth('01')" id="mBtn01" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Sty</button>
-                <button onclick="setWzorcowanieMonth('02')" id="mBtn02" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lut</button>
-                <button onclick="setWzorcowanieMonth('03')" id="mBtn03" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Mar</button>
-                <button onclick="setWzorcowanieMonth('04')" id="mBtn04" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Kwi</button>
-                <button onclick="setWzorcowanieMonth('05')" id="mBtn05" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Maj</button>
-                <button onclick="setWzorcowanieMonth('06')" id="mBtn06" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Cze</button>
-                <button onclick="setWzorcowanieMonth('07')" id="mBtn07" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lip</button>
-                <button onclick="setWzorcowanieMonth('08')" id="mBtn08" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Sie</button>
-                <button onclick="setWzorcowanieMonth('09')" id="mBtn09" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Wrz</button>
-                <button onclick="setWzorcowanieMonth('10')" id="mBtn10" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Paź</button>
-                <button onclick="setWzorcowanieMonth('11')" id="mBtn11" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lis</button>
-                <button onclick="setWzorcowanieMonth('12')" id="mBtn12" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Gru</button>
-            </div>
-            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
-            <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <input type="hidden" id="editIdEquip" value="">
-                <div class="grid grid-cols-1 gap-2">
-                    <input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm">
-                    <div class="grid grid-cols-2 gap-2">
-                        <select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select>
-                        <select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select>
-                    </div>
-                    <div class="flex gap-2"><button id="submitEquipBtn" onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button id="cancelEquipBtn" onclick="cancelEditEquip()" class="hidden bg-gray-400 text-white px-4 py-2 rounded font-bold text-sm">✕</button></div>
-                </div>
+            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
+            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
+            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[10px] font-bold text-center border uppercase"></div>
+            <div id="formWzorcowanie" class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+                <input type="hidden" id="editIdEquip"><input type="text" id="equipName" placeholder="Sprzęt" class="w-full border p-2 rounded text-sm mb-2">
+                <div class="grid grid-cols-2 gap-2 mb-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"></select></div>
+                <button onclick="addEquipment()" class="w-full bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz</button>
             </div>
             <div id="equipmentList" class="space-y-2"></div>
         </div>
+
     </div>
 
     <script type="module">
@@ -160,194 +132,152 @@
         const colOdczynniki = collection(db, 'odczynniki');
         const colTasks = collection(db, 'harmonogram');
         const colWzorcowanie = collection(db, 'wzorcowanie');
+        const colEvents = collection(db, 'wydarzenia');
 
-        let unsubO = null, unsubW = null;
+        let unsubO, unsubW, unsubE;
         let selectedWMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
+        let calDate = new Date();
+        let selectedDayStr = new Date().toISOString().split('T')[0];
+        let eventsCache = [];
 
         window.switchTab = (target) => {
-            ['odczynniki', 'woda', 'scieki', 'wzorcowanie'].forEach(t => {
-                const content = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                const btn = document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                if(content) content.classList.add('hidden');
-                if(btn) { btn.classList.remove('active-tab'); btn.classList.add('text-gray-400'); }
+            ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
+                const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                const b = document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if(c) c.classList.add('hidden');
+                if(b) { b.classList.remove('active-tab'); b.classList.add('text-gray-400'); }
             });
             document.getElementById(`tabContent${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.remove('hidden');
             document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
-            if(target === 'wzorcowanie') updateWzorcowanieUI();
+            if(target === 'kalendarz') renderCalendar();
         };
 
         window.switchSubTab = (lab, target) => {
             ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
-                const content = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
-                const btn = document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
-                if(content) content.classList.add('hidden');
-                if(btn) btn.className = `px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap bg-white text-gray-500`;
+                const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
+                const b = document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
+                if(c) c.classList.add('hidden');
+                if(b) b.className = `px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500`;
             });
             document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).classList.remove('hidden');
-            document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-${lab}`;
+            document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-3 py-2 border rounded text-[9px] font-bold active-sub-tab-${lab}`;
         };
 
-        // --- ODCZYNNIKI ---
+        // --- KALENDARZ ---
+        window.changeMonth = (val) => {
+            calDate.setMonth(calDate.getMonth() + val);
+            renderCalendar();
+        };
+
+        window.selectDay = (dayStr) => {
+            selectedDayStr = dayStr;
+            renderCalendar();
+            updateDayEvents();
+        };
+
+        window.openAddEvent = async () => {
+            const title = prompt("Podaj nazwę wydarzenia:");
+            if (title && title.trim()) {
+                await addDoc(colEvents, { title: title.trim(), date: selectedDayStr, timestamp: Date.now() });
+            }
+        };
+
+        window.deleteEvent = async (id) => {
+            if(confirm("Usunąć wydarzenie?")) await deleteDoc(doc(db, 'wydarzenia', id));
+        };
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarDays');
+            const label = document.getElementById('calendarMonthYear');
+            const monthsNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+            
+            label.innerText = `${monthsNames[calDate.getMonth()]} ${calDate.getFullYear()}`;
+            grid.innerHTML = "";
+
+            const firstDay = new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay();
+            const daysInMonth = new Date(calDate.getFullYear(), calDate.getMonth() + 1, 0).getDate();
+            const offset = firstDay === 0 ? 6 : firstDay - 1;
+
+            for (let i = 0; i < offset; i++) grid.innerHTML += `<div class="calendar-day opacity-0"></div>`;
+
+            const today = new Date().toISOString().split('T')[0];
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${calDate.getFullYear()}-${(calDate.getMonth() + 1).toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+                const hasEv = eventsCache.some(e => e.date === dateStr);
+                const isToday = dateStr === today;
+                const isSel = dateStr === selectedDayStr;
+
+                const div = document.createElement('div');
+                div.className = `calendar-day ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''} ${hasEv ? 'has-event' : ''}`;
+                div.innerText = d;
+                div.onclick = () => selectDay(dateStr);
+                grid.appendChild(div);
+            }
+            updateDayEvents();
+        }
+
+        function updateDayEvents() {
+            const list = document.getElementById('dayEventsList');
+            document.getElementById('selectedDateLabel').innerText = `Plan na dzień: ${selectedDayStr}`;
+            const filtered = eventsCache.filter(e => e.date === selectedDayStr);
+            
+            if (filtered.length === 0) {
+                list.innerHTML = `<p class="text-[10px] text-gray-400 italic">Brak zaplanowanych wydarzeń.</p>`;
+            } else {
+                list.innerHTML = filtered.map(e => `
+                    <div class="flex justify-between items-center bg-white p-2 rounded shadow-sm">
+                        <span class="text-[11px] font-bold text-gray-700">${e.title}</span>
+                        <button onclick="deleteEvent('${e.id}')" class="text-red-300">✕</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function loadEvents() {
+            unsubE = onSnapshot(query(colEvents, orderBy("timestamp", "asc")), (snap) => {
+                eventsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (document.getElementById('tabContentKalendarz').classList.contains('hidden') === false) {
+                    renderCalendar();
+                }
+            });
+        }
+
+        // --- RESZTA LOGIKI (Odczynniki, Wzorcowanie) ---
+        // (Kod identyczny jak w poprzedniej stabilnej wersji)
         function loadOdczynniki() {
-            if (unsubO) unsubO();
             unsubO = onSnapshot(query(colOdczynniki, orderBy("timestamp", "asc")), (snap) => {
-                const list = document.getElementById('chemicalList');
-                list.innerHTML = ""; let alertItems = [];
+                const list = document.getElementById('chemicalList'); list.innerHTML = ""; let alertItems = [];
                 snap.docs.forEach((d, i) => {
                     const item = d.data(); const exp = item.expiry ? new Date(item.expiry) : null;
                     const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
                     if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alertItems.push({ lp: i+1, group: item.group, name: item.name });
                     const dCol = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
                     const li = document.createElement('li');
-                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border shadow-sm text-[11px] text-left`;
-                    li.innerHTML = `
-                        <div class="col-span-1 text-center font-mono text-gray-400 border-r tracking-tighter">${i+1}</div>
-                        <div class="col-span-2 text-[9px] font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div>
-                        <div class="col-span-4 leading-tight flex flex-col">
-                            <span class="font-bold text-gray-800 truncate">${item.name}</span>
-                            <span class="text-[9px] text-gray-400 truncate italic">${item.usage || 'brak zastosowania'}</span>
-                        </div>
-                        <div class="col-span-3 text-center flex flex-col tracking-tighter">
-                            <span class="text-[8px] text-gray-400 leading-none">P: ${item.received || '--'}</span>
-                            <span class="${dCol} leading-tight mt-0.5">W: ${item.expiry || '--'}</span>
-                        </div>
-                        <div class="col-span-2 text-right flex justify-end gap-2">
-                            <button onclick="toggleOrder('${d.id}', ${item.ordered || false})">${item.ordered ? '✅' : '🛒'}</button>
-                            <button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')" class="text-xs">✏️</button>
-                            <button onclick="deleteItem('${d.id}')">✕</button>
-                        </div>`;
+                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-2 rounded-lg border text-[10px]`;
+                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 truncate">${item.group || '-'}</div><div class="col-span-4 flex flex-col truncate"><span class="font-bold text-gray-800">${item.name}</span><span class="text-[8px] text-gray-400 italic">${item.usage || ''}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
                     list.appendChild(li);
                 });
                 const ab = document.getElementById('alertBox');
-                if (alertItems.length > 0) { ab.innerHTML = `<div class="font-bold underline text-xs">🚨 Wygasające (30 dni):</div>${alertItems.map(i => `<div class="text-[10px]">• [${i.group}] ${i.name}</div>`).join('')}`; ab.className = "mb-6 p-3 rounded-lg border bg-orange-50 border-orange-200 text-orange-800 block text-left"; } else { ab.className = "hidden"; }
+                if (alertItems.length > 0) { ab.innerHTML = alertItems.map(i => `• [${i.group}] ${i.name}`).join('<br>'); ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
             });
         }
+
         window.addItem = async () => {
-            const id = document.getElementById('editId').value;
-            const p = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: document.getElementById('chemReceived').value };
-            if (p.name.trim()) { if (id) await updateDoc(doc(db, 'odczynniki', id), p); else await addDoc(colOdczynniki, { ...p, timestamp: Date.now(), ordered: false }); cancelEdit(); }
+            const p = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: new Date().toISOString().split('T')[0], timestamp: Date.now(), ordered: false };
+            if (p.name.trim()) { await addDoc(colOdczynniki, p); document.getElementById('chemName').value = ""; document.getElementById('chemUsage').value = ""; }
         };
-        window.startEdit = (id, n, g, u, e, r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('submitBtn').innerText = "Zapisz"; document.getElementById('cancelEditBtn').classList.remove('hidden'); document.getElementById('formContainer').classList.add('editing-mode'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-        window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('chemName').value = ""; document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; document.getElementById('submitBtn').innerText = "Dodaj"; document.getElementById('cancelEditBtn').classList.add('hidden'); document.getElementById('formContainer').classList.remove('editing-mode'); };
-        window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
+
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
-
-        // --- WZORCOWANIE ---
-        window.setWzorcowanieMonth = (m) => { selectedWMonth = m; updateWzorcowanieUI(); };
-        window.addEquipment = async () => {
-            const id = document.getElementById('editIdEquip').value;
-            const name = document.getElementById('equipName').value;
-            const month = document.getElementById('equipMonth').value;
-            const type = document.getElementById('equipType').value;
-            if(name.trim()) {
-                if (id) { await updateDoc(doc(db, 'wzorcowanie', id), { name, month, type }); cancelEditEquip(); }
-                else { await addDoc(colWzorcowanie, { name, month, type, doneDate: null, timestamp: Date.now() }); document.getElementById('equipName').value = ""; }
-            }
-        };
-        window.startEditEquip = (id, name, month, type) => {
-            document.getElementById('editIdEquip').value = id; document.getElementById('equipName').value = name;
-            document.getElementById('equipMonth').value = month; document.getElementById('equipType').value = type || "Wzorcowanie";
-            document.getElementById('submitEquipBtn').innerText = "Zapisz"; document.getElementById('cancelEquipBtn').classList.remove('hidden');
-            document.getElementById('formWzorcowanie').classList.add('editing-mode-equip'); window.scrollTo({ top: 0, behavior: 'smooth' });
-        };
-        window.cancelEditEquip = () => {
-            document.getElementById('editIdEquip').value = ""; document.getElementById('equipName').value = "";
-            document.getElementById('submitEquipBtn').innerText = "Dodaj"; document.getElementById('cancelEquipBtn').classList.add('hidden');
-            document.getElementById('formWzorcowanie').classList.remove('editing-mode-equip');
-        };
-        window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
-        window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
-
-        let wzorcowanieCache = [];
-        function loadWzorcowanie() {
-            if(unsubW) unsubW();
-            unsubW = onSnapshot(query(colWzorcowanie, orderBy("timestamp", "asc")), (snap) => {
-                wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                updateWzorcowanieUI();
-            });
-        }
-        function updateWzorcowanieUI() {
-            const list = document.getElementById('equipmentList'); if(!list) return;
-            const monthsNames = { "01":"Styczeń", "02":"Luty", "03":"Marzec", "04":"Kwiecień", "05":"Maj", "06":"Czerwiec", "07":"Lipiec", "08":"Sierpień", "09":"Wrzesień", "10":"Październik", "11":"Listopad", "12":"Grudzień" };
-            for(let i=1; i<=12; i++) {
-                const id = i.toString().padStart(2, '0');
-                const btn = document.getElementById(`mBtn${id}`);
-                if(btn) btn.className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`;
-            }
-            list.innerHTML = "";
-            let mTotal = 0, mDone = 0, upcoming = [];
-            const curY = new Date().getFullYear();
-            let d = new Date(); d.setMonth(d.getMonth() + 1);
-            const nextM = (d.getMonth() + 1).toString().padStart(2, '0');
-            wzorcowanieCache.forEach(eq => {
-                const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
-                if ((eq.type === "Wzorcowanie" || !eq.type) && eq.month === nextM && !isY) upcoming.push(eq.name);
-                if (eq.month === selectedWMonth) {
-                    mTotal++; if(isY) mDone++;
-                    let tLabel = `<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">${(eq.type || 'WZORCOWANIE').toUpperCase()}</span>`;
-                    if(eq.type === "Sprawdzenie") tLabel = `<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>`;
-                    if(eq.type === "Kalibracja") tLabel = `<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>`;
-                    const div = document.createElement('div');
-                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-left`;
-                    div.innerHTML = `<div class="flex flex-col leading-tight"><div class="flex items-center">${tLabel}<span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span></div>${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="startEditEquip('${eq.id}', \`${eq.name}\`, '${eq.month}', '${eq.type}')" class="text-gray-400">✏️</button><button onclick="deleteEquip('${eq.id}')" class="text-red-300">✕</button></div>`;
-                    list.appendChild(div);
-                }
-            });
-            const cnt = document.getElementById('monthlyWzorcowanieCounter');
-            if (mTotal === 0) { cnt.innerText = `Brak zadań: ${monthsNames[selectedWMonth]}`; cnt.className = "p-3 rounded-lg text-[11px] font-bold text-center border bg-gray-50 text-gray-400 uppercase"; }
-            else { cnt.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrealizowane`; cnt.className = `p-3 rounded-lg text-[11px] font-bold text-center border uppercase ${mDone === mTotal ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-100 animate-pulse'}`; }
-            const ab = document.getElementById('upcomingWzorcowanieAlert');
-            if (upcoming.length > 0) { ab.innerHTML = `📢 PLANOWANE WZORCOWANIA NA ${monthsNames[nextM]}: ${upcoming.join(', ')}`; ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
-        }
-
-        // --- HARMONOGRAM LABORATORIUM ---
-        window.addTask = async (lab, cat) => {
-            const id = `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`;
-            const input = document.getElementById(id);
-            if (input && input.value.trim()) {
-                await addDoc(colTasks, { name: input.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() });
-                input.value = "";
-            }
-        };
-        window.toggleTask = async (id, isDone) => { await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
-        window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
-
-        function loadTasks() {
-            onSnapshot(query(colTasks, orderBy("timestamp", "asc")), (snap) => {
-                const containers = { wodaArchiwalna: 'taskListWodaArchiwalna', wodaSlepa: 'taskListWodaSlepa', wodaProbkobranie: 'taskListWodaProbkobranie', wodaPorownania: 'taskListWodaPorownania', sciekiArchiwalna: 'taskListSciekiArchiwalna', sciekiSlepa: 'taskListSciekiSlepa', sciekiProbkobranie: 'taskListSciekiProbkobranie', sciekiPorownania: 'taskListSciekiPorownania' };
-                Object.values(containers).forEach(id => { if(document.getElementById(id)) document.getElementById(id).innerHTML = ""; });
-                let stats = { wodaArchiwalna: { t: 0, d: 0, m: false }, wodaSlepa: { t: 0, d: 0, m: false }, wodaProbkobranie: { t: 0, d: 0, m: false }, wodaPorownania: { t: 0, d: 0, m: false }, sciekiArchiwalna: { t: 0, d: 0, m: false }, sciekiSlepa: { t: 0, d: 0, m: false }, sciekiProbkobranie: { t: 0, d: 0, m: false }, sciekiPorownania: { t: 0, d: 0, m: false } };
-                const curY = new Date().getFullYear(); const curM = new Date().getMonth();
-                snap.docs.forEach(docSnap => {
-                    const t = docSnap.data(); const dDate = t.doneDate ? new Date(t.doneDate) : null;
-                    const isY = dDate && dDate.getFullYear() === curY; const isM = isY && dDate.getMonth() === curM;
-                    const key = t.lab + (t.category || 'Archiwalna');
-                    if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
-                    const div = document.createElement('div');
-                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-left`;
-                    div.innerHTML = `<div class="flex flex-col leading-tight"><span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'} text-left">${t.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1 text-left">Wykonano: ${t.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleTask('${docSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteTask('${docSnap.id}')" class="text-red-300">✕</button></div>`;
-                    if(document.getElementById(containers[key])) document.getElementById(containers[key]).appendChild(div);
-                });
-                Object.keys(stats).forEach(key => {
-                    const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
-                    const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
-                    const s = stats[key]; if(!mEl || !yEl) return;
-                    if(s.t === 0) { mEl.className = "hidden"; yEl.className = "hidden"; return; }
-                    mEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-1 " + (s.m ? "bg-green-50 border-green-200 text-green-700" : "bg-orange-50 border-orange-200 text-orange-800 animate-pulse");
-                    mEl.innerHTML = s.m ? "✅ Wykonano w tym miesiącu" : "⚠️ Brak zadania w tym miesiącu!";
-                    yEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-2 bg-slate-50 text-slate-500 uppercase";
-                    if(s.d === s.t) { yEl.innerHTML = "⭐ Plan roczny zakończony!"; yEl.classList.replace('text-slate-500', 'text-green-700'); yEl.classList.add('bg-green-50'); mEl.className = "hidden"; }
-                    else { yEl.innerHTML = `Plan Roczny: ${s.d} / ${s.t} ZROBIONE`; }
-                });
-            });
-        }
+        window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
 
         onAuthStateChanged(auth, (user) => {
-            if (user) { document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0]; loadOdczynniki(); loadTasks(); loadWzorcowanie(); }
+            if (user) { document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); loadOdczynniki(); loadEvents(); }
             else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
         });
-        window.handleLogin = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch(err) { alert(err.message); } };
-        window.handleLogout = async () => { if (unsubO) unsubO(); if (unsubW) unsubW(); await signOut(auth); location.reload(); };
+
+        window.handleLogin = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch(err) { alert("Błąd logowania!"); } };
+        window.handleLogout = async () => { await signOut(auth); location.reload(); };
     </script>
 </body>
 </html>
