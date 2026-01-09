@@ -103,20 +103,8 @@
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
             <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
-            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar">
-                <button onclick="setWzorcowanieMonth('01')" id="mBtn01" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Sty</button>
-                <button onclick="setWzorcowanieMonth('02')" id="mBtn02" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lut</button>
-                <button onclick="setWzorcowanieMonth('03')" id="mBtn03" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Mar</button>
-                <button onclick="setWzorcowanieMonth('04')" id="mBtn04" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Kwi</button>
-                <button onclick="setWzorcowanieMonth('05')" id="mBtn05" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Maj</button>
-                <button onclick="setWzorcowanieMonth('06')" id="mBtn06" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Cze</button>
-                <button onclick="setWzorcowanieMonth('07')" id="mBtn07" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lip</button>
-                <button onclick="setWzorcowanieMonth('08')" id="mBtn08" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Sie</button>
-                <button onclick="setWzorcowanieMonth('09')" id="mBtn09" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Wrz</button>
-                <button onclick="setWzorcowanieMonth('10')" id="mBtn10" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Paź</button>
-                <button onclick="setWzorcowanieMonth('11')" id="mBtn11" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Lis</button>
-                <button onclick="setWzorcowanieMonth('12')" id="mBtn12" class="px-3 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 uppercase">Gru</button>
-            </div>
+            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav">
+                </div>
             <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
             <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button onclick="cancelEditEquip()" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
@@ -130,9 +118,15 @@
                 <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
                 <div id="calendarDays" class="calendar-grid"></div>
             </div>
+
             <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase">Plan dnia</h3><button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
+                <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3><button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
                 <div id="dayEventsList" class="space-y-2"></div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wszystkie wydarzenia w tym miesiącu</h3>
+                <div id="monthEventsList" class="space-y-2"></div>
             </div>
         </div>
     </div>
@@ -153,7 +147,7 @@
         let selectedDayStr = new Date().toISOString().split('T')[0];
         let eventsCache = [], wzorcowanieCache = [];
 
-        // NAWIGACJA GŁÓWNA
+        // NAWIGACJA
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
                 const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -167,7 +161,6 @@
             if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
-        // POD-NAWIGACJA WODA/SCIEKI
         window.switchSubTab = (lab, target) => {
             ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
                 const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
@@ -190,7 +183,7 @@
                     const dCol = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
                     const li = document.createElement('li');
                     li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border text-[11px]`;
-                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col"><span class="font-bold text-gray-800">${item.name}</span><span class="text-[9px] text-gray-400 italic">${item.usage || 'brak zastosowania'}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
+                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col"><span class="font-bold text-gray-800">${item.name}</span><span class="text-[9px] text-gray-400 italic">${item.usage || 'brak zastosowania'}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
                     list.appendChild(li);
                 });
                 const ab = document.getElementById('alertBox');
@@ -202,14 +195,128 @@
             const p = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: document.getElementById('chemReceived').value, timestamp: Date.now(), ordered: false };
             if (p.name.trim()) { if(id) await updateDoc(doc(db, 'odczynniki', id), p); else await addDoc(collection(db, 'odczynniki'), p); cancelEdit(); }
         };
-        window.startEdit = (id,n,g,u,e,r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('formContainer').classList.add('editing-mode'); };
-        window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('chemName').value = ""; document.getElementById('formContainer').classList.remove('editing-mode'); };
+        window.startEdit = (id,n,g,u,e,r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('formContainer').classList.add('editing-mode'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+        window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('formContainer').classList.remove('editing-mode'); };
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- HARMONOGRAM LABORATORIUM (WODA/SCIEKI) ---
+        // --- SPRZĘT ---
+        function loadWzorcowanie() {
+            onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => {
+                wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                updateWzorcowanieUI();
+            });
+        }
+        function updateWzorcowanieUI() {
+            const list = document.getElementById('equipmentList'); if(!list) return;
+            const monthsNames = { "01":"Styczeń", "02":"Luty", "03":"Marzec", "04":"Kwiecień", "05":"Maj", "06":"Czerwiec", "07":"Lipiec", "08":"Sierpień", "09":"Wrzesień", "10":"Październik", "11":"Listopad", "12":"Grudzień" };
+            const nav = document.getElementById('monthsNav'); nav.innerHTML = "";
+            for(let i=1; i<=12; i++) {
+                const id = i.toString().padStart(2, '0');
+                const btn = document.createElement('button');
+                btn.innerText = monthsNames[id].substring(0,3);
+                btn.onclick = () => setWzorcowanieMonth(id);
+                btn.className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`;
+                nav.appendChild(btn);
+            }
+            list.innerHTML = ""; let mTotal = 0, mDone = 0, upcoming = [];
+            const curY = new Date().getFullYear();
+            let d = new Date(); d.setMonth(d.getMonth() + 1); const nextM = (d.getMonth() + 1).toString().padStart(2, '0');
+            wzorcowanieCache.forEach(eq => {
+                const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
+                if ((eq.type === "Wzorcowanie" || !eq.type) && eq.month === nextM && !isY) upcoming.push(eq.name);
+                if (eq.month === selectedWMonth) {
+                    mTotal++; if(isY) mDone++;
+                    let tLabel = `<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">${(eq.type || 'WZORCOWANIE').toUpperCase()}</span>`;
+                    if(eq.type === "Sprawdzenie") tLabel = `<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>`;
+                    if(eq.type === "Kalibracja") tLabel = `<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>`;
+                    const div = document.createElement('div');
+                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
+                    div.innerHTML = `<div class="flex flex-col"><div class="flex items-center">${tLabel}<span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span></div>${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="startEditEquip('${eq.id}', \`${eq.name}\`, '${eq.month}', '${eq.type}')">✏️</button><button onclick="deleteEquip('${eq.id}')">✕</button></div>`;
+                    list.appendChild(div);
+                }
+            });
+            const cnt = document.getElementById('monthlyWzorcowanieCounter');
+            if (mTotal === 0) { cnt.innerText = `Brak zadań: ${monthsNames[selectedWMonth]}`; cnt.className = "p-3 rounded-lg text-[11px] font-bold text-center border bg-gray-50 text-gray-400 uppercase"; }
+            else { cnt.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrealizowane`; cnt.className = `p-3 rounded-lg text-[11px] font-bold text-center border uppercase ${mDone === mTotal ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-100 animate-pulse'}`; }
+            const ab = document.getElementById('upcomingWzorcowanieAlert');
+            if (upcoming.length > 0) { ab.innerHTML = `📢 PLANOWANE WZORCOWANIA NA ${monthsNames[nextM]}: ${upcoming.join(', ')}`; ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
+        }
+        window.setWzorcowanieMonth = (m) => { selectedWMonth = m; updateWzorcowanieUI(); };
+        window.addEquipment = async () => {
+            const id = document.getElementById('editIdEquip').value;
+            const p = { name: document.getElementById('equipName').value, month: document.getElementById('equipMonth').value, type: document.getElementById('equipType').value, doneDate: null, timestamp: Date.now() };
+            if(p.name.trim()) { if(id) await updateDoc(doc(db, 'wzorcowanie', id), p); else await addDoc(collection(db, 'wzorcowanie'), p); cancelEditEquip(); }
+        };
+        window.startEditEquip = (id,n,m,t) => { document.getElementById('editIdEquip').value = id; document.getElementById('equipName').value = n; document.getElementById('equipMonth').value = m; document.getElementById('equipType').value = t; document.getElementById('formWzorcowanie').classList.add('editing-mode-equip'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+        window.cancelEditEquip = () => { document.getElementById('editIdEquip').value = ""; document.getElementById('formWzorcowanie').classList.remove('editing-mode-equip'); };
+        window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
+        window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
+
+        // --- KALENDARZ ---
+        window.changeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
+        window.selectDay = (d) => { selectedDayStr = d; renderCalendar(); updateDayEvents(); };
+        window.openAddEvent = async () => { const t = prompt("Nazwa wydarzenia:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t.trim(), date: selectedDayStr, timestamp: Date.now() }); };
+        window.deleteEvent = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wydarzenia', id)); };
+        
+        function renderCalendar() {
+            const grid = document.getElementById('calendarDays'); const label = document.getElementById('calendarMonthYear');
+            const mNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+            label.innerText = `${mNames[calDate.getMonth()]} ${calDate.getFullYear()}`; grid.innerHTML = "";
+            const fDay = new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay();
+            const dInM = new Date(calDate.getFullYear(), calDate.getMonth() + 1, 0).getDate();
+            const offset = fDay === 0 ? 6 : fDay - 1;
+            for(let i=0; i<offset; i++) grid.innerHTML += `<div class="calendar-day opacity-0"></div>`;
+            const t = new Date().toISOString().split('T')[0];
+            for(let d=1; d<=dInM; d++) {
+                const ds = `${calDate.getFullYear()}-${(calDate.getMonth()+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                const hasE = eventsCache.some(e => e.date === ds);
+                const div = document.createElement('div');
+                div.className = `calendar-day ${ds === t ? 'today' : ''} ${ds === selectedDayStr ? 'selected' : ''} ${hasE ? 'has-event' : ''}`;
+                div.innerText = d; div.onclick = () => selectDay(ds); grid.appendChild(div);
+            }
+            updateDayEvents();
+            updateMonthEvents(); // Aktulizacja listy miesięcznej
+        }
+
+        function updateDayEvents() {
+            const list = document.getElementById('dayEventsList');
+            document.getElementById('selectedDateLabel').innerText = `Dzień: ${selectedDayStr}`;
+            const f = eventsCache.filter(e => e.date === selectedDayStr);
+            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold"><span>${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-red-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń tego dnia.</p>`;
+        }
+
+        // FUNKCJA LISTY MIESIĘCZNEJ
+        function updateMonthEvents() {
+            const list = document.getElementById('monthEventsList');
+            const currentMonthStr = `${calDate.getFullYear()}-${(calDate.getMonth() + 1).toString().padStart(2, '0')}`;
+            
+            // Filtrowanie wydarzeń, które zaczynają się od rrrr-mm
+            const monthEvents = eventsCache.filter(e => e.date.startsWith(currentMonthStr));
+            
+            // Sortowanie po dacie
+            monthEvents.sort((a, b) => a.date.localeCompare(b.date));
+
+            if (monthEvents.length === 0) {
+                list.innerHTML = `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w tym miesiącu.</p>`;
+            } else {
+                list.innerHTML = monthEvents.map(e => {
+                    const day = e.date.split('-')[2]; // Pobranie samego dnia
+                    return `
+                        <div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[11px]">
+                            <div class="flex gap-2">
+                                <span class="font-bold text-blue-600">${day}.${(calDate.getMonth()+1).toString().padStart(2,'0')}</span>
+                                <span class="text-gray-700">${e.title}</span>
+                            </div>
+                            <button onclick="deleteEvent('${e.id}')" class="text-gray-300 hover:text-red-400">✕</button>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
         function loadTasks() {
-            unsubT = onSnapshot(query(collection(db, 'harmonogram'), orderBy("timestamp", "asc")), (snap) => {
+            onSnapshot(query(collection(db, 'harmonogram'), orderBy("timestamp", "asc")), (snap) => {
                 const labs = ['woda', 'scieki']; const cats = ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'];
                 let stats = {}; labs.forEach(l => cats.forEach(c => { 
                     const id = `taskList${l.charAt(0).toUpperCase() + l.slice(1)}${c}`;
@@ -248,80 +355,6 @@
         window.toggleTask = async (id, isDone) => { await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
 
-        // --- SPRZĘT (WZORCOWANIE) ---
-        function loadWzorcowanie() {
-            onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => {
-                wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                updateWzorcowanieUI();
-            });
-        }
-        function updateWzorcowanieUI() {
-            const list = document.getElementById('equipmentList'); if(!list) return;
-            const monthsNames = { "01":"Styczeń", "02":"Luty", "03":"Marzec", "04":"Kwiecień", "05":"Maj", "06":"Czerwiec", "07":"Lipiec", "08":"Sierpień", "09":"Wrzesień", "10":"Październik", "11":"Listopad", "12":"Grudzień" };
-            for(let i=1; i<=12; i++) { const id = i.toString().padStart(2, '0'); const btn = document.getElementById(`mBtn${id}`); if(btn) btn.className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`; }
-            list.innerHTML = ""; let mTotal = 0, mDone = 0, upcoming = [];
-            const curY = new Date().getFullYear();
-            let d = new Date(); d.setMonth(d.getMonth() + 1); const nextM = (d.getMonth() + 1).toString().padStart(2, '0');
-            wzorcowanieCache.forEach(eq => {
-                const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
-                if ((eq.type === "Wzorcowanie" || !eq.type) && eq.month === nextM && !isY) upcoming.push(eq.name);
-                if (eq.month === selectedWMonth) {
-                    mTotal++; if(isY) mDone++;
-                    let tLabel = `<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">${(eq.type || 'WZORCOWANIE').toUpperCase()}</span>`;
-                    if(eq.type === "Sprawdzenie") tLabel = `<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>`;
-                    if(eq.type === "Kalibracja") tLabel = `<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>`;
-                    const div = document.createElement('div');
-                    div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-left`;
-                    div.innerHTML = `<div class="flex flex-col"><div class="flex items-center">${tLabel}<span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span></div>${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="startEditEquip('${eq.id}', \`${eq.name}\`, '${eq.month}', '${eq.type}')">✏️</button><button onclick="deleteEquip('${eq.id}')">✕</button></div>`;
-                    list.appendChild(div);
-                }
-            });
-            const cnt = document.getElementById('monthlyWzorcowanieCounter');
-            if (mTotal === 0) { cnt.innerText = `Brak zadań: ${monthsNames[selectedWMonth]}`; cnt.className = "p-3 rounded-lg text-[11px] font-bold text-center border bg-gray-50 text-gray-400 uppercase"; }
-            else { cnt.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrealizowane`; cnt.className = `p-3 rounded-lg text-[11px] font-bold text-center border uppercase ${mDone === mTotal ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-100 animate-pulse'}`; }
-            const ab = document.getElementById('upcomingWzorcowanieAlert');
-            if (upcoming.length > 0) { ab.innerHTML = `📢 PLANOWANE WZORCOWANIA NA ${monthsNames[nextM]}: ${upcoming.join(', ')}`; ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
-        }
-        window.setWzorcowanieMonth = (m) => { selectedWMonth = m; updateWzorcowanieUI(); };
-        window.addEquipment = async () => {
-            const id = document.getElementById('editIdEquip').value;
-            const p = { name: document.getElementById('equipName').value, month: document.getElementById('equipMonth').value, type: document.getElementById('equipType').value, doneDate: null, timestamp: Date.now() };
-            if(p.name.trim()) { if(id) await updateDoc(doc(db, 'wzorcowanie', id), p); else await addDoc(collection(db, 'wzorcowanie'), p); cancelEditEquip(); }
-        };
-        window.startEditEquip = (id,n,m,t) => { document.getElementById('editIdEquip').value = id; document.getElementById('equipName').value = n; document.getElementById('equipMonth').value = m; document.getElementById('equipType').value = t; document.getElementById('formWzorcowanie').classList.add('editing-mode-equip'); };
-        window.cancelEditEquip = () => { document.getElementById('editIdEquip').value = ""; document.getElementById('formWzorcowanie').classList.remove('editing-mode-equip'); };
-        window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
-        window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
-
-        // --- KALENDARZ ---
-        window.changeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
-        window.selectDay = (d) => { selectedDayStr = d; renderCalendar(); updateDayEvents(); };
-        window.openAddEvent = async () => { const t = prompt("Nazwa wydarzenia:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t.trim(), date: selectedDayStr, timestamp: Date.now() }); };
-        window.deleteEvent = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wydarzenia', id)); };
-        function renderCalendar() {
-            const grid = document.getElementById('calendarDays'); const label = document.getElementById('calendarMonthYear');
-            const mNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
-            label.innerText = `${mNames[calDate.getMonth()]} ${calDate.getFullYear()}`; grid.innerHTML = "";
-            const fDay = new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay();
-            const dInM = new Date(calDate.getFullYear(), calDate.getMonth() + 1, 0).getDate();
-            const offset = fDay === 0 ? 6 : fDay - 1;
-            for(let i=0; i<offset; i++) grid.innerHTML += `<div class="calendar-day opacity-0"></div>`;
-            const t = new Date().toISOString().split('T')[0];
-            for(let d=1; d<=dInM; d++) {
-                const ds = `${calDate.getFullYear()}-${(calDate.getMonth()+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-                const hasE = eventsCache.some(e => e.date === ds);
-                const div = document.createElement('div');
-                div.className = `calendar-day ${ds === t ? 'today' : ''} ${ds === selectedDayStr ? 'selected' : ''} ${hasE ? 'has-event' : ''}`;
-                div.innerText = d; div.onclick = () => selectDay(ds); grid.appendChild(div);
-            }
-            updateDayEvents();
-        }
-        function updateDayEvents() {
-            const list = document.getElementById('dayEventsList');
-            document.getElementById('selectedDateLabel').innerText = `Dzień: ${selectedDayStr}`;
-            const f = eventsCache.filter(e => e.date === selectedDayStr);
-            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between bg-white p-2 rounded shadow-sm text-[11px]"><span>${e.title}</span><button onclick="deleteEvent('${e.id}')">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń.</p>`;
-        }
         function loadEvents() { unsubE = onSnapshot(query(collection(db, 'wydarzenia'), orderBy("timestamp", "asc")), (snap) => { eventsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderCalendar(); }); }
 
         // INIT
