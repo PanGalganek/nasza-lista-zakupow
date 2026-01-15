@@ -64,33 +64,17 @@
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
                 
-                <div id="item1Container" class="space-y-3">
-                    <div class="text-[10px] font-bold text-blue-600 uppercase border-b border-blue-200 pb-1 mb-2">Pozycja 1</div>
-                    <input type="text" id="chemName" placeholder="Nazwa" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
-                        <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
+                <div id="dynamicItemsContainer" class="space-y-6">
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
-                        <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
+
+                <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
+                    <button onclick="addFormRow()" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase hover:bg-blue-100 transition-colors">+ Dodaj kolejną pozycję</button>
+                    
+                    <div class="flex gap-2">
+                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase shadow-md">Zapisz wszystko</button>
+                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
                     </div>
                 </div>
-
-                <div id="item2Container" class="mt-6 pt-4 border-t-2 border-dashed border-blue-200 space-y-3">
-                    <div class="text-[10px] font-bold text-blue-400 uppercase border-b border-blue-100 pb-1 mb-2">Pozycja 2 (Opcjonalnie)</div>
-                    <input type="text" id="chemName2" placeholder="Nazwa (zostaw puste aby nie dodawać)" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="chemGroup2" placeholder="Grupa" class="border p-2 rounded">
-                        <input type="text" id="chemUsage2" placeholder="Zastosowanie" class="border p-2 rounded">
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived2" class="border p-2 rounded"></div>
-                        <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry2" class="border p-2 rounded"></div>
-                    </div>
-                </div>
-
-                <div class="flex gap-2 mt-4"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase">Zapisz / Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
         </div>
@@ -167,7 +151,9 @@
         let selectedDayStr = new Date().toISOString().split('T')[0];
         let eventsCache = [], wzorcowanieCache = [], odczynnikiCache = [];
         let currentOdczynnikiSubTab = 'Wzorce';
+        let formRowCount = 0;
 
+        // NAWIGACJA
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
                 const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -201,6 +187,46 @@
             renderOdczynniki();
         };
 
+        // --- DYNAMICZNY FORMULARZ ODCZYNNIKÓW ---
+        window.addFormRow = (data = null) => {
+            formRowCount++;
+            const container = document.getElementById('dynamicItemsContainer');
+            const row = document.createElement('div');
+            row.id = `formRow_${formRowCount}`;
+            row.className = "p-4 bg-white rounded-lg border border-blue-200 shadow-sm space-y-3 relative animate-fadeIn";
+            
+            const today = new Date().toISOString().split('T')[0];
+            
+            row.innerHTML = `
+                <div class="flex justify-between items-center border-b border-blue-50 pb-2 mb-2">
+                    <span class="text-[10px] font-bold text-blue-500 uppercase">Pozycja #${formRowCount}</span>
+                    ${formRowCount > 1 ? `<button onclick="removeFormRow(${formRowCount})" class="text-red-400 text-xs font-bold hover:text-red-600">USUŃ</button>` : ''}
+                </div>
+                <input type="text" placeholder="Nazwa" class="chem-name w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500" value="${data ? data.name : ''}">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" placeholder="Grupa" class="chem-group border p-2 rounded" value="${data ? data.group : ''}">
+                    <input type="text" placeholder="Zastosowanie" class="chem-usage border p-2 rounded" value="${data ? data.usage : ''}">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-400 uppercase ml-1">Data przyjęcia:</label><input type="date" class="chem-received border p-2 rounded" value="${data ? data.received : today}"></div>
+                    <div class="flex flex-col"><label class="text-[9px] font-bold text-red-300 uppercase ml-1">Data ważności:</label><input type="date" class="chem-expiry border p-2 rounded" value="${data ? data.expiry : ''}"></div>
+                </div>
+            `;
+            container.appendChild(row);
+        };
+
+        window.removeFormRow = (id) => {
+            const row = document.getElementById(`formRow_${id}`);
+            if(row) row.remove();
+        };
+
+        function resetForm() {
+            document.getElementById('dynamicItemsContainer').innerHTML = "";
+            formRowCount = 0;
+            addFormRow();
+        }
+
+        // --- ODCZYNNIKI LOGIKA ---
         function loadOdczynniki() {
             unsubO = onSnapshot(query(collection(db, 'odczynniki'), orderBy("timestamp", "asc")), (snap) => {
                 odczynnikiCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -230,79 +256,76 @@
         }
 
         window.addItem = async () => {
-            const id = document.getElementById('editId').value;
-            
-            // Pobranie danych pozycji 1
-            const p1 = { 
-                name: document.getElementById('chemName').value.trim(), 
-                group: document.getElementById('chemGroup').value.trim(), 
-                usage: document.getElementById('chemUsage').value.trim(), 
-                expiry: document.getElementById('chemExpiry').value, 
-                received: document.getElementById('chemReceived').value, 
-                timestamp: Date.now(), 
-                ordered: false,
-                category: currentOdczynnikiSubTab
-            };
+            const editId = document.getElementById('editId').value;
+            const rows = document.getElementById('dynamicItemsContainer').children;
+            const itemsToSave = [];
 
-            // Pobranie danych pozycji 2
-            const p2Name = document.getElementById('chemName2').value.trim();
-            const p2 = {
-                name: p2Name,
-                group: document.getElementById('chemGroup2').value.trim(),
-                usage: document.getElementById('chemUsage2').value.trim(),
-                expiry: document.getElementById('chemExpiry2').value,
-                received: document.getElementById('chemReceived2').value,
-                timestamp: Date.now() + 1, // małe przesunięcie aby zachować kolejność
-                ordered: false,
-                category: currentOdczynnikiSubTab
-            };
+            for (let row of rows) {
+                const name = row.querySelector('.chem-name').value.trim();
+                if (name) {
+                    itemsToSave.push({
+                        name: name,
+                        group: row.querySelector('.chem-group').value.trim(),
+                        usage: row.querySelector('.chem-usage').value.trim(),
+                        received: row.querySelector('.chem-received').value,
+                        expiry: row.querySelector('.chem-expiry').value,
+                        timestamp: Date.now() + itemsToSave.length, // Unikalne dla sortowania
+                        ordered: false,
+                        category: currentOdczynnikiSubTab
+                    });
+                }
+            }
 
-            if (p1.name) {
-                if (id) {
-                    await updateDoc(doc(db, 'odczynniki', id), p1);
+            if (itemsToSave.length === 0) {
+                alert("Podaj przynajmniej jedną nazwę!");
+                return;
+            }
+
+            try {
+                if (editId) {
+                    // Aktualizujemy pierwszy element, resztę (jeśli dodano) dodajemy jako nowe
+                    await updateDoc(doc(db, 'odczynniki', editId), itemsToSave[0]);
+                    for (let i = 1; i < itemsToSave.length; i++) {
+                        await addDoc(collection(db, 'odczynniki'), itemsToSave[i]);
+                    }
                 } else {
-                    await addDoc(collection(db, 'odczynniki'), p1);
-                    // Jeśli nie jesteśmy w trybie edycji, sprawdzamy czy dodać drugą pozycję
-                    if (p2Name) {
-                        await addDoc(collection(db, 'odczynniki'), p2);
+                    // Dodajemy wszystkie jako nowe
+                    for (let item of itemsToSave) {
+                        await addDoc(collection(db, 'odczynniki'), item);
                     }
                 }
                 cancelEdit();
-            } else {
-                alert("Nazwa pozycji 1 jest wymagana!");
+            } catch (err) {
+                alert("Błąd zapisu!");
             }
         };
 
-        window.startEdit = (id,n,g,u,e,r) => { 
-            document.getElementById('editId').value = id; 
-            document.getElementById('chemName').value = n; 
-            document.getElementById('chemGroup').value = g; 
-            document.getElementById('chemUsage').value = u; 
-            document.getElementById('chemExpiry').value = e; 
-            document.getElementById('chemReceived').value = r; 
-            document.getElementById('item2Container').classList.add('hidden'); // Ukrywamy drugą pozycję przy edycji
-            document.getElementById('formContainer').classList.add('editing-mode'); 
-            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        window.startEdit = (id, n, g, u, e, r) => {
+            document.getElementById('editId').value = id;
+            document.getElementById('dynamicItemsContainer').innerHTML = "";
+            formRowCount = 0;
+            // Ładujemy edytowany element do pierwszej wiersza
+            addFormRow({ name: n, group: g, usage: u, expiry: e, received: r });
+            
+            document.getElementById('formContainer').classList.add('editing-mode');
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            document.getElementById('submitBtn').innerText = "Zapisz zmiany";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
-        window.cancelEdit = () => { 
-            document.getElementById('editId').value = ""; 
-            document.getElementById('formContainer').classList.remove('editing-mode'); 
-            document.getElementById('item2Container').classList.remove('hidden');
-            // Czyścimy oba formularze
-            ['', '2'].forEach(suffix => {
-                document.getElementById('chemName'+suffix).value = "";
-                document.getElementById('chemGroup'+suffix).value = "";
-                document.getElementById('chemUsage'+suffix).value = "";
-                document.getElementById('chemExpiry'+suffix).value = "";
-                document.getElementById('chemReceived'+suffix).value = new Date().toISOString().split('T')[0];
-            });
+        window.cancelEdit = () => {
+            document.getElementById('editId').value = "";
+            document.getElementById('formContainer').classList.remove('editing-mode');
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+            document.getElementById('submitBtn').innerText = "Zapisz wszystko";
+            resetForm();
         };
 
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- SPRZĘT ---
+        // --- RESZTA FUNKCJI (Kalendarz, Harmonogram, Wzorcowanie) ---
+        // Pozostają bez zmian w logice, aby zachować stabilność aplikacji
         function loadWzorcowanie() { onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => { wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateWzorcowanieUI(); }); }
         function updateWzorcowanieUI() {
             const list = document.getElementById('equipmentList'); if(!list) return;
@@ -427,12 +450,11 @@
 
         function loadEvents() { unsubE = onSnapshot(query(collection(db, 'wydarzenia'), orderBy("timestamp", "asc")), (snap) => { eventsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderCalendar(); }); }
 
+        // INIT
         onAuthStateChanged(auth, (user) => {
             if (user) { 
                 document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); 
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('chemReceived').value = today;
-                document.getElementById('chemReceived2').value = today;
+                resetForm(); // Inicjalizacja formularza
                 loadOdczynniki(); loadTasks(); loadWzorcowanie(); loadEvents();
             } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
         });
