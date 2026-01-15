@@ -20,7 +20,6 @@
         .active-sub-tab-scieki { background-color: #f0fdf4 !important; color: #16a34a !important; border-color: #16a34a !important; border-width: 2px !important; }
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
-        .editing-mode-equip { border: 2px solid #9333ea !important; background-color: #f5f3ff !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
         .calendar-day { min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 1px solid #f3f4f6; position: relative; }
@@ -66,7 +65,7 @@
                 <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
                     <button onclick="addFormRow()" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase">+ Dodaj kolejną pozycję</button>
                     <div class="flex gap-2">
-                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase">Zapisz / Aktualizuj</button>
+                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase">Zapisz wszystko</button>
                         <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
                     </div>
                 </div>
@@ -77,9 +76,9 @@
         <div id="tabContentWoda" class="hidden space-y-4 text-left">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
                 <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
-                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
-                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
+                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
+                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
             </div>
             <div id="subContentWodaArchiwalna" class="space-y-4">
                 <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
@@ -93,9 +92,9 @@
         <div id="tabContentScieki" class="hidden space-y-4 text-left">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
                 <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
-                <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
-                <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
+                <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
+                <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
             </div>
             <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div>
             <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
@@ -146,7 +145,6 @@
         let selectedDayStr = new Date().toISOString().split('T')[0];
         let eventsCache = [], wzorcowanieCache = [];
 
-        // NAWIGACJA GŁÓWNA
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
                 const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -160,7 +158,6 @@
             if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
-        // --- ODCZYNNIKI LOGIKA ---
         window.switchOdczynnikiSubTab = (target) => {
             currentOdczynnikiSubTab = target;
             ['Wzorce', 'Odczynniki'].forEach(sub => {
@@ -193,25 +190,43 @@
             const container = document.getElementById('chemicalListGrouped');
             container.innerHTML = ""; let alertItems = [];
             const filtered = odczynnikiCache.filter(item => (item.category || 'Wzorce') === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === 'Wzorce' && item.category === 'Standardowe'));
+
+            // LOGIKA GRUPOWANIA I SORTOWANIA NATURALNEGO
             const groups = filtered.reduce((acc, item) => {
                 const prefix = (item.group || 'Inne').split('/')[0];
                 if (!acc[prefix]) acc[prefix] = { prefix, items: [], name: item.name };
                 acc[prefix].items.push(item); return acc;
             }, {});
-            Object.values(groups).sort((a,b) => a.prefix.localeCompare(b.prefix)).forEach(group => {
+
+            // Sortowanie grup (II-2 przed II-10)
+            const sortedGroupKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+            let globalLP = 1;
+
+            sortedGroupKeys.forEach(key => {
+                const group = groups[key];
                 const groupCard = document.createElement('div');
                 groupCard.className = "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden";
+                
+                // Sortowanie butelek wewnątrz grupy (/01 przed /10)
+                group.items.sort((a, b) => a.group.localeCompare(b.group, undefined, { numeric: true }));
+
                 let itemsHtml = group.items.map(item => {
                     const exp = item.expiry ? new Date(item.expiry) : null;
                     const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
                     if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alertItems.push({ g: item.group, n: item.name });
-                    const dCol = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
+                    const dCol = (diff !== null && diff < 0) ? "text-red-600" : ((diff !== null && diff <= 30) ? "text-orange-500 font-bold" : "text-black");
                     const suffix = item.group.includes('/') ? '/' + item.group.split('/')[1] : '•';
-                    return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px]"><div class="flex items-center gap-3"><span class="font-black text-blue-600 w-8">${suffix}</span><div class="flex flex-col"><span class="text-gray-400 text-[9px] uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-gray-400 text-[8px] italic">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
+                    
+                    const html = `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px]"><div class="flex items-center gap-3"><span class="font-black text-blue-600 w-10">LP ${globalLP}</span><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col"><span class="text-black text-[9px] uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-black text-[8px] italic">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
+                    globalLP++;
+                    return html;
                 }).join('');
-                groupCard.innerHTML = `<div class="bg-gray-50 px-4 py-2 border-b flex justify-between items-center"><span class="font-black text-gray-700 uppercase text-xs">${group.prefix}</span><span class="text-[10px] font-bold text-gray-400 truncate ml-4">${group.name}</span></div>${itemsHtml}`;
+
+                groupCard.innerHTML = `<div class="bg-gray-100 px-4 py-2 border-b flex justify-between items-center"><span class="font-black text-gray-700 uppercase text-xs">${group.prefix}</span><span class="text-[10px] font-bold text-black truncate ml-4 uppercase">${group.name}</span></div>${itemsHtml}`;
                 container.appendChild(groupCard);
             });
+
             const ab = document.getElementById('alertBox');
             if (alertItems.length > 0) { ab.innerHTML = alertItems.map(i => `• [${i.g}] ${i.n}`).join('<br>'); ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
         }
@@ -236,11 +251,11 @@
             document.getElementById('formContainer').classList.add('editing-mode'); document.getElementById('cancelEditBtn').classList.remove('hidden'); document.getElementById('submitBtn').innerText = "Zaktualizuj wybraną butelkę";
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
-        window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('formContainer').classList.remove('editing-mode'); document.getElementById('cancelEditBtn').classList.add('hidden'); document.getElementById('submitBtn').innerText = "Zapisz / Aktualizuj"; document.getElementById('dynamicItemsContainer').innerHTML = ""; formRowCount = 0; addFormRow(); };
+        window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('formContainer').classList.remove('editing-mode'); document.getElementById('cancelEditBtn').classList.add('hidden'); document.getElementById('submitBtn').innerText = "Zapisz wszystko"; document.getElementById('dynamicItemsContainer').innerHTML = ""; formRowCount = 0; addFormRow(); };
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- HARMONOGRAMY (WODA / ŚCIEKI) ---
+        // HARMONOGRAMY
         window.switchSubTab = (lab, target) => {
             ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
                 const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
@@ -254,17 +269,12 @@
 
         function loadTasks() {
             onSnapshot(query(collection(db, 'harmonogram'), orderBy("timestamp", "asc")), (snap) => {
-                const labs = ['woda', 'scieki']; const cats = ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'];
-                let stats = {}; labs.forEach(l => cats.forEach(c => { 
-                    const id = `taskList${l.charAt(0).toUpperCase() + l.slice(1)}${c}`;
-                    if(document.getElementById(id)) document.getElementById(id).innerHTML = "";
-                    stats[`${l}${c}`] = { t:0, d:0, m:false };
-                }));
+                const labs = ['woda', 'scieki'], cats = ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'], stats = {};
+                labs.forEach(l => cats.forEach(c => { const id = `taskList${l.charAt(0).toUpperCase() + l.slice(1)}${c}`; if(document.getElementById(id)) document.getElementById(id).innerHTML = ""; stats[`${l}${c}`] = { t:0, d:0, m:false }; }));
                 const curY = new Date().getFullYear(), curM = new Date().getMonth();
                 snap.docs.forEach(dSnap => {
-                    const t = dSnap.data(); const dDate = t.doneDate ? new Date(t.doneDate) : null;
-                    const isY = dDate && dDate.getFullYear() === curY; const isM = isY && dDate.getMonth() === curM;
-                    const key = `${t.lab}${t.category}`; if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
+                    const t = dSnap.data(), dDate = t.doneDate ? new Date(t.doneDate) : null, isY = dDate && dDate.getFullYear() === curY, isM = isY && dDate.getMonth() === curM, key = `${t.lab}${t.category}`;
+                    if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
                     const div = document.createElement('div'); div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-[11px]`;
                     div.innerHTML = `<div class="flex flex-col"><span class="font-bold">${t.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleTask('${dSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteTask('${dSnap.id}')">✕</button></div>`;
                     const listEl = document.getElementById(`taskList${t.lab.charAt(0).toUpperCase() + t.lab.slice(1)}${t.category}`); if(listEl) listEl.appendChild(div);
@@ -283,7 +293,7 @@
         window.toggleTask = async (id, isDone) => { await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
 
-        // --- SPRZĘT (WZORCOWANIE) ---
+        // SPRZĘT
         function loadWzorcowanie() { onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => { wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateWzorcowanieUI(); }); }
         function updateWzorcowanieUI() {
             const list = document.getElementById('equipmentList'); if(!list) return;
@@ -313,7 +323,7 @@
         window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
 
-        // --- KALENDARZ LOGIKA ---
+        // KALENDARZ
         window.changeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
         window.selectDay = (d) => { selectedDayStr = d; renderCalendar(); updateDayEvents(); };
         window.openAddEvent = async () => { const t = prompt("Nazwa wydarzenia:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t.trim(), date: selectedDayStr, timestamp: Date.now() }); };
@@ -343,7 +353,7 @@
             list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1"><div class="flex gap-2"><span class="font-bold text-blue-600">${e.date.split('-')[2]}.${e.date.split('-')[1]}</span><span>${e.title}</span></div><button onclick="deleteEvent('${e.id}')" class="text-gray-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w miesiącu.</p>`;
         }
 
-        // --- INICJALIZACJA ---
+        // INIT
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden');
