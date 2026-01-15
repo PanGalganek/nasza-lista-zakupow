@@ -13,11 +13,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .ordered-row { background-color: #f0fdf4 !important; }
-        .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
-        .active-month { background-color: #9333ea !important; color: white !important; border-color: #9333ea !important; }
-        .active-sub-tab-odczynniki { background-color: #eff6ff !important; color: #2563eb !important; border-color: #2563eb !important; border-width: 2px !important; }
-        .active-sub-tab-woda { background-color: #eff6ff !important; color: #2563eb !important; border-color: #2563eb !important; border-width: 2px !important; }
-        .active-sub-tab-scieki { background-color: #f0fdf4 !important; color: #16a34a !important; border-color: #16a34a !important; border-width: 2px !important; }
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -26,11 +21,16 @@
         .calendar-day.today { border: 2px solid #2563eb; font-weight: bold; color: #2563eb; }
         .calendar-day.selected { background-color: #eff6ff; border-color: #bfdbfe; }
         .has-event::after { content: ''; width: 5px; height: 5px; background-color: #2563eb; border-radius: 50%; position: absolute; bottom: 5px; }
+        .active-sub-tab-odczynniki { background-color: #eff6ff !important; color: #2563eb !important; border-color: #2563eb !important; border-width: 2px !important; }
+        .active-sub-tab-woda { background-color: #eff6ff !important; color: #2563eb !important; border-color: #2563eb !important; border-width: 2px !important; }
+        .active-sub-tab-scieki { background-color: #f0fdf4 !important; color: #16a34a !important; border-color: #16a34a !important; border-width: 2px !important; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+        .tile-gradient { background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%); transition: all 0.2s; }
+        .tile-gradient:active { transform: scale(0.95); }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
+<body class="bg-gray-100 min-h-screen p-2 md:p-8 flex items-center justify-center">
 
     <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
         <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab</h2>
@@ -39,94 +39,115 @@
         <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
     </div>
 
-    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start">
-        <div class="flex justify-between items-center mb-4 px-2">
-            <h1 class="text-lg font-bold text-gray-800">⚗️ e-Lab</h1>
-            <button onclick="handleLogout()" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
-        </div>
-
-        <div class="flex border-b mb-4 bg-gray-50 rounded-t-lg overflow-x-auto no-scrollbar">
-            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 px-3 py-3 text-[10px] uppercase active-tab">🧪 Odczynniki</button>
-            <button id="btnWoda" onclick="switchTab('woda')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">💧 Woda</button>
-            <button id="btnScieki" onclick="switchTab('scieki')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">☣️ Ścieki</button>
-            <button id="btnWzorcowanie" onclick="switchTab('wzorcowanie')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📏 Sprzęt</button>
-            <button id="btnKalendarz" onclick="switchTab('kalendarz')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📅 Kalendarz</button>
-        </div>
-
-        <div id="tabContentOdczynniki" class="block">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
-                <button onclick="switchOdczynnikiSubTab('Wzorce')" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
-                <button onclick="switchOdczynnikiSubTab('Odczynniki')" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
+    <div id="appSection" class="hidden max-w-5xl w-full">
+        
+        <div id="dashboardSection" class="block">
+            <div class="flex justify-between items-center mb-6 px-2">
+                <h1 class="text-2xl font-black text-gray-800 tracking-tighter">🧪 e-Lab Dashboard</h1>
+                <button onclick="handleLogout()" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
             </div>
             
-            <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
-
-            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
-                <input type="hidden" id="editId" value="">
-                <div id="dynamicItemsContainer" class="space-y-4"></div>
-                <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
-                    <button onclick="addFormRow()" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase">+ Dodaj kolejną pozycję</button>
-                    <div class="flex gap-2">
-                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase shadow-md">Zapisz wszystko</button>
-                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
-                    </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div onclick="switchTab('odczynniki')" class="tile-gradient p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-md">
+                    <span class="text-4xl mb-2">⚗️</span>
+                    <span class="font-bold text-gray-700 text-sm uppercase">Odczynniki</span>
+                </div>
+                <div onclick="switchTab('woda')" class="tile-gradient p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-md">
+                    <span class="text-4xl mb-2">💧</span>
+                    <span class="font-bold text-gray-700 text-sm uppercase">Woda</span>
+                </div>
+                <div onclick="switchTab('scieki')" class="tile-gradient p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-md">
+                    <span class="text-4xl mb-2">☣️</span>
+                    <span class="font-bold text-gray-700 text-sm uppercase">Ścieki</span>
+                </div>
+                <div onclick="switchTab('wzorcowanie')" class="tile-gradient p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-md">
+                    <span class="text-4xl mb-2">📏</span>
+                    <span class="font-bold text-gray-700 text-sm uppercase">Sprzęt</span>
+                </div>
+                <div onclick="switchTab('kalendarz')" class="tile-gradient p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-md">
+                    <span class="text-4xl mb-2">📅</span>
+                    <span class="font-bold text-gray-700 text-sm uppercase">Kalendarz</span>
                 </div>
             </div>
-            <div id="chemicalListGrouped" class="space-y-4"></div>
         </div>
 
-        <div id="tabContentWoda" class="hidden space-y-4 text-left">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
-                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
-            </div>
-            <div id="subContentWodaArchiwalna" class="space-y-4">
-                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div>
-            </div>
-            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
-            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
-        </div>
+        <div id="contentSection" class="hidden bg-white rounded-2xl shadow-xl p-4 md:p-6 min-h-[80vh] self-start relative">
+            <button onclick="switchTab('dashboard')" class="mb-4 text-blue-600 font-bold text-xs uppercase flex items-center gap-1">
+                <span class="text-lg">←</span> Powrót do menu
+            </button>
 
-        <div id="tabContentScieki" class="hidden space-y-4 text-left">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
-                <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+            <div id="modOdczynniki" class="hidden">
+                <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
+                    <button onclick="switchOdczynnikiSubTab('Wzorce')" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
+                    <button onclick="switchOdczynnikiSubTab('Odczynniki')" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
+                </div>
+                <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
+                <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
+                    <input type="hidden" id="editId" value="">
+                    <div id="dynamicItemsContainer" class="space-y-4"></div>
+                    <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
+                        <button onclick="addFormRow()" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase">+ Dodaj kolejną pozycję</button>
+                        <div class="flex gap-2">
+                            <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase shadow-md">Zapisz wszystko</button>
+                            <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="chemicalListGrouped" class="space-y-4"></div>
             </div>
-            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div>
-            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
-            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
-        </div>
 
-        <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
-            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
-            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
-            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
-            <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button onclick="cancelEditEquip()" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
+            <div id="modWoda" class="hidden space-y-4 text-left">
+                <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
+                    <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
+                    <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
+                    <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
+                    <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
+                </div>
+                <div id="subContentWodaArchiwalna" class="space-y-4">
+                    <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                    <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div>
+                </div>
+                <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
+                <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
+                <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
             </div>
-            <div id="equipmentList" class="space-y-2"></div>
-        </div>
 
-        <div id="tabContentKalendarz" class="hidden space-y-4 text-left">
-            <div class="bg-white border rounded-xl shadow-sm p-4">
-                <div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button onclick="changeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
-                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
-                <div id="calendarDays" class="calendar-grid"></div>
+            <div id="modScieki" class="hidden space-y-4 text-left">
+                <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
+                    <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
+                    <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
+                    <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
+                    <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
+                </div>
+                <div id="subContentSciekiArchiwalna" class="space-y-4">
+                    <div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                    <div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div>
+                </div>
+                <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
+                <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div>
+                <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
             </div>
-            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3><button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
-                <div id="dayEventsList" class="space-y-2"></div>
+
+            <div id="modWzorcowanie" class="hidden space-y-4 text-left">
+                <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
+                <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
+                <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
+                <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button onclick="cancelEditEquip()" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
+                </div>
+                <div id="equipmentList" class="space-y-2"></div>
             </div>
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
-                <div id="monthEventsList" class="space-y-2"></div>
+
+            <div id="modKalendarz" class="hidden space-y-4 text-left">
+                <div class="bg-white border rounded-xl shadow-sm p-4">
+                    <div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button onclick="changeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
+                    <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
+                    <div id="calendarDays" class="calendar-grid"></div>
+                </div>
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3><button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
+                    <div id="dayEventsList" class="space-y-2"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -141,28 +162,35 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let unsubO, unsubW, unsubT, unsubE, odczynnikiCache = [], currentOdczynnikiSubTab = 'Wzorce', formRowCount = 0;
-        let selectedWMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
-        let calDate = new Date();
+        let unsubO, odczynnikiCache = [], currentOdczynnikiSubTab = 'Wzorce', formRowCount = 0;
+        let calDate = new Date(), eventsCache = [], wzorcowanieCache = [], selectedWMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
         let selectedDayStr = new Date().toISOString().split('T')[0];
-        let eventsCache = [], wzorcowanieCache = [];
 
+        // NAWIGACJA KAFELKOWA
         window.switchTab = (target) => {
-            ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
-                const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                const b = document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                if(c) c.classList.add('hidden');
-                if(b) { b.classList.remove('active-tab'); b.classList.add('text-gray-400'); }
+            if(target === 'dashboard') {
+                document.getElementById('dashboardSection').classList.remove('hidden');
+                document.getElementById('contentSection').classList.add('hidden');
+                return;
+            }
+            
+            // Ukryj wszystkie moduły
+            ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(m => {
+                const el = document.getElementById(`mod${m.charAt(0).toUpperCase() + m.slice(1)}`);
+                if(el) el.classList.add('hidden');
             });
-            const contentEl = document.getElementById(`tabContent${target.charAt(0).toUpperCase() + target.slice(1)}`);
-            if(contentEl) contentEl.classList.remove('hidden');
-            const btnEl = document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`);
-            if(btnEl) btnEl.classList.add('active-tab');
+            
+            // Pokaż wybrany
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('contentSection').classList.remove('hidden');
+            const targetMod = document.getElementById(`mod${target.charAt(0).toUpperCase() + target.slice(1)}`);
+            if(targetMod) targetMod.classList.remove('hidden');
+
             if(target === 'kalendarz') renderCalendar();
             if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
-        // --- ODCZYNNIKI LOGIKA ---
+        // ODCZYNNIKI LOGIKA
         window.switchOdczynnikiSubTab = (target) => {
             currentOdczynnikiSubTab = target;
             ['Wzorce', 'Odczynniki'].forEach(sub => {
@@ -276,7 +304,7 @@
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- HARMONOGRAMY (WODA / ŚCIEKI) ---
+        // HARMONOGRAMY (WODA/SCIEKI)
         window.switchSubTab = (lab, target) => {
             ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
                 const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
@@ -287,7 +315,6 @@
             document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).classList.remove('hidden');
             document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-${lab}`;
         };
-
         function loadTasks() {
             onSnapshot(query(collection(db, 'harmonogram'), orderBy("timestamp", "asc")), (snap) => {
                 const labs = ['woda', 'scieki'], cats = ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'], stats = {};
@@ -297,7 +324,7 @@
                     const t = dSnap.data(), dDate = t.doneDate ? new Date(t.doneDate) : null, isY = dDate && dDate.getFullYear() === curY, isM = isY && dDate.getMonth() === curM, key = `${t.lab}${t.category}`;
                     if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
                     const div = document.createElement('div'); div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-[11px]`;
-                    div.innerHTML = `<div class="flex flex-col"><span class="font-bold">${t.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleTask('${dSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteTask('${dSnap.id}')">✕</button></div>`;
+                    div.innerHTML = `<div class="flex flex-col"><span class="font-bold text-black">${t.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleTask('${dSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteTask('${dSnap.id}')">✕</button></div>`;
                     const listEl = document.getElementById(`taskList${t.lab.charAt(0).toUpperCase() + t.lab.slice(1)}${t.category}`); if(listEl) listEl.appendChild(div);
                 });
                 Object.keys(stats).forEach(key => {
@@ -314,7 +341,7 @@
         window.toggleTask = async (id, isDone) => { await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
 
-        // --- SPRZĘT (WZORCOWANIE) ---
+        // SPRZĘT
         function loadWzorcowanie() { onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => { wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateWzorcowanieUI(); }); }
         function updateWzorcowanieUI() {
             const list = document.getElementById('equipmentList'); if(!list) return;
@@ -325,11 +352,9 @@
                 btn.onclick = () => { selectedWMonth = id; updateWzorcowanieUI(); };
                 btn.className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`; nav.appendChild(btn);
             }
-            list.innerHTML = ""; let mTotal = 0, mDone = 0, upcoming = [], curY = new Date().getFullYear();
-            let dNext = new Date(); dNext.setMonth(dNext.getMonth() + 1); const nextM = (dNext.getMonth() + 1).toString().padStart(2, '0');
+            list.innerHTML = ""; let mTotal = 0, mDone = 0, curY = new Date().getFullYear();
             wzorcowanieCache.forEach(eq => {
                 const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
-                if ((eq.type === "Wzorcowanie" || !eq.type) && eq.month === nextM && !isY) upcoming.push(eq.name);
                 if (eq.month === selectedWMonth) {
                     mTotal++; if(isY) mDone++;
                     const div = document.createElement('div'); div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-[11px]`;
@@ -338,13 +363,12 @@
                 }
             });
             const cnt = document.getElementById('monthlyWzorcowanieCounter'); cnt.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrobione`;
-            const abEq = document.getElementById('upcomingWzorcowanieAlert'); if (upcoming.length > 0) { abEq.innerHTML = `📢 PLANOWANE WZORCOWANIA NA ${monthsNames[nextM]}: ${upcoming.join(', ')}`; abEq.classList.remove('hidden'); } else { abEq.classList.add('hidden'); }
         }
         window.addEquipment = async () => { const n = document.getElementById('equipName'), m = document.getElementById('equipMonth'), t = document.getElementById('equipType'); if(n.value.trim()) { await addDoc(collection(db, 'wzorcowanie'), { name: n.value.trim(), month: m.value, type: t.value, doneDate: null, timestamp: Date.now() }); n.value = ""; } };
         window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
 
-        // --- KALENDARZ ---
+        // KALENDARZ
         window.changeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
         window.selectDay = (d) => { selectedDayStr = d; renderCalendar(); updateDayEvents(); };
         window.openAddEvent = async () => { const t = prompt("Nazwa wydarzenia:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t.trim(), date: selectedDayStr, timestamp: Date.now() }); };
@@ -366,15 +390,15 @@
         function updateDayEvents() {
             const list = document.getElementById('dayEventsList'); document.getElementById('selectedDateLabel').innerText = `Dzień: ${selectedDayStr}`;
             const f = eventsCache.filter(e => e.date === selectedDayStr);
-            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold"><span>${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-red-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń.</p>`;
+            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold text-black"><span>${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-red-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń.</p>`;
         }
         function updateMonthEvents() {
             const list = document.getElementById('monthEventsList'), monthStr = `${calDate.getFullYear()}-${(calDate.getMonth() + 1).toString().padStart(2, '0')}`;
             const f = eventsCache.filter(e => e.date.startsWith(monthStr)).sort((a,b) => a.date.localeCompare(b.date));
-            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1 text-black"><div class="flex gap-2 font-bold"><span class="text-blue-600">${e.date.split('-')[2]}.${e.date.split('-')[1]}</span><span>${e.title}</span></div><button onclick="deleteEvent('${e.id}')" class="text-gray-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w miesiącu.</p>`;
+            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1 text-black"><div class="flex gap-2 font-bold"><span class="text-blue-600">${e.date.split('-')[2]}.${e.date.split('-')[1]}</span><span>${e.title}</span></div><button onclick="deleteEvent('${e.id}')" class="text-gray-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń.</p>`;
         }
 
-        // --- INIT ---
+        // INIT
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden');
