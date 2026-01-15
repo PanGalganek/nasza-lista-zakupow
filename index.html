@@ -4,26 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>e-Laboratorium</title>
-    <link rel="manifest" href="manifest.json">
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
-      }
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
-        .active-month { background-color: #9333ea !important; color: white !important; border-color: #9333ea !important; }
+        .active-month { background-color: #9333ea !important; color: white !important; }
         .active-sub-tab-woda { background-color: #eff6ff !important; color: #2563eb !important; border-color: #2563eb !important; border-width: 2px !important; }
         .active-sub-tab-scieki { background-color: #f0fdf4 !important; color: #16a34a !important; border-color: #16a34a !important; border-width: 2px !important; }
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
-        .editing-mode-equip { border: 2px solid #9333ea !important; background-color: #f5f3ff !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-        .calendar-day { min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 1px solid #f3f4f6; position: relative; }
-        .calendar-day:hover { background-color: #f9fafb; }
+        .calendar-day { min-height: 45px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 1px solid #f3f4f6; position: relative; }
         .calendar-day.today { border: 2px solid #2563eb; font-weight: bold; color: #2563eb; }
         .calendar-day.selected { background-color: #eff6ff; border-color: #bfdbfe; }
         .has-event::after { content: ''; width: 5px; height: 5px; background-color: #2563eb; border-radius: 50%; position: absolute; bottom: 5px; }
@@ -32,10 +24,10 @@
 <body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center text-left">
 
     <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab</h2>
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 Logowanie e-Lab</h2>
         <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
         <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
-        <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
+        <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj się</button>
     </div>
 
     <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start">
@@ -65,7 +57,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <input type="date" id="expiryOdczynniki" class="border p-2 rounded">
-                        <button onclick="saveChem('wzorce', 'Odczynniki')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj Odczynnik</button>
+                        <button onclick="handleSaveChem('wzorce', 'Odczynniki')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj Odczynnik</button>
                     </div>
                 </div>
             </div>
@@ -84,7 +76,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <input type="date" id="expiryWzorce" class="border p-2 rounded">
-                        <button onclick="saveChem('odczynniki', 'Wzorce')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj Wzorzec</button>
+                        <button onclick="handleSaveChem('odczynniki', 'Wzorce')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj Wzorzec</button>
                     </div>
                 </div>
             </div>
@@ -93,28 +85,28 @@
 
         <div id="tabContentWoda" class="hidden space-y-4">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
-                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-woda">📦 Archiwalna</button>
+                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
+                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
             </div>
-            <div id="subContentWodaArchiwalna" class="space-y-4"><div id="mStatusWodaArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna"></div></div>
-            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusWodaSlepa" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputWodaSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListWodaSlepa"></div></div>
-            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie"></div></div>
-            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusWodaPorownania" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputWodaPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListWodaPorownania"></div></div>
+            <div id="subContentWodaArchiwalna" class="space-y-4"><div id="mStatusWodaArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaArchiwalna"></div><div class="flex gap-2"><input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaSlepa"></div><div class="flex gap-2"><input type="text" id="taskInputWodaSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaProbkobranie"></div><div class="flex gap-2"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaPorownania"></div><div class="flex gap-2"><input type="text" id="taskInputWodaPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
         </div>
 
         <div id="tabContentScieki" class="hidden space-y-4">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
-                <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+                <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-scieki">📦 Archiwalna</button>
+                <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
+                <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
             </div>
-            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna"></div></div>
-            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusSciekiSlepa" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListSciekiSlepa"></div></div>
-            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie"></div></div>
-            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="yStatusSciekiPorownania" class="p-2 text-[9px] font-bold border rounded text-center uppercase bg-white"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div><div id="taskListSciekiPorownania"></div></div>
+            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiArchiwalna"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiSlepa"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiProbkobranie"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiPorownania"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
         </div>
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4">
@@ -122,21 +114,21 @@
             <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
             <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
             <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><button onclick="addEquipment()" class="bg-purple-600 text-white py-2 rounded font-bold text-sm">Dodaj Sprzęt</button></div>
+                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><button onclick="handleAddEquipment()" class="bg-purple-600 text-white py-2 rounded font-bold text-sm uppercase">Dodaj Sprzęt</button></div>
             </div>
             <div id="equipmentList" class="space-y-2"></div>
         </div>
 
         <div id="tabContentKalendarz" class="hidden space-y-4">
             <div class="bg-white border rounded-xl shadow-sm p-4">
-                <div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button onclick="changeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
+                <div class="flex justify-between items-center mb-4"><button onclick="handleChangeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button onclick="handleChangeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
                 <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
                 <div id="calendarDays" class="calendar-grid"></div>
             </div>
             <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic mb-2">Plan dnia</h3>
                 <div id="dayEventsList" class="space-y-2"></div>
-                <button onclick="openAddEvent()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase">+ Dodaj wydarzenie</button>
+                <button onclick="handleOpenAddEvent()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase">+ Dodaj wydarzenie</button>
             </div>
             <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                 <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
@@ -158,8 +150,9 @@
         let selectedWMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
         let calDate = new Date();
         let selectedDayStr = new Date().toISOString().split('T')[0];
-        let cache = { wzorcowanie: [], wydarzenia: [] };
+        let eventsCache = [], wzorcowanieCache = [];
 
+        // --- GLOBALNE FUNKCJE NAWIGACJI ---
         window.switchTab = (target) => {
             ['odczynniki', 'wzorce', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
                 const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -170,6 +163,7 @@
             document.getElementById(`tabContent${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.remove('hidden');
             document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
             if(target === 'kalendarz') renderCalendar();
+            if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
         window.switchSubTab = (lab, target) => {
@@ -183,8 +177,15 @@
             document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-2 py-2 border rounded text-[9px] font-bold active-sub-tab-${lab} whitespace-nowrap`;
         };
 
-        // --- ODCZYNNIKI I WZORCE ---
-        window.saveChem = async (coll, suffix) => {
+        // --- OBSŁUGA BAZY (POMOSTY) ---
+        window.handleLogin = async () => {
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPassword').value;
+            try { await signInWithEmailAndPassword(auth, email, pass); } catch(err) { alert("Błąd: " + err.message); }
+        };
+        window.handleLogout = () => signOut(auth).then(() => location.reload());
+
+        window.handleSaveChem = async (collName, suffix) => {
             const id = document.getElementById(`editId${suffix}`).value;
             const data = {
                 name: document.getElementById(`name${suffix}`).value,
@@ -194,25 +195,146 @@
                 received: new Date().toISOString().split('T')[0],
                 timestamp: Date.now(), ordered: false
             };
-            if(data.name.trim()) {
-                if(id) await updateDoc(doc(db, coll, id), data);
-                else await addDoc(collection(db, coll), data);
-                document.getElementById(`editId${suffix}`).value = "";
-                document.getElementById(`name${suffix}`).value = "";
-                document.getElementById(`usage${suffix}`).value = "";
-                document.getElementById(`formContainer${suffix}`).classList.remove('editing-mode');
-            }
+            if(!data.name.trim()) return;
+            if(id) await updateDoc(doc(db, collName, id), data);
+            else await addDoc(collection(db, collName), data);
+            document.getElementById(`editId${suffix}`).value = "";
+            document.getElementById(`name${suffix}`).value = "";
         };
 
-        window.startEditChem = (coll, suffix, id, n, g, u, e) => {
-            document.getElementById(`editId${suffix}`).value = id;
-            document.getElementById(`name${suffix}`).value = n;
-            document.getElementById(`group${suffix}`).value = g;
-            document.getElementById(`usage${suffix}`).value = u;
-            document.getElementById(`expiry${suffix}`).value = e;
-            document.getElementById(`formContainer${suffix}`).classList.add('editing-mode');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.handleDelete = async (coll, id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, coll, id)); };
+        window.handleToggleOrder = async (coll, id, s) => await updateDoc(doc(db, coll, id), { ordered: !s });
+
+        window.handleAddTask = async (lab, cat) => {
+            const inp = document.getElementById(`taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
+            if(inp.value.trim()) { await addDoc(collection(db, 'harmonogram'), { name: inp.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() }); inp.value = ""; }
+        };
+        window.handleToggleTask = async (id, isDone) => await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
+
+        window.handleAddEquipment = async () => {
+            const name = document.getElementById('equipName').value;
+            if(!name.trim()) return;
+            await addDoc(collection(db, 'wzorcowanie'), { name, month: document.getElementById('equipMonth').value, type: document.getElementById('equipType').value, doneDate: null, timestamp: Date.now() });
+            document.getElementById('equipName').value = "";
         };
 
+        window.handleChangeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
+        window.handleOpenAddEvent = async () => {
+            const t = prompt("Wydarzenie:");
+            if(t) await addDoc(collection(db, 'wydarzenia'), { title: t, date: selectedDayStr, timestamp: Date.now() });
+        };
+
+        // --- ŁADOWANIE DANYCH ---
         function loadChem(coll, suffix) {
-            onSnapshot
+            onSnapshot(query(collection(db, coll), orderBy("timestamp", "asc")), (snap) => {
+                const list = document.getElementById(`list${suffix}`); list.innerHTML = ""; let alerts = [];
+                snap.docs.forEach((d, i) => {
+                    const item = d.data(); const exp = item.expiry ? new Date(item.expiry) : null;
+                    const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
+                    if(diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alerts.push(`[${item.group}] ${item.name}`);
+                    const dCol = (diff !== null && diff < 0) ? "text-red-600 font-bold" : (diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
+                    const li = document.createElement('li');
+                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border text-[10px] shadow-sm`;
+                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col truncate font-bold text-gray-800">${item.name}<br><span class="text-[8px] text-gray-400 italic font-normal">${item.usage || ''}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="handleToggleOrder('${coll}','${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="handleDelete('${coll}','${d.id}')">✕</button></div>`;
+                    list.appendChild(li);
+                });
+                const ab = document.getElementById(`alertBox${suffix}`);
+                if(alerts.length > 0) { ab.innerHTML = `⚠️ WAŻNOŚĆ (30 dni):<br>` + alerts.join('<br>'); ab.classList.remove('hidden'); } else ab.classList.add('hidden');
+            });
+        }
+
+        function loadTasks() {
+            onSnapshot(collection(db, 'harmonogram'), (snap) => {
+                const labs = ['woda', 'scieki']; const cats = ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'];
+                let stats = {}; labs.forEach(l => cats.forEach(c => { 
+                    const el = document.getElementById(`taskList${l.charAt(0).toUpperCase() + l.slice(1)}${c}`); if(el) el.innerHTML = "";
+                    stats[`${l}${c}`] = { t:0, d:0, m:false };
+                }));
+                snap.docs.forEach(d => {
+                    const t = d.data(); const isY = t.doneDate && new Date(t.doneDate).getFullYear() === new Date().getFullYear();
+                    const isM = isY && new Date(t.doneDate).getMonth() === new Date().getMonth();
+                    const key = `${t.lab}${t.category}`; if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
+                    const div = document.createElement('div'); div.className = `flex justify-between items-center p-2 border rounded bg-white mb-2 text-[11px] shadow-sm`;
+                    div.innerHTML = `<span class="${isY ? 'line-through text-gray-400' : ''}">${t.name}</span><div class="flex gap-2"><button onclick="handleToggleTask('${d.id}',${isY})">${isY ? '✅' : '⬜'}</button><button onclick="handleDelete('harmonogram','${d.id}')">✕</button></div>`;
+                    const listEl = document.getElementById(`taskList${t.lab.charAt(0).toUpperCase() + t.lab.slice(1)}${t.category}`); if(listEl) listEl.appendChild(div);
+                });
+                Object.keys(stats).forEach(key => {
+                    const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                    const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
+                    const s = stats[key]; if(!mEl || !yEl) return;
+                    mEl.className = "p-2 rounded text-[9px] font-bold border text-center mb-1 " + (s.m ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-800 animate-pulse");
+                    mEl.innerHTML = s.m ? "✅ ZROBIONE W TYM MIESIĄCU" : "⚠️ BRAK W TYM MIESIĄCU!";
+                    yEl.innerHTML = s.d === s.t && s.t > 0 ? "⭐ PLAN ROCZNY ZAKOŃCZONY!" : `PLAN ROCZNY: ${s.d} / ${s.t}`;
+                    yEl.className = "p-2 rounded text-[9px] font-bold border text-center mb-2 bg-slate-50 text-slate-500 uppercase";
+                });
+            });
+        }
+
+        function updateWzorcowanieUI() {
+            const list = document.getElementById('equipmentList'); if(!list) return;
+            const nav = document.getElementById('monthsNav'); nav.innerHTML = "";
+            const mNames = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
+            for(let i=1; i<=12; i++) {
+                const id = i.toString().padStart(2, '0');
+                const btn = document.createElement('button'); btn.innerText = mNames[i-1];
+                btn.onclick = () => { selectedWMonth = id; updateWzorcowanieUI(); };
+                btn.className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`;
+                nav.appendChild(btn);
+            }
+            list.innerHTML = ""; let mTotal=0, mDone=0, upcoming=[];
+            const nextM = ((new Date().getMonth() + 1) % 12 + 1).toString().padStart(2, '0');
+            wzorcowanieCache.forEach(eq => {
+                const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === new Date().getFullYear();
+                if(eq.type === "Wzorcowanie" && eq.month === nextM && !isY) upcoming.push(eq.name);
+                if(eq.month === selectedWMonth) {
+                    mTotal++; if(isY) mDone++;
+                    const div = document.createElement('div'); div.className = `flex justify-between items-center p-3 border rounded-lg bg-white mb-2 text-[11px] shadow-sm`;
+                    div.innerHTML = `<div><b>${eq.name}</b><br><small>${eq.type}</small></div><div class="flex gap-2"><button onclick="handleToggleTaskWzorcowanie('${eq.id}',${isY})">${isY ? '✅' : '⬜'}</button><button onclick="handleDelete('wzorcowanie','${eq.id}')">✕</button></div>`;
+                    list.appendChild(div);
+                }
+            });
+            document.getElementById('monthlyWzorcowanieCounter').innerText = `${mDone} z ${mTotal} WYKONANE`;
+            const ab = document.getElementById('upcomingWzorcowanieAlert');
+            if(upcoming.length > 0) { ab.innerHTML = `📢 PLANOWANE WZORCOWANIA NA LUTY: ` + upcoming.join(', '); ab.classList.remove('hidden'); } else ab.classList.add('hidden');
+        }
+        window.handleToggleTaskWzorcowanie = async (id, isDone) => await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarDays');
+            const dInM = new Date(calDate.getFullYear(), calDate.getMonth()+1, 0).getDate();
+            const fDay = new Date(calDate.getFullYear(), calDate.getMonth(), 1).getDay();
+            const offset = fDay === 0 ? 6 : fDay - 1; grid.innerHTML = "";
+            const mNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+            document.getElementById('calendarMonthYear').innerText = `${mNames[calDate.getMonth()]} ${calDate.getFullYear()}`;
+            for(let i=0; i<offset; i++) grid.innerHTML += `<div></div>`;
+            for(let d=1; d<=dInM; d++) {
+                const ds = `${calDate.getFullYear()}-${(calDate.getMonth()+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                const hasE = eventsCache.some(e => e.date === ds);
+                const div = document.createElement('div'); div.className = `calendar-day ${ds === selectedDayStr ? 'selected' : ''} ${hasE ? 'has-event' : ''}`;
+                div.innerText = d; div.onclick = () => { selectedDayStr = ds; renderCalendar(); updateDayEvents(); };
+                grid.appendChild(div);
+            }
+            updateMonthEvents();
+        }
+        function updateDayEvents() {
+            const list = document.getElementById('dayEventsList'); document.getElementById('selectedDateLabel').innerText = `Dzień: ${selectedDayStr}`;
+            const f = eventsCache.filter(e => e.date === selectedDayStr);
+            list.innerHTML = f.length ? f.map(e => `<div class="bg-white p-2 rounded flex justify-between shadow-sm text-[11px]"><span>${e.title}</span><button onclick="handleDelete('wydarzenia','${e.id}')">✕</button></div>`).join('') : `<p class="text-[10px] italic text-gray-400">Brak planów.</p>`;
+        }
+        function updateMonthEvents() {
+            const list = document.getElementById('monthEventsList'); const prefix = `${calDate.getFullYear()}-${(calDate.getMonth()+1).toString().padStart(2,'0')}`;
+            const f = eventsCache.filter(e => e.date.startsWith(prefix)).sort((a,b) => a.date.localeCompare(b.date));
+            list.innerHTML = f.map(e => `<div class="text-[11px] p-2 bg-white rounded shadow-sm mb-1"><b>${e.date.split('-')[2]}.${e.date.split('-')[1]}</b> - ${e.title}</div>`).join('');
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) { 
+                document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); 
+                loadChem('wzorce', 'Odczynniki'); loadChem('odczynniki', 'Wzorce'); loadTasks();
+                onSnapshot(collection(db, 'wzorcowanie'), snap => { wzorcowanieCache = snap.docs.map(d => ({id:d.id, ...d.data()})); updateWzorcowanieUI(); });
+                onSnapshot(collection(db, 'wydarzenia'), snap => { eventsCache = snap.docs.map(d => ({id:d.id, ...d.data()})); renderCalendar(); });
+            } else { document.getElementById('loginSection').classList.remove('hidden'); }
+        });
+    </script>
+</body>
+</html>
