@@ -9,17 +9,26 @@
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
         .sub-tab-active { background-color: #eff6ff !important; border-color: #2563eb !important; color: #1e40af !important; border-width: 2px !important; }
         .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+        
+        /* Kolory dla dat ważności */
+        .expiry-danger { background-color: #fef2f2 !important; border-color: #fecaca !important; color: #b91c1c !important; }
+        .expiry-warning { background-color: #fffbeb !important; border-color: #fde68a !important; color: #92400e !important; }
+        
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Kalendarz */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
-        .calendar-day { min-height: 40px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 1px solid #f3f4f6; }
-        .has-event::after { content: ''; width: 4px; height: 4px; background-color: #2563eb; border-radius: 50%; position: absolute; bottom: 4px; }
+        .calendar-day { min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 1px solid #f3f4f6; position: relative; }
+        .day-today { border: 2px solid #2563eb !important; color: #2563eb; font-weight: bold; }
+        .day-selected { background-color: #eff6ff; }
+        .has-event::after { content: ''; width: 5px; height: 5px; background-color: #2563eb; border-radius: 50%; position: absolute; bottom: 5px; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center text-sm text-left">
+<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center text-left text-sm">
 
     <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-center">🧪 e-Lab 2026</h2>
+        <h2 class="text-2xl font-bold mb-6 text-center italic">🧪 e-Lab 2026</h2>
         <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
         <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
         <button id="loginBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
@@ -27,7 +36,7 @@
 
     <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start">
         <div class="flex justify-between items-center mb-4 px-2">
-            <h1 class="text-lg font-bold italic">⚗️ e-Lab LIMS</h1>
+            <h1 class="text-lg font-bold text-gray-800">LIMS v2.0</h1>
             <button id="logoutBtn" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
         </div>
 
@@ -45,58 +54,51 @@
                 <button onclick="subTabOdcz('Wzorce')" id="sTab_RE_Wzorce" class="px-4 py-2 border rounded text-[10px] font-bold bg-white text-gray-400 uppercase">💎 Wzorce</button>
             </div>
             
+            <div id="RE_alerts" class="hidden space-y-1 mb-4"></div>
+            
             <div id="RE_form" class="p-4 rounded-lg border bg-blue-50 border-blue-100">
                 <input type="hidden" id="RE_editId">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input type="text" id="RE_name" placeholder="Nazwa" class="border p-2 rounded">
-                    <input type="text" id="RE_group" placeholder="Grupa" class="border p-2 rounded">
+                    <input type="text" id="RE_name" placeholder="Nazwa odczynnika" class="border p-2 rounded">
+                    <input type="text" id="RE_group" placeholder="Grupa / Producent" class="border p-2 rounded">
                     <input type="text" id="RE_usage" placeholder="Zastosowanie" class="border p-2 rounded">
-                    <div class="flex flex-col"><label class="text-[9px] font-bold text-red-500 uppercase">Ważność:</label><input type="date" id="RE_expiry" class="border p-2 rounded"></div>
+                    <div class="flex flex-col"><label class="text-[9px] font-bold text-red-500 uppercase ml-1">Data Ważności:</label><input type="date" id="RE_expiry" class="border p-2 rounded"></div>
                 </div>
-                <button onclick="saveReagent()" class="w-full mt-3 bg-blue-600 text-white font-bold py-2 rounded uppercase text-[10px]">Zapisz Pozycję</button>
+                <button onclick="saveReagent()" class="w-full mt-3 bg-blue-600 text-white font-bold py-3 rounded uppercase text-[10px]">Zapisz do bazy</button>
             </div>
-            <div id="RE_alerts" class="hidden p-2 bg-orange-100 border text-orange-800 text-[10px] rounded font-bold"></div>
             <ul id="RE_list" class="space-y-2"></ul>
         </div>
 
-        <div id="sec_woda" class="hidden space-y-4">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar border-b pb-2" id="WO_nav"></div>
-            <div id="WO_content"></div>
-        </div>
-
-        <div id="sec_scieki" class="hidden space-y-4">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar border-b pb-2" id="SC_nav"></div>
-            <div id="SC_content"></div>
-        </div>
-
-        <div id="sec_sprzet" class="hidden space-y-4 text-center">
+        <div id="sec_sprzet" class="hidden space-y-4">
+            <div id="EQ_upcoming_alert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2 uppercase italic tracking-wider animate-pulse"></div>
             <div id="EQ_monthsNav" class="flex overflow-x-auto gap-1 pb-2 no-scrollbar"></div>
-            <div id="EQ_counter" class="p-2 rounded border font-bold text-[10px] uppercase bg-gray-50"></div>
-            <div class="p-4 bg-purple-50 rounded border border-purple-100 text-left">
+            <div id="EQ_counter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase bg-gray-50"></div>
+            <div class="p-4 bg-purple-50 rounded border border-purple-200">
                 <input type="hidden" id="EQ_editId">
                 <input type="text" id="EQ_name" placeholder="Nazwa sprzętu" class="w-full border p-2 rounded mb-2">
                 <div class="grid grid-cols-2 gap-2 mb-2">
-                    <select id="EQ_type" class="border p-2 rounded bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option></select>
+                    <select id="EQ_type" class="border p-2 rounded bg-white font-bold"><option value="Wzorcowanie">📏 Wzorcowanie</option><option value="Sprawdzenie">🔍 Sprawdzenie</option><option value="Kalibracja">⚗️ Kalibracja</option></select>
                     <select id="EQ_month" class="border p-2 rounded bg-white">
                         <option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option>
                     </select>
                 </div>
-                <button onclick="saveEquip()" class="w-full bg-purple-600 text-white py-2 rounded font-bold uppercase text-[10px]">Dodaj / Zapisz Sprzęt</button>
+                <button onclick="saveEquip()" class="w-full bg-purple-600 text-white py-3 rounded font-bold uppercase text-[10px]">Zapisz Urządzenie</button>
             </div>
-            <ul id="EQ_list" class="space-y-2 text-left"></ul>
+            <ul id="EQ_list" class="space-y-2"></ul>
         </div>
 
         <div id="sec_kalendarz" class="hidden space-y-4">
-            <div class="bg-white border rounded p-4 text-center">
-                <div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="font-bold">←</button><h2 id="CAL_title" class="font-bold uppercase text-xs"></h2><button onclick="changeMonth(1)" class="font-bold">→</button></div>
+            <div class="bg-white border rounded shadow-sm p-4">
+                <div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-bold">←</button><h2 id="CAL_title" class="font-bold uppercase text-sm tracking-widest text-center"></h2><button onclick="changeMonth(1)" class="p-2 text-blue-600 font-bold">→</button></div>
+                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
                 <div id="CAL_days" class="calendar-grid"></div>
             </div>
-            <div id="CAL_dayEvents" class="p-4 bg-blue-50 border rounded text-left">
-                <h3 id="CAL_selDate" class="text-[10px] font-bold mb-2 uppercase italic"></h3>
-                <div id="CAL_list" class="space-y-2"></div>
-                <button onclick="addEvent()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase">+ Dodaj wydarzenie</button>
-            </div>
+            <div class="bg-blue-50 p-4 rounded border"><h3 id="CAL_selDate" class="text-[10px] font-bold mb-3 uppercase italic text-blue-800"></h3><div id="CAL_list" class="space-y-2"></div><button onclick="addEvent()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase shadow">+ Dodaj wydarzenie</button></div>
         </div>
+
+        <div id="sec_woda" class="hidden space-y-4"><div id="WO_nav" class="flex gap-1 overflow-x-auto no-scrollbar border-b pb-2"></div><div id="WO_content"></div></div>
+        <div id="sec_scieki" class="hidden space-y-4"><div id="SC_nav" class="flex gap-1 overflow-x-auto no-scrollbar border-b pb-2"></div><div id="SC_content"></div></div>
+
     </div>
 
     <script type="module">
@@ -113,10 +115,10 @@
         let curEQ_Month = (new Date().getMonth() + 1).toString().padStart(2, '0');
         let curCAL_Date = new Date();
         let curCAL_Sel = new Date().toISOString().split('T')[0];
-        let cacheEQ = [], cacheEV = [];
+        let cacheEQ = [], cacheEV = [], unsubRE;
 
-        // --- NAVIGATION LOGIC ---
-        window.mainTab = (target) => {
+        // --- NAWIGACJA ---
+        window.mainTab = (t) => {
             ['odczynniki', 'woda', 'scieki', 'sprzet', 'kalendarz'].forEach(id => {
                 document.getElementById(`sec_${id}`).classList.add('hidden');
                 document.getElementById(`mTab_${id}`).className = "flex-1 px-3 py-3 text-[10px] uppercase text-gray-400 whitespace-nowrap";
@@ -131,181 +133,137 @@
             curRE_Sub = mode;
             document.getElementById('sTab_RE_Lista').className = `px-4 py-2 border rounded text-[10px] font-bold uppercase ${mode === 'Lista' ? 'sub-tab-active' : 'bg-white text-gray-400'}`;
             document.getElementById('sTab_RE_Wzorce').className = `px-4 py-2 border rounded text-[10px] font-bold uppercase ${mode === 'Wzorce' ? 'sub-tab-active' : 'bg-white text-gray-400'}`;
-            document.getElementById('RE_form').style.backgroundColor = mode === 'Lista' ? '#eff6ff' : '#f5f3ff';
             loadReagents();
         };
 
-        // --- REAGENTS & STANDARDS ---
+        // --- ODCZYNNIKI (NAPRAWIONE POWIADOMIENIA I KOLORY) ---
         function loadReagents() {
-            const collName = curRE_Sub === 'Lista' ? 'reagenty_lista' : 'odczynniki';
-            onSnapshot(query(collection(db, collName), orderBy("timestamp", "asc")), (snap) => {
+            if(unsubRE) unsubRE();
+            const coll = curRE_Sub === 'Lista' ? 'reagenty_lista' : 'odczynniki';
+            unsubRE = onSnapshot(query(collection(db, coll), orderBy("timestamp", "asc")), (snap) => {
                 const list = document.getElementById('RE_list'); list.innerHTML = "";
-                let alerts = []; snap.docs.forEach((d, i) => {
+                const alertBox = document.getElementById('RE_alerts'); alertBox.innerHTML = "";
+                let dangers = [], warnings = [];
+
+                snap.docs.forEach((d) => {
                     const item = d.data();
                     const diff = item.expiry ? Math.ceil((new Date(item.expiry) - new Date()) / 86400000) : 999;
-                    if(diff <= 30 && !item.ordered) alerts.push(item.name);
+                    
+                    let rowClass = "bg-white";
+                    if(diff < 0) { rowClass = "expiry-danger"; dangers.push(item.name); }
+                    else if(diff <= 30) { rowClass = "expiry-warning"; warnings.push(item.name); }
+                    if(item.ordered) rowClass = "ordered-row";
+
                     const li = document.createElement('li');
-                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} flex justify-between items-center p-3 border rounded shadow-sm text-[10px]`;
-                    li.innerHTML = `<div><b>${item.name}</b><br><small class="${diff<=30?'text-red-500 font-bold':''}">Ważność: ${item.expiry || '--'}</small></div><div class="flex gap-2"><button onclick="toggleOrder('${collName}','${d.id}',${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="editReagent('${d.id}',\`${item.name}\`,\`${item.group}\`,\`${item.usage}\`,'${item.expiry}')">✏️</button><button onclick="delDoc('${collName}','${d.id}')">✕</button></div>`;
+                    li.className = `${rowClass} flex justify-between items-center p-3 border rounded shadow-sm text-[11px]`;
+                    li.innerHTML = `<div><b class="text-blue-700">${item.group || '-'}</b><br><span>${item.name}</span><br><small class="font-bold ${diff<=30?'text-red-600':'text-gray-400'} uppercase">Ważność: ${item.expiry || '--'}</small></div><div class="flex gap-3"><button onclick="toggleOrder('${coll}','${d.id}',${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="delDoc('${coll}','${d.id}')">✕</button></div>`;
                     list.appendChild(li);
                 });
-                const alertBox = document.getElementById('RE_alerts');
-                if(alerts.length > 0) { alertBox.innerText = "🚨 TERMINY: " + alerts.join(", "); alertBox.classList.remove('hidden'); } else alertBox.classList.add('hidden');
+
+                if(dangers.length) alertBox.innerHTML += `<div class="p-2 bg-red-600 text-white rounded text-center">🚨 PRZETERMINOWANE: ${dangers.join(", ")}</div>`;
+                if(warnings.length) alertBox.innerHTML += `<div class="p-2 bg-orange-500 text-white rounded text-center">⚠️ KOŃCZY SIĘ (30 dni): ${warnings.join(", ")}</div>`;
+                alertBox.classList.toggle('hidden', alertBox.innerHTML === "");
             });
         }
 
         window.saveReagent = async () => {
             const coll = curRE_Sub === 'Lista' ? 'reagenty_lista' : 'odczynniki';
-            const id = document.getElementById('RE_editId').value;
             const data = { name: document.getElementById('RE_name').value, group: document.getElementById('RE_group').value, usage: document.getElementById('RE_usage').value, expiry: document.getElementById('RE_expiry').value, timestamp: Date.now(), ordered: false };
-            if(!data.name.trim()) return;
-            if(id) await updateDoc(doc(db, coll, id), data); else await addDoc(collection(db, coll), data);
-            document.getElementById('RE_editId').value = ""; document.getElementById('RE_name').value = "";
+            if(data.name.trim()) { await addDoc(collection(db, coll), data); document.getElementById('RE_name').value = ""; }
         };
 
-        window.editReagent = (id, n, g, u, e) => {
-            document.getElementById('RE_editId').value = id; document.getElementById('RE_name').value = n;
-            document.getElementById('RE_group').value = g; document.getElementById('RE_usage').value = u; document.getElementById('RE_expiry').value = e;
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        };
-
-        // --- EQUIPMENT ---
+        // --- SPRZĘT (ZRÓŻNICOWANIE I POWIADOMIENIA) ---
         function renderEquip() {
+            const mNames = ["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
             const nav = document.getElementById('EQ_monthsNav'); nav.innerHTML = "";
-            const mNames = ["Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
             for(let i=1; i<=12; i++) {
                 const id = i.toString().padStart(2, '0');
-                const btn = document.createElement('button'); btn.innerText = mNames[i-1];
+                const btn = document.createElement('button'); btn.innerText = mNames[i-1].substring(0,3);
                 btn.onclick = () => { curEQ_Month = id; renderEquip(); };
-                btn.className = `px-3 py-2 border rounded text-[9px] font-bold ${curEQ_Month === id ? 'active-month bg-purple-600 text-white' : 'bg-white text-gray-400'}`;
+                btn.className = `px-3 py-2 border rounded text-[9px] font-bold ${curEQ_Month === id ? 'bg-purple-600 text-white' : 'bg-white text-gray-400 uppercase'}`;
                 nav.appendChild(btn);
             }
+
             const list = document.getElementById('EQ_list'); list.innerHTML = "";
-            let t=0, d=0; cacheEQ.forEach(eq => {
-                const isDone = eq.doneDate && new Date(eq.doneDate).getFullYear() === 2026;
-                if(eq.month === curEQ_Month) {
-                    t++; if(isDone) d++;
+            let t=0, d=0, upcoming = [];
+            const nextMonth = ((new Date().getMonth() + 1) % 12 + 1).toString().padStart(2, '0');
+
+            cacheEQ.forEach(eq => {
+                const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === 2026;
+                if(eq.month === nextMonth && !isY) upcoming.push(eq.name);
+                
+                if (eq.month === curEQ_Month) {
+                    t++; if(isY) d++;
+                    let tagClass = "bg-purple-100 text-purple-700";
+                    if(eq.type === "Sprawdzenie") tagClass = "bg-blue-100 text-blue-700";
+                    if(eq.type === "Kalibracja") tagClass = "bg-green-100 text-green-700";
+
                     const li = document.createElement('li');
-                    li.className = `flex justify-between items-center p-3 border rounded ${isDone ? 'task-done' : 'bg-white shadow-sm'}`;
-                    li.innerHTML = `<div><b>${eq.name}</b><br><small class="uppercase text-purple-600 font-bold">${eq.type}</small></div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}',${isDone})">${isDone?'✅':'⬜'}</button><button onclick="editEquip('${eq.id}',\`${eq.name}\`,'${eq.month}','${eq.type}')">✏️</button><button onclick="delDoc('wzorcowanie','${eq.id}')">✕</button></div>`;
+                    li.className = `flex justify-between items-center p-3 border rounded ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
+                    li.innerHTML = `<div><span class="text-[8px] font-bold px-2 py-0.5 rounded ${tagClass} uppercase">${eq.type || 'Wzorcowanie'}</span><br><b class="text-sm">${eq.name}</b></div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}',${isY})">${isY?'✅':'⬜'}</button><button onclick="delDoc('wzorcowanie','${eq.id}')">✕</button></div>`;
                     list.appendChild(li);
                 }
             });
-            document.getElementById('EQ_counter').innerText = `Zrobiono: ${d} z ${t}`;
+
+            document.getElementById('EQ_counter').innerText = `${mNames[parseInt(curEQ_Month)-1]}: ${d} z ${t} ZROBIONE`;
+            const alert = document.getElementById('EQ_upcoming_alert');
+            if(upcoming.length) { alert.innerText = `📢 PLAN NA KOLEJNY MIESIĄC: ${upcoming.join(', ')}`; alert.classList.remove('hidden'); }
+            else alert.classList.add('hidden');
         }
 
         window.saveEquip = async () => {
-            const id = document.getElementById('EQ_editId').value;
             const data = { name: document.getElementById('EQ_name').value, month: document.getElementById('EQ_month').value, type: document.getElementById('EQ_type').value, timestamp: Date.now() };
-            if(!data.name.trim()) return;
-            if(id) await updateDoc(doc(db, 'wzorcowanie', id), data);
-            else await addDoc(collection(db, 'wzorcowanie'), { ...data, doneDate: null });
-            document.getElementById('EQ_editId').value = ""; document.getElementById('EQ_name').value = ""; renderEquip();
-        };
-
-        window.editEquip = (id, n, m, t) => {
-            document.getElementById('EQ_editId').value = id; document.getElementById('EQ_name').value = n;
-            document.getElementById('EQ_month').value = m; document.getElementById('EQ_type').value = t;
-            window.scrollTo({top: 0, behavior: 'smooth'});
+            if(data.name.trim()) { await addDoc(collection(db, 'wzorcowanie'), { ...data, doneDate: null }); document.getElementById('EQ_name').value = ""; }
         };
         window.toggleEquip = async (id, s) => await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: s ? null : new Date().toISOString() });
 
-        // --- HARMONOGRAMY (WODA / SCIEKI) ---
-        function setupHarmonogram(lab) {
-            const prefix = lab === 'woda' ? 'WO' : 'SC';
-            const nav = document.getElementById(`${prefix}_nav`); nav.innerHTML = "";
-            const cats = ['Archiwalna','Slepa','Probkobranie','Porownania'];
-            cats.forEach(c => {
-                const btn = document.createElement('button'); btn.innerText = c;
-                btn.className = "px-3 py-2 border rounded text-[9px] font-bold bg-white uppercase";
-                btn.id = `${prefix}_btn_${c}`;
-                btn.onclick = () => switchHarmSub(lab, c);
-                nav.appendChild(btn);
-            });
-            switchHarmSub(lab, 'Archiwalna');
-        }
-
-        window.switchHarmSub = (lab, cat) => {
-            const prefix = lab === 'woda' ? 'WO' : 'SC';
-            ['Archiwalna','Slepa','Probkobranie','Porownania'].forEach(c => {
-                document.getElementById(`${prefix}_btn_${c}`).className = "px-3 py-2 border rounded text-[9px] font-bold bg-white uppercase text-gray-400";
-            });
-            document.getElementById(`${prefix}_btn_${cat}`).className = `px-3 py-2 border rounded text-[9px] font-bold ${lab==='woda'?'sub-tab-active':'bg-green-50 border-green-500 text-green-700'} uppercase`;
-            loadHarmItems(lab, cat);
-        };
-
-        function loadHarmItems(lab, cat) {
-            const cont = document.getElementById(`${lab === 'woda' ? 'WO' : 'SC'}_content`);
-            onSnapshot(collection(db, 'harmonogram'), (snap) => {
-                cont.innerHTML = ""; let t=0, d=0, m=false;
-                const filtered = snap.docs.filter(doc => doc.data().lab === lab && doc.data().category === cat);
-                filtered.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const isDoneY = data.doneDate && new Date(data.doneDate).getFullYear() === 2026;
-                    const isDoneM = isDoneY && new Date(data.doneDate).getMonth() === new Date().getMonth();
-                    t++; if(isDoneY) d++; if(isDoneM) m = true;
-                    const div = document.createElement('div');
-                    div.className = "flex justify-between items-center p-2 border rounded bg-white mb-1 shadow-sm text-[10px]";
-                    div.innerHTML = `<span class="${isDoneY ? 'line-through text-gray-400' : 'font-bold'}">${data.name}</span><div class="flex gap-3"><button onclick="toggleHarm('${docSnap.id}',${isDoneY})">${isDoneY ? '✅' : '⬜'}</button><button onclick="delDoc('harmonogram','${docSnap.id}')">✕</button></div>`;
-                    cont.appendChild(div);
-                });
-                const head = `<div class="p-2 mb-2 rounded border text-center font-bold text-[9px] ${m?'bg-green-50 text-green-700':'bg-orange-50 text-orange-800 animate-pulse'} uppercase">${m?'Wykonano w tym miesiącu':'Brak wpisu w tym miesiącu!'}</div><div class="p-2 mb-4 bg-gray-50 border text-center text-[9px] uppercase">Plan roczny: ${d} / ${t}</div>`;
-                cont.insertAdjacentHTML('afterbegin', head);
-                cont.insertAdjacentHTML('beforeend', `<div class="flex gap-2 mt-4"><input type="text" id="IN_${lab}_${cat}" class="flex-1 border p-2 rounded text-[10px]"><button onclick="addHarm('${lab}','${cat}')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div>`);
-            });
-        }
-
-        window.addHarm = async (lab, cat) => {
-            const inp = document.getElementById(`IN_${lab}_${cat}`);
-            if(inp.value.trim()) { await addDoc(collection(db, 'harmonogram'), { name: inp.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() }); inp.value = ""; }
-        };
-        window.toggleHarm = async (id, s) => await updateDoc(doc(db, 'harmonogram', id), { doneDate: s ? null : new Date().toISOString().split('T')[0] });
-
-        // --- CALENDAR ---
+        // --- KALENDARZ (NAPRAWIONY) ---
         function renderCalendar() {
             const grid = document.getElementById('CAL_days'); grid.innerHTML = "";
-            const dInM = new Date(curCAL_Date.getFullYear(), curCAL_Date.getMonth()+1, 0).getDate();
-            const start = new Date(curCAL_Date.getFullYear(), curCAL_Date.getMonth(), 1).getDay();
-            const offset = start === 0 ? 6 : start - 1;
+            const daysInM = new Date(curCAL_Date.getFullYear(), curCAL_Date.getMonth()+1, 0).getDate();
+            const firstDay = new Date(curCAL_Date.getFullYear(), curCAL_Date.getMonth(), 1).getDay();
+            const offset = firstDay === 0 ? 6 : firstDay - 1;
             const mNames = ["Styczeń","Luty","Marzec","Kwiecień","Maj","Czerwiec","Lipiec","Sierpień","Wrzesień","Październik","Listopad","Grudzień"];
+            
             document.getElementById('CAL_title').innerText = `${mNames[curCAL_Date.getMonth()]} ${curCAL_Date.getFullYear()}`;
             for(let i=0; i<offset; i++) grid.innerHTML += `<div></div>`;
-            for(let d=1; d<=dInM; d++) {
-                const ds = `${curCAL_Date.getFullYear()}-${(curCAL_Date.getMonth()+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-                const hasE = cacheEV.some(e => e.date === ds);
-                const div = document.createElement('div'); div.innerText = d;
-                div.className = `calendar-day relative ${ds === curCAL_Sel ? 'bg-blue-100 font-bold' : ''} ${hasE ? 'has-event' : ''}`;
-                div.onclick = () => { curCAL_Sel = ds; renderCalendar(); updateDayEvents(); };
+            
+            const today = new Date().toISOString().split('T')[0];
+            for(let d=1; d<=daysInM; d++) {
+                const dateStr = `${curCAL_Date.getFullYear()}-${(curCAL_Date.getMonth()+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                const hasE = cacheEV.some(e => e.date === dateStr);
+                const div = document.createElement('div');
+                div.className = `calendar-day ${dateStr === today ? 'day-today' : ''} ${dateStr === curCAL_Sel ? 'day-selected' : ''} ${hasE ? 'has-event' : ''}`;
+                div.innerText = d;
+                div.onclick = () => { curCAL_Sel = dateStr; renderCalendar(); updateDayEvents(); };
                 grid.appendChild(div);
             }
             updateDayEvents();
         }
 
         function updateDayEvents() {
-            document.getElementById('CAL_selDate').innerText = "Dzień: " + curCAL_Sel;
+            document.getElementById('CAL_selDate').innerText = "Wybrany dzień: " + curCAL_Sel;
             const list = document.getElementById('CAL_list'); list.innerHTML = "";
-            cacheEV.filter(e => e.date === curCAL_Sel).forEach(e => {
-                list.innerHTML += `<div class="flex justify-between bg-white p-2 rounded border text-[10px]"><span>${e.title}</span><button onclick="delDoc('wydarzenia','${e.id}')">✕</button></div>`;
-            });
+            const events = cacheEV.filter(e => e.date === curCAL_Sel);
+            list.innerHTML = events.length ? events.map(e => `<div class="flex justify-between bg-white p-2 rounded border text-[10px] font-bold"><span>${e.title}</span><button onclick="delDoc('wydarzenia','${e.id}')">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400">Brak wydarzeń.</p>`;
         }
-        window.addEvent = async () => { const t = prompt("Wydarzenie:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t, date: curCAL_Sel, timestamp: Date.now() }); };
+        window.addEvent = async () => { const t = prompt("Wpisz wydarzenie:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t, date: curCAL_Sel, timestamp: Date.now() }); };
         window.changeMonth = (v) => { curCAL_Date.setMonth(curCAL_Date.getMonth() + v); renderCalendar(); };
 
-        // --- GENERIC HELPERS ---
+        // --- HELPERS ---
         window.delDoc = async (c, id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, c, id)); };
         window.toggleOrder = async (c, id, s) => await updateDoc(doc(db, c, id), { ordered: !s });
 
-        // --- AUTH & INIT ---
+        // --- AUTH ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('loginSection').classList.add('hidden');
                 document.getElementById('appSection').classList.remove('hidden');
-                subTabOdcz('Lista'); setupHarmonogram('woda'); setupHarmonogram('scieki');
+                subTabOdcz('Lista');
                 onSnapshot(collection(db, 'wzorcowanie'), s => { cacheEQ = s.docs.map(d => ({id:d.id, ...d.data()})); renderEquip(); });
                 onSnapshot(collection(db, 'wydarzenia'), s => { cacheEV = s.docs.map(d => ({id:d.id, ...d.data()})); renderCalendar(); });
             } else { document.getElementById('loginSection').classList.remove('hidden'); }
         });
-
         document.getElementById('loginBtn').onclick = () => signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value).catch(() => alert("Błąd!"));
         document.getElementById('logoutBtn').onclick = () => signOut(auth).then(() => location.reload());
     </script>
