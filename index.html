@@ -58,14 +58,16 @@
                 <button onclick="switchOdczynnikiSubTab('Wzorce')" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
                 <button onclick="switchOdczynnikiSubTab('Odczynniki')" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
             </div>
-            <div id="alertBox" class="hidden mb-4 p-3 rounded-lg border text-[10px] text-left bg-orange-50 border-orange-200 text-orange-800"></div>
+            
+            <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
+
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
                 <div id="dynamicItemsContainer" class="space-y-4"></div>
                 <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
                     <button onclick="addFormRow()" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase">+ Dodaj kolejną pozycję</button>
                     <div class="flex gap-2">
-                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase">Zapisz wszystko</button>
+                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase shadow-md">Zapisz wszystko</button>
                         <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
                     </div>
                 </div>
@@ -76,9 +78,9 @@
         <div id="tabContentWoda" class="hidden space-y-4 text-left">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
                 <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
-                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
+                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
             </div>
             <div id="subContentWodaArchiwalna" class="space-y-4">
                 <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
@@ -211,7 +213,12 @@
                 let itemsHtml = group.items.map(item => {
                     const exp = item.expiry ? new Date(item.expiry) : null;
                     const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
-                    if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alertItems.push({ g: item.group, n: item.name });
+                    
+                    // LOGIKA ALERTÓW (Zmieniona)
+                    if (diff !== null && diff <= 30 && diff >= 0) {
+                        alertItems.push({ g: item.group, n: item.name, ordered: item.ordered });
+                    }
+
                     const dCol = (diff !== null && diff < 0) ? "text-red-600" : ((diff !== null && diff <= 30) ? "text-orange-500 font-bold" : "text-black font-semibold");
                     const suffix = item.group.includes('/') ? '/' + item.group.split('/')[1] : '•';
                     return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px]"><div class="flex items-center gap-3"><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col"><span class="text-black text-[9px] uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-black text-[8px] italic">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
@@ -229,8 +236,20 @@
                 groupLP++;
             });
 
+            // RENDEROWANIE ALERTÓW (Nowa Logika)
             const ab = document.getElementById('alertBox');
-            if (alertItems.length > 0) { ab.innerHTML = alertItems.map(i => `• [${i.g}] ${i.n}`).join('<br>'); ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
+            if (alertItems.length > 0) { 
+                ab.innerHTML = alertItems.map(i => {
+                    if (i.ordered) {
+                        return `<div class="bg-green-100 border border-green-200 text-green-800 p-2 rounded shadow-sm flex items-center gap-2"><span class="text-[14px]">✅</span><span>[${i.g}] ${i.n} - <b>ZAMÓWIONO</b></span></div>`;
+                    } else {
+                        return `<div class="bg-orange-100 border border-orange-200 text-orange-800 p-2 rounded shadow-sm flex items-center gap-2"><span class="text-[14px]">⚠️</span><span>[${i.g}] ${i.n}</span></div>`;
+                    }
+                }).join('');
+                ab.classList.remove('hidden');
+            } else { 
+                ab.classList.add('hidden'); 
+            }
         }
 
         window.addItem = async () => {
@@ -278,7 +297,7 @@
                     const t = dSnap.data(), dDate = t.doneDate ? new Date(t.doneDate) : null, isY = dDate && dDate.getFullYear() === curY, isM = isY && dDate.getMonth() === curM, key = `${t.lab}${t.category}`;
                     if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
                     const div = document.createElement('div'); div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2 text-[11px]`;
-                    div.innerHTML = `<div class="flex flex-col"><span class="font-bold">${t.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleTask('${dSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteTask('${dSnap.id}')">✕</button></div>`;
+                    div.innerHTML = `<div class="flex flex-col"><span class="font-bold">${t.name}</span>${isY ? `<span class="text-[9px] text-green-600 font-bold uppercase mt-1">Wykonano: ${t.doneDate}</span>` : ''}</div><div class="flex gap-4"><button onclick="toggleTask('${dSnap.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button deleteTask('${dSnap.id}')">✕</button></div>`;
                     const listEl = document.getElementById(`taskList${t.lab.charAt(0).toUpperCase() + t.lab.slice(1)}${t.category}`); if(listEl) listEl.appendChild(div);
                 });
                 Object.keys(stats).forEach(key => {
