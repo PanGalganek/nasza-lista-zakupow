@@ -191,40 +191,42 @@
             container.innerHTML = ""; let alertItems = [];
             const filtered = odczynnikiCache.filter(item => (item.category || 'Wzorce') === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === 'Wzorce' && item.category === 'Standardowe'));
 
-            // LOGIKA GRUPOWANIA I SORTOWANIA NATURALNEGO
             const groups = filtered.reduce((acc, item) => {
                 const prefix = (item.group || 'Inne').split('/')[0];
                 if (!acc[prefix]) acc[prefix] = { prefix, items: [], name: item.name };
                 acc[prefix].items.push(item); return acc;
             }, {});
 
-            // Sortowanie grup (II-2 przed II-10)
-            const sortedGroupKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+            const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
-            let globalLP = 1;
+            let groupLP = 1;
 
-            sortedGroupKeys.forEach(key => {
+            sortedKeys.forEach(key => {
                 const group = groups[key];
                 const groupCard = document.createElement('div');
                 groupCard.className = "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden";
                 
-                // Sortowanie butelek wewnątrz grupy (/01 przed /10)
                 group.items.sort((a, b) => a.group.localeCompare(b.group, undefined, { numeric: true }));
 
                 let itemsHtml = group.items.map(item => {
                     const exp = item.expiry ? new Date(item.expiry) : null;
                     const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
                     if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alertItems.push({ g: item.group, n: item.name });
-                    const dCol = (diff !== null && diff < 0) ? "text-red-600" : ((diff !== null && diff <= 30) ? "text-orange-500 font-bold" : "text-black");
+                    const dCol = (diff !== null && diff < 0) ? "text-red-600" : ((diff !== null && diff <= 30) ? "text-orange-500 font-bold" : "text-black font-semibold");
                     const suffix = item.group.includes('/') ? '/' + item.group.split('/')[1] : '•';
-                    
-                    const html = `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px]"><div class="flex items-center gap-3"><span class="font-black text-blue-600 w-10">LP ${globalLP}</span><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col"><span class="text-black text-[9px] uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-black text-[8px] italic">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
-                    globalLP++;
-                    return html;
+                    return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px]"><div class="flex items-center gap-3"><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col"><span class="text-black text-[9px] uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-black text-[8px] italic">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
                 }).join('');
 
-                groupCard.innerHTML = `<div class="bg-gray-100 px-4 py-2 border-b flex justify-between items-center"><span class="font-black text-gray-700 uppercase text-xs">${group.prefix}</span><span class="text-[10px] font-bold text-black truncate ml-4 uppercase">${group.name}</span></div>${itemsHtml}`;
+                groupCard.innerHTML = `
+                    <div class="bg-gray-100 px-4 py-2 border-b flex items-center gap-3">
+                        <span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">LP ${groupLP}</span>
+                        <div class="flex items-center gap-2 overflow-hidden">
+                            <span class="font-black text-black uppercase text-xs truncate">${group.name}</span>
+                            <span class="font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300">${group.prefix}</span>
+                        </div>
+                    </div>${itemsHtml}`;
                 container.appendChild(groupCard);
+                groupLP++;
             });
 
             const ab = document.getElementById('alertBox');
