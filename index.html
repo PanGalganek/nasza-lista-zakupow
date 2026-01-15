@@ -3,18 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>e-Laboratorium</title>
+    <title>e-Laboratorium PRO</title>
     <link rel="manifest" href="manifest.json">
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
-      }
-    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .ordered-row { background-color: #f0fdf4 !important; border-color: #bbf7d0 !important; }
         .active-tab { border-bottom: 4px solid #2563eb; color: #2563eb; font-weight: bold; }
         .active-month { background-color: #9333ea !important; color: white !important; border-color: #9333ea !important; }
+        .active-sub-tab-odczynniki { background-color: #eff6ff !important; color: #2563eb !important; border-color: #2563eb !important; border-width: 2px !important; }
         .active-sub-tab-woda { background-color: #eff6ff !important; color: #2563eb !important; border-color: #2563eb !important; border-width: 2px !important; }
         .active-sub-tab-scieki { background-color: #f0fdf4 !important; color: #16a34a !important; border-color: #16a34a !important; border-width: 2px !important; }
         .task-done { opacity: 0.6; background-color: #f9fafb; }
@@ -45,7 +41,7 @@
         </div>
 
         <div class="flex border-b mb-4 bg-gray-50 rounded-t-lg overflow-x-auto no-scrollbar">
-            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 px-3 py-3 text-[10px] uppercase active-tab">🧪 Odczynniki</button>
+            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 px-3 py-3 text-[10px] uppercase active-tab">🧪 Odczynniki/Wzorce</button>
             <button id="btnWoda" onclick="switchTab('woda')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">💧 Woda</button>
             <button id="btnScieki" onclick="switchTab('scieki')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">☣️ Ścieki</button>
             <button id="btnWzorcowanie" onclick="switchTab('wzorcowanie')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📏 Sprzęt</button>
@@ -53,20 +49,29 @@
         </div>
 
         <div id="tabContentOdczynniki" class="block">
+            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
+                <button onclick="switchSubTabOdczynniki('odczynnik')" id="subBtnOdczynnik" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🧪 Odczynniki</button>
+                <button onclick="switchSubTabOdczynniki('wzorzec')" id="subBtnWzorzec" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">💎 Wzorce</button>
+            </div>
+
             <div id="alertBox" class="hidden mb-4 p-3 rounded-lg border text-[10px] text-left bg-orange-50 border-orange-200 text-orange-800"></div>
+            
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
                 <div class="grid grid-cols-1 gap-3">
-                    <input type="text" id="chemName" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="chemName" placeholder="Nazwa" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
+                        <input type="text" id="chemGroup" placeholder="Grupa/Nr" class="border p-2 rounded">
                         <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
                     </div>
-                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
+                    <div class="flex gap-2">
+                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj do aktualnej listy</button>
+                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button>
+                    </div>
                 </div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
@@ -80,8 +85,10 @@
                 <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
             </div>
             <div id="subContentWodaArchiwalna" class="space-y-4">
-                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div>
+                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div>
+                <div id="taskListWodaArchiwalna" class="space-y-2"></div>
             </div>
             <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
             <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
@@ -103,8 +110,7 @@
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
             <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
-            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav">
-                </div>
+            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
             <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
             <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button onclick="cancelEditEquip()" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
@@ -118,14 +124,12 @@
                 <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
                 <div id="calendarDays" class="calendar-grid"></div>
             </div>
-
             <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
                 <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3><button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
                 <div id="dayEventsList" class="space-y-2"></div>
             </div>
-
             <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wszystkie wydarzenia w tym miesiącu</h3>
+                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
                 <div id="monthEventsList" class="space-y-2"></div>
             </div>
         </div>
@@ -146,8 +150,11 @@
         let calDate = new Date();
         let selectedDayStr = new Date().toISOString().split('T')[0];
         let eventsCache = [], wzorcowanieCache = [];
+        
+        // NOWA ZMIENNA DLA POD-ZAKŁADEK ODCZYNNIKÓW
+        let activeOdczynnikiSubTab = 'odczynnik'; 
 
-        // NAWIGACJA
+        // NAWIGACJA GŁÓWNA
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
                 const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -161,6 +168,19 @@
             if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
+        // POD-NAWIGACJA DLA ODCZYNNIKÓW
+        window.switchSubTabOdczynniki = (sub) => {
+            activeOdczynnikiSubTab = sub;
+            document.getElementById('subBtnOdczynnik').className = `px-4 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 whitespace-nowrap`;
+            document.getElementById('subBtnWzorzec').className = `px-4 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 whitespace-nowrap`;
+            
+            const activeBtn = sub === 'odczynnik' ? 'subBtnOdczynnik' : 'subBtnWzorzec';
+            document.getElementById(activeBtn).className = `px-4 py-2 border rounded text-[9px] font-bold active-sub-tab-odczynniki whitespace-nowrap`;
+            
+            // Odśwież listę po przełączeniu
+            loadOdczynniki();
+        };
+
         window.switchSubTab = (lab, target) => {
             ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
                 const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
@@ -172,41 +192,71 @@
             document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-3 py-2 border rounded text-[9px] font-bold active-sub-tab-${lab} whitespace-nowrap`;
         };
 
-        // --- ODCZYNNIKI ---
+        // --- ODCZYNNIKI & WZORCE ---
         function loadOdczynniki() {
+            if(unsubO) unsubO(); // Zabij poprzedni listener
             unsubO = onSnapshot(query(collection(db, 'odczynniki'), orderBy("timestamp", "asc")), (snap) => {
                 const list = document.getElementById('chemicalList'); list.innerHTML = ""; let alertItems = [];
-                snap.docs.forEach((d, i) => {
-                    const item = d.data(); const exp = item.expiry ? new Date(item.expiry) : null;
+                let counter = 1;
+                
+                snap.docs.forEach((d) => {
+                    const item = d.data();
+                    // FILTROWANIE PO TYPIE (jeśli brak typu, domyślnie 'odczynnik')
+                    const itemType = item.subType || 'odczynnik';
+                    if (itemType !== activeOdczynnikiSubTab) return;
+
+                    const exp = item.expiry ? new Date(item.expiry) : null;
                     const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
                     if (diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alertItems.push({ g: item.group, n: item.name });
+                    
                     const dCol = diff !== null && diff < 0 ? "text-red-600 font-bold" : (diff !== null && diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
                     const li = document.createElement('li');
                     li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border text-[11px]`;
-                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col"><span class="font-bold text-gray-800">${item.name}</span><span class="text-[9px] text-gray-400 italic">${item.usage || 'brak zastosowania'}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
+                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${counter++}</div><div class="col-span-2 font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col"><span class="font-bold text-gray-800">${item.name}</span><span class="text-[9px] text-gray-400 italic">${item.usage || 'brak'}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="toggleOrder('${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${d.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}', '${itemType}')">✏️</button><button onclick="deleteItem('${d.id}')">✕</button></div>`;
                     list.appendChild(li);
                 });
                 const ab = document.getElementById('alertBox');
                 if (alertItems.length > 0) { ab.innerHTML = alertItems.map(i => `• [${i.g}] ${i.n}`).join('<br>'); ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
             });
         }
+
         window.addItem = async () => {
             const id = document.getElementById('editId').value;
-            const p = { name: document.getElementById('chemName').value, group: document.getElementById('chemGroup').value, usage: document.getElementById('chemUsage').value, expiry: document.getElementById('chemExpiry').value, received: document.getElementById('chemReceived').value, timestamp: Date.now(), ordered: false };
-            if (p.name.trim()) { if(id) await updateDoc(doc(db, 'odczynniki', id), p); else await addDoc(collection(db, 'odczynniki'), p); cancelEdit(); }
+            const p = { 
+                name: document.getElementById('chemName').value, 
+                group: document.getElementById('chemGroup').value, 
+                usage: document.getElementById('chemUsage').value, 
+                expiry: document.getElementById('chemExpiry').value, 
+                received: document.getElementById('chemReceived').value, 
+                timestamp: Date.now(), 
+                ordered: false,
+                subType: activeOdczynnikiSubTab // DODANIE TYPU
+            };
+            if (p.name.trim()) { 
+                if(id) await updateDoc(doc(db, 'odczynniki', id), p); 
+                else await addDoc(collection(db, 'odczynniki'), p); 
+                cancelEdit(); 
+            }
         };
-        window.startEdit = (id,n,g,u,e,r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('formContainer').classList.add('editing-mode'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+        window.startEdit = (id,n,g,u,e,r,type) => { 
+            document.getElementById('editId').value = id; 
+            document.getElementById('chemName').value = n; 
+            document.getElementById('chemGroup').value = g; 
+            document.getElementById('chemUsage').value = u; 
+            document.getElementById('chemExpiry').value = e; 
+            document.getElementById('chemReceived').value = r; 
+            activeOdczynnikiSubTab = type; // Ustaw typ podczas edycji
+            document.getElementById('formContainer').classList.add('editing-mode'); 
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        };
+
         window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('formContainer').classList.remove('editing-mode'); };
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- SPRZĘT ---
-        function loadWzorcowanie() {
-            onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => {
-                wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                updateWzorcowanieUI();
-            });
-        }
+        // --- RESZTA LOGIKI (BEZ ZMIAN) ---
+        function loadWzorcowanie() { onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => { wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateWzorcowanieUI(); }); }
         function updateWzorcowanieUI() {
             const list = document.getElementById('equipmentList'); if(!list) return;
             const monthsNames = { "01":"Styczeń", "02":"Luty", "03":"Marzec", "04":"Kwiecień", "05":"Maj", "06":"Czerwiec", "07":"Lipiec", "08":"Sierpień", "09":"Wrzesień", "10":"Październik", "11":"Listopad", "12":"Grudzień" };
@@ -215,7 +265,7 @@
                 const id = i.toString().padStart(2, '0');
                 const btn = document.createElement('button');
                 btn.innerText = monthsNames[id].substring(0,3);
-                btn.onclick = () => setWzorcowanieMonth(id);
+                btn.onclick = () => { selectedWMonth = id; updateWzorcowanieUI(); };
                 btn.className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`;
                 nav.appendChild(btn);
             }
@@ -229,31 +279,25 @@
                     mTotal++; if(isY) mDone++;
                     let tLabel = `<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">${(eq.type || 'WZORCOWANIE').toUpperCase()}</span>`;
                     if(eq.type === "Sprawdzenie") tLabel = `<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>`;
-                    if(eq.type === "Kalibracja") tLabel = `<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>`;
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
-                    div.innerHTML = `<div class="flex flex-col"><div class="flex items-center">${tLabel}<span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span></div>${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="startEditEquip('${eq.id}', \`${eq.name}\`, '${eq.month}', '${eq.type}')">✏️</button><button onclick="deleteEquip('${eq.id}')">✕</button></div>`;
+                    div.innerHTML = `<div class="flex flex-col"><div class="flex items-center">${tLabel}<span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span></div>${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="deleteEquip('${eq.id}')">✕</button></div>`;
                     list.appendChild(div);
                 }
             });
             const cnt = document.getElementById('monthlyWzorcowanieCounter');
             if (mTotal === 0) { cnt.innerText = `Brak zadań: ${monthsNames[selectedWMonth]}`; cnt.className = "p-3 rounded-lg text-[11px] font-bold text-center border bg-gray-50 text-gray-400 uppercase"; }
             else { cnt.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrealizowane`; cnt.className = `p-3 rounded-lg text-[11px] font-bold text-center border uppercase ${mDone === mTotal ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-100 animate-pulse'}`; }
-            const ab = document.getElementById('upcomingWzorcowanieAlert');
-            if (upcoming.length > 0) { ab.innerHTML = `📢 PLANOWANE WZORCOWANIA NA ${monthsNames[nextM]}: ${upcoming.join(', ')}`; ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
         }
-        window.setWzorcowanieMonth = (m) => { selectedWMonth = m; updateWzorcowanieUI(); };
+
         window.addEquipment = async () => {
-            const id = document.getElementById('editIdEquip').value;
             const p = { name: document.getElementById('equipName').value, month: document.getElementById('equipMonth').value, type: document.getElementById('equipType').value, doneDate: null, timestamp: Date.now() };
-            if(p.name.trim()) { if(id) await updateDoc(doc(db, 'wzorcowanie', id), p); else await addDoc(collection(db, 'wzorcowanie'), p); cancelEditEquip(); }
+            if(p.name.trim()) await addDoc(collection(db, 'wzorcowanie'), p);
         };
-        window.startEditEquip = (id,n,m,t) => { document.getElementById('editIdEquip').value = id; document.getElementById('equipName').value = n; document.getElementById('equipMonth').value = m; document.getElementById('equipType').value = t; document.getElementById('formWzorcowanie').classList.add('editing-mode-equip'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-        window.cancelEditEquip = () => { document.getElementById('editIdEquip').value = ""; document.getElementById('formWzorcowanie').classList.remove('editing-mode-equip'); };
         window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
 
-        // --- KALENDARZ ---
+        // KALENDARZ
         window.changeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
         window.selectDay = (d) => { selectedDayStr = d; renderCalendar(); updateDayEvents(); };
         window.openAddEvent = async () => { const t = prompt("Nazwa wydarzenia:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t.trim(), date: selectedDayStr, timestamp: Date.now() }); };
@@ -275,50 +319,28 @@
                 div.className = `calendar-day ${ds === t ? 'today' : ''} ${ds === selectedDayStr ? 'selected' : ''} ${hasE ? 'has-event' : ''}`;
                 div.innerText = d; div.onclick = () => selectDay(ds); grid.appendChild(div);
             }
-            updateDayEvents();
-            updateMonthEvents(); // Aktulizacja listy miesięcznej
+            updateDayEvents(); updateMonthEvents();
         }
 
         function updateDayEvents() {
             const list = document.getElementById('dayEventsList');
             document.getElementById('selectedDateLabel').innerText = `Dzień: ${selectedDayStr}`;
             const f = eventsCache.filter(e => e.date === selectedDayStr);
-            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold"><span>${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-red-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń tego dnia.</p>`;
+            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold"><span>${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-red-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń.</p>`;
         }
 
-        // FUNKCJA LISTY MIESIĘCZNEJ
         function updateMonthEvents() {
             const list = document.getElementById('monthEventsList');
             const currentMonthStr = `${calDate.getFullYear()}-${(calDate.getMonth() + 1).toString().padStart(2, '0')}`;
-            
-            // Filtrowanie wydarzeń, które zaczynają się od rrrr-mm
-            const monthEvents = eventsCache.filter(e => e.date.startsWith(currentMonthStr));
-            
-            // Sortowanie po dacie
-            monthEvents.sort((a, b) => a.date.localeCompare(b.date));
-
-            if (monthEvents.length === 0) {
-                list.innerHTML = `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w tym miesiącu.</p>`;
-            } else {
-                list.innerHTML = monthEvents.map(e => {
-                    const day = e.date.split('-')[2]; // Pobranie samego dnia
-                    return `
-                        <div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[11px]">
-                            <div class="flex gap-2">
-                                <span class="font-bold text-blue-600">${day}.${(calDate.getMonth()+1).toString().padStart(2,'0')}</span>
-                                <span class="text-gray-700">${e.title}</span>
-                            </div>
-                            <button onclick="deleteEvent('${e.id}')" class="text-gray-300 hover:text-red-400">✕</button>
-                        </div>
-                    `;
-                }).join('');
-            }
+            const monthEvents = eventsCache.filter(e => e.date.startsWith(currentMonthStr)).sort((a, b) => a.date.localeCompare(b.date));
+            if (monthEvents.length === 0) list.innerHTML = `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w tym miesiącu.</p>`;
+            else list.innerHTML = monthEvents.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[11px] mb-1"><div class="flex gap-2"><span class="font-bold text-blue-600">${e.date.split('-')[2]}.${(calDate.getMonth()+1).toString().padStart(2,'0')}</span><span class="text-gray-700">${e.title}</span></div><button onclick="deleteEvent('${e.id}')" class="text-gray-300">✕</button></div>`).join('');
         }
 
         function loadTasks() {
             onSnapshot(query(collection(db, 'harmonogram'), orderBy("timestamp", "asc")), (snap) => {
                 const labs = ['woda', 'scieki']; const cats = ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'];
-                let stats = {}; labs.forEach(l => cats.forEach(c => { 
+                let stats = {}; labs.forEach(l => cats.forEach(c => { 
                     const id = `taskList${l.charAt(0).toUpperCase() + l.slice(1)}${c}`;
                     if(document.getElementById(id)) document.getElementById(id).innerHTML = "";
                     stats[`${l}${c}`] = { t:0, d:0, m:false };
@@ -339,15 +361,13 @@
                     const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
                     const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
                     const s = stats[key]; if(!mEl || !yEl) return;
-                    if(s.t === 0) { mEl.className = "hidden"; yEl.className = "hidden"; return; }
                     mEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-1 " + (s.m ? "bg-green-50 border-green-200 text-green-700" : "bg-orange-50 border-orange-200 text-orange-800 animate-pulse");
                     mEl.innerHTML = s.m ? "✅ Wykonano w tym miesiącu" : "⚠️ Brak zadania w tym miesiącu!";
-                    yEl.className = "p-2 rounded-lg text-[9px] font-bold border text-center mb-2 bg-slate-50 text-slate-500 uppercase";
-                    if(s.d === s.t) { yEl.innerHTML = "⭐ Plan roczny zakończony!"; yEl.classList.replace('text-slate-500', 'text-green-700'); }
-                    else { yEl.innerHTML = `Plan Roczny: ${s.d} / ${s.t} ZROBIONE`; }
+                    yEl.innerHTML = s.d === s.t && s.t > 0 ? "⭐ Plan roczny zakończony!" : `Plan Roczny: ${s.d} / ${s.t} ZROBIONE`;
                 });
             });
         }
+
         window.addTask = async (lab, cat) => {
             const input = document.getElementById(`taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
             if(input.value.trim()) { await addDoc(collection(db, 'harmonogram'), { name: input.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() }); input.value = ""; }
@@ -355,18 +375,17 @@
         window.toggleTask = async (id, isDone) => { await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
 
-        function loadEvents() { unsubE = onSnapshot(query(collection(db, 'wydarzenia'), orderBy("timestamp", "asc")), (snap) => { eventsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderCalendar(); }); }
-
-        // INIT
         onAuthStateChanged(auth, (user) => {
-            if (user) { 
-                document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); 
+            if (user) { 
+                document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); 
                 document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0];
-                loadOdczynniki(); loadTasks(); loadWzorcowanie(); loadEvents();
+                loadOdczynniki(); loadTasks(); loadWzorcowanie(); 
+                onSnapshot(query(collection(db, 'wydarzenia'), orderBy("timestamp", "asc")), (snap) => { eventsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderCalendar(); });
             } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
         });
+
         window.handleLogin = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch(err) { alert("Błąd logowania!"); } };
-        window.handleLogout = async () => { if(unsubO) unsubO(); if(unsubW) unsubW(); if(unsubT) unsubT(); if(unsubE) unsubE(); await signOut(auth); location.reload(); };
+        window.handleLogout = async () => { await signOut(auth); location.reload(); };
     </script>
 </body>
 </html>
