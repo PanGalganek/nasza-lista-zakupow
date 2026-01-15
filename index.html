@@ -63,7 +63,9 @@
             
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
-                <div class="grid grid-cols-1 gap-3">
+                
+                <div id="item1Container" class="space-y-3">
+                    <div class="text-[10px] font-bold text-blue-600 uppercase border-b border-blue-200 pb-1 mb-2">Pozycja 1</div>
                     <input type="text" id="chemName" placeholder="Nazwa" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
@@ -73,8 +75,22 @@
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived" class="border p-2 rounded"></div>
                         <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry" class="border p-2 rounded"></div>
                     </div>
-                    <div class="flex gap-2"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm">Dodaj do listy</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
                 </div>
+
+                <div id="item2Container" class="mt-6 pt-4 border-t-2 border-dashed border-blue-200 space-y-3">
+                    <div class="text-[10px] font-bold text-blue-400 uppercase border-b border-blue-100 pb-1 mb-2">Pozycja 2 (Opcjonalnie)</div>
+                    <input type="text" id="chemName2" placeholder="Nazwa (zostaw puste aby nie dodawać)" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="chemGroup2" placeholder="Grupa" class="border p-2 rounded">
+                        <input type="text" id="chemUsage2" placeholder="Zastosowanie" class="border p-2 rounded">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex flex-col"><label class="text-[9px] font-bold text-gray-500 uppercase ml-1">Data przyjęcia:</label><input type="date" id="chemReceived2" class="border p-2 rounded"></div>
+                        <div class="flex flex-col"><label class="text-[9px] font-bold text-red-400 uppercase ml-1">Data ważności:</label><input type="date" id="chemExpiry2" class="border p-2 rounded"></div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-4"><button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase">Zapisz / Dodaj</button><button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-4 rounded-lg">Anuluj</button></div>
             </div>
             <ul id="chemicalList" class="space-y-3 text-left"></ul>
         </div>
@@ -150,9 +166,8 @@
         let calDate = new Date();
         let selectedDayStr = new Date().toISOString().split('T')[0];
         let eventsCache = [], wzorcowanieCache = [], odczynnikiCache = [];
-        let currentOdczynnikiSubTab = 'Wzorce'; // Domyślnie nowa nazwa
+        let currentOdczynnikiSubTab = 'Wzorce';
 
-        // NAWIGACJA
         window.switchTab = (target) => {
             ['odczynniki', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
                 const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
@@ -186,7 +201,6 @@
             renderOdczynniki();
         };
 
-        // --- ODCZYNNIKI ---
         function loadOdczynniki() {
             unsubO = onSnapshot(query(collection(db, 'odczynniki'), orderBy("timestamp", "asc")), (snap) => {
                 odczynnikiCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -196,14 +210,11 @@
 
         function renderOdczynniki() {
             const list = document.getElementById('chemicalList'); list.innerHTML = ""; let alertItems = [];
-            
             const filtered = odczynnikiCache.filter(item => {
-                // Mapowanie starej kategorii 'Standardowe' na nową 'Wzorce' dla ciągłości danych
                 let cat = item.category || 'Wzorce';
                 if (cat === 'Standardowe') cat = 'Wzorce'; 
                 return cat === currentOdczynnikiSubTab;
             });
-
             filtered.forEach((item, i) => {
                 const exp = item.expiry ? new Date(item.expiry) : null;
                 const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
@@ -214,28 +225,80 @@
                 li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 uppercase truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col"><span class="font-bold text-gray-800">${item.name}</span><span class="text-[9px] text-gray-400 italic">${item.usage || 'brak zastosowania'}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div>`;
                 list.appendChild(li);
             });
-
             const ab = document.getElementById('alertBox');
             if (alertItems.length > 0) { ab.innerHTML = alertItems.map(i => `• [${i.g}] ${i.n}`).join('<br>'); ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
         }
 
         window.addItem = async () => {
             const id = document.getElementById('editId').value;
-            const p = { 
-                name: document.getElementById('chemName').value, 
-                group: document.getElementById('chemGroup').value, 
-                usage: document.getElementById('chemUsage').value, 
+            
+            // Pobranie danych pozycji 1
+            const p1 = { 
+                name: document.getElementById('chemName').value.trim(), 
+                group: document.getElementById('chemGroup').value.trim(), 
+                usage: document.getElementById('chemUsage').value.trim(), 
                 expiry: document.getElementById('chemExpiry').value, 
                 received: document.getElementById('chemReceived').value, 
                 timestamp: Date.now(), 
                 ordered: false,
                 category: currentOdczynnikiSubTab
             };
-            if (p.name.trim()) { if(id) await updateDoc(doc(db, 'odczynniki', id), p); else await addDoc(collection(db, 'odczynniki'), p); cancelEdit(); }
+
+            // Pobranie danych pozycji 2
+            const p2Name = document.getElementById('chemName2').value.trim();
+            const p2 = {
+                name: p2Name,
+                group: document.getElementById('chemGroup2').value.trim(),
+                usage: document.getElementById('chemUsage2').value.trim(),
+                expiry: document.getElementById('chemExpiry2').value,
+                received: document.getElementById('chemReceived2').value,
+                timestamp: Date.now() + 1, // małe przesunięcie aby zachować kolejność
+                ordered: false,
+                category: currentOdczynnikiSubTab
+            };
+
+            if (p1.name) {
+                if (id) {
+                    await updateDoc(doc(db, 'odczynniki', id), p1);
+                } else {
+                    await addDoc(collection(db, 'odczynniki'), p1);
+                    // Jeśli nie jesteśmy w trybie edycji, sprawdzamy czy dodać drugą pozycję
+                    if (p2Name) {
+                        await addDoc(collection(db, 'odczynniki'), p2);
+                    }
+                }
+                cancelEdit();
+            } else {
+                alert("Nazwa pozycji 1 jest wymagana!");
+            }
         };
 
-        window.startEdit = (id,n,g,u,e,r) => { document.getElementById('editId').value = id; document.getElementById('chemName').value = n; document.getElementById('chemGroup').value = g; document.getElementById('chemUsage').value = u; document.getElementById('chemExpiry').value = e; document.getElementById('chemReceived').value = r; document.getElementById('formContainer').classList.add('editing-mode'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
-        window.cancelEdit = () => { document.getElementById('editId').value = ""; document.getElementById('formContainer').classList.remove('editing-mode'); document.getElementById('chemName').value = ""; document.getElementById('chemGroup').value = ""; document.getElementById('chemUsage').value = ""; document.getElementById('chemExpiry').value = ""; };
+        window.startEdit = (id,n,g,u,e,r) => { 
+            document.getElementById('editId').value = id; 
+            document.getElementById('chemName').value = n; 
+            document.getElementById('chemGroup').value = g; 
+            document.getElementById('chemUsage').value = u; 
+            document.getElementById('chemExpiry').value = e; 
+            document.getElementById('chemReceived').value = r; 
+            document.getElementById('item2Container').classList.add('hidden'); // Ukrywamy drugą pozycję przy edycji
+            document.getElementById('formContainer').classList.add('editing-mode'); 
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
+        };
+
+        window.cancelEdit = () => { 
+            document.getElementById('editId').value = ""; 
+            document.getElementById('formContainer').classList.remove('editing-mode'); 
+            document.getElementById('item2Container').classList.remove('hidden');
+            // Czyścimy oba formularze
+            ['', '2'].forEach(suffix => {
+                document.getElementById('chemName'+suffix).value = "";
+                document.getElementById('chemGroup'+suffix).value = "";
+                document.getElementById('chemUsage'+suffix).value = "";
+                document.getElementById('chemExpiry'+suffix).value = "";
+                document.getElementById('chemReceived'+suffix).value = new Date().toISOString().split('T')[0];
+            });
+        };
+
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
@@ -261,9 +324,7 @@
                 if ((eq.type === "Wzorcowanie" || !eq.type) && eq.month === nextM && !isY) upcoming.push(eq.name);
                 if (eq.month === selectedWMonth) {
                     mTotal++; if(isY) mDone++;
-                    let tLabel = `<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1">${(eq.type || 'WZORCOWANIE').toUpperCase()}</span>`;
-                    if(eq.type === "Sprawdzenie") tLabel = `<span class="text-[8px] bg-blue-100 text-blue-700 px-1 rounded mr-1">SPRAWDZENIE</span>`;
-                    if(eq.type === "Kalibracja") tLabel = `<span class="text-[8px] bg-emerald-100 text-emerald-700 px-1 rounded mr-1">KALIBRACJA</span>`;
+                    let tLabel = `<span class="text-[8px] bg-purple-100 text-purple-700 px-1 rounded mr-1 uppercase">${(eq.type || 'WZORCOWANIE')}</span>`;
                     const div = document.createElement('div');
                     div.className = `flex justify-between items-center p-3 border rounded-lg ${isY ? 'task-done' : 'bg-white shadow-sm'} mb-2`;
                     div.innerHTML = `<div class="flex flex-col"><div class="flex items-center">${tLabel}<span class="text-sm ${isY ? 'line-through text-gray-400' : 'font-semibold'}">${eq.name}</span></div>${isY ? `<span class="text-[9px] text-green-600 font-bold mt-1 uppercase">Wykonano: ${eq.doneDate}</span>` : ''}</div><div class="flex gap-3"><button onclick="toggleEquip('${eq.id}', ${isY})" class="text-xl">${isY ? '✅' : '⬜'}</button><button onclick="startEditEquip('${eq.id}', \`${eq.name}\`, '${eq.month}', '${eq.type}')">✏️</button><button onclick="deleteEquip('${eq.id}')">✕</button></div>`;
@@ -271,8 +332,8 @@
                 }
             });
             const cnt = document.getElementById('monthlyWzorcowanieCounter');
-            if (mTotal === 0) { cnt.innerText = `Brak zadań: ${monthsNames[selectedWMonth]}`; cnt.className = "p-3 rounded-lg text-[11px] font-bold text-center border bg-gray-50 text-gray-400 uppercase"; }
-            else { cnt.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrealizowane`; cnt.className = `p-3 rounded-lg text-[11px] font-bold text-center border uppercase ${mDone === mTotal ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-100 animate-pulse'}`; }
+            if (mTotal === 0) { cnt.className = "p-3 rounded-lg text-[11px] font-bold text-center border bg-gray-50 text-gray-400 uppercase"; cnt.innerText = `Brak zadań: ${monthsNames[selectedWMonth]}`; }
+            else { cnt.className = `p-3 rounded-lg text-[11px] font-bold text-center border uppercase ${mDone === mTotal ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-50 text-red-600 border-red-100 animate-pulse'}`; cnt.innerText = `${monthsNames[selectedWMonth]}: ${mDone} z ${mTotal} zrealizowane`; }
             const ab = document.getElementById('upcomingWzorcowanieAlert');
             if (upcoming.length > 0) { ab.innerHTML = `📢 PLANOWANE WZORCOWANIA NA ${monthsNames[nextM]}: ${upcoming.join(', ')}`; ab.classList.remove('hidden'); } else { ab.classList.add('hidden'); }
         }
@@ -292,7 +353,6 @@
         window.selectDay = (d) => { selectedDayStr = d; renderCalendar(); updateDayEvents(); };
         window.openAddEvent = async () => { const t = prompt("Nazwa wydarzenia:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t.trim(), date: selectedDayStr, timestamp: Date.now() }); };
         window.deleteEvent = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wydarzenia', id)); };
-        
         function renderCalendar() {
             const grid = document.getElementById('calendarDays'); const label = document.getElementById('calendarMonthYear');
             const mNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
@@ -309,24 +369,20 @@
                 div.className = `calendar-day ${ds === t ? 'today' : ''} ${ds === selectedDayStr ? 'selected' : ''} ${hasE ? 'has-event' : ''}`;
                 div.innerText = d; div.onclick = () => selectDay(ds); grid.appendChild(div);
             }
-            updateDayEvents();
-            updateMonthEvents();
+            updateDayEvents(); updateMonthEvents();
         }
-
         function updateDayEvents() {
             const list = document.getElementById('dayEventsList');
             document.getElementById('selectedDateLabel').innerText = `Dzień: ${selectedDayStr}`;
             const f = eventsCache.filter(e => e.date === selectedDayStr);
             list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold"><span>${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-red-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń tego dnia.</p>`;
         }
-
         function updateMonthEvents() {
             const list = document.getElementById('monthEventsList');
-            const currentMonthStr = `${calDate.getFullYear()}-${(calDate.getMonth() + 1).toString().padStart(2, '0')}`;
-            const monthEvents = eventsCache.filter(e => e.date.startsWith(currentMonthStr));
-            monthEvents.sort((a, b) => a.date.localeCompare(b.date));
-            if (monthEvents.length === 0) { list.innerHTML = `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w tym miesiącu.</p>`; } 
-            else { list.innerHTML = monthEvents.map(e => { const day = e.date.split('-')[2]; return `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[11px]"><div class="flex gap-2"><span class="font-bold text-blue-600">${day}.${(calDate.getMonth()+1).toString().padStart(2,'0')}</span><span class="text-gray-700">${e.title}</span></div><button onclick="deleteEvent('${e.id}')" class="text-gray-300 hover:text-red-400">✕</button></div>`; }).join(''); }
+            const monthStr = `${calDate.getFullYear()}-${(calDate.getMonth() + 1).toString().padStart(2, '0')}`;
+            const f = eventsCache.filter(e => e.date.startsWith(monthStr)).sort((a,b) => a.date.localeCompare(b.date));
+            if (!f.length) { list.innerHTML = `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w tym miesiącu.</p>`; }
+            else { list.innerHTML = f.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[11px]"><div class="flex gap-2"><span class="font-bold text-blue-600">${e.date.split('-')[2]}.${(calDate.getMonth()+1).toString().padStart(2,'0')}</span><span class="text-gray-700">${e.title}</span></div><button onclick="deleteEvent('${e.id}')" class="text-gray-300 hover:text-red-400">✕</button></div>`).join(''); }
         }
 
         function loadTasks() {
@@ -371,16 +427,17 @@
 
         function loadEvents() { unsubE = onSnapshot(query(collection(db, 'wydarzenia'), orderBy("timestamp", "asc")), (snap) => { eventsCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); renderCalendar(); }); }
 
-        // INIT
         onAuthStateChanged(auth, (user) => {
             if (user) { 
                 document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); 
-                document.getElementById('chemReceived').value = new Date().toISOString().split('T')[0];
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('chemReceived').value = today;
+                document.getElementById('chemReceived2').value = today;
                 loadOdczynniki(); loadTasks(); loadWzorcowanie(); loadEvents();
             } else { document.getElementById('loginSection').classList.remove('hidden'); document.getElementById('appSection').classList.add('hidden'); }
         });
         window.handleLogin = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); } catch(err) { alert("Błąd logowania!"); } };
-        window.handleLogout = async () => { if(unsubO) unsubO(); if(unsubW) unsubW(); if(unsubT) unsubT(); if(unsubE) unsubE(); await signOut(auth); location.reload(); };
+        window.handleLogout = async () => { if(unsubO) unsubO(); if(unsubE) unsubE(); await signOut(auth); location.reload(); };
     </script>
 </body>
 </html>
