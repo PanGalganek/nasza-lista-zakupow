@@ -55,8 +55,8 @@
 
         <div id="tabContentOdczynniki" class="block">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
-                <button onclick="switchOdczynnikiSubTab('Standardowe')" id="subBtnOdczynnikiStandardowe" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">📦 Standardowe</button>
-                <button onclick="switchOdczynnikiSubTab('Wzorce')" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🎯 Wzorce</button>
+                <button onclick="switchOdczynnikiSubTab('Wzorce')" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
+                <button onclick="switchOdczynnikiSubTab('Odczynniki')" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
             </div>
 
             <div id="alertBox" class="hidden mb-4 p-3 rounded-lg border text-[10px] text-left bg-orange-50 border-orange-200 text-orange-800"></div>
@@ -64,7 +64,7 @@
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
                 <div class="grid grid-cols-1 gap-3">
-                    <input type="text" id="chemName" placeholder="Nazwa odczynnika / wzorca" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="chemName" placeholder="Nazwa" class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-500">
                     <div class="grid grid-cols-2 gap-2">
                         <input type="text" id="chemGroup" placeholder="Grupa" class="border p-2 rounded">
                         <input type="text" id="chemUsage" placeholder="Zastosowanie" class="border p-2 rounded">
@@ -150,7 +150,7 @@
         let calDate = new Date();
         let selectedDayStr = new Date().toISOString().split('T')[0];
         let eventsCache = [], wzorcowanieCache = [], odczynnikiCache = [];
-        let currentOdczynnikiSubTab = 'Standardowe';
+        let currentOdczynnikiSubTab = 'Wzorce'; // Domyślnie nowa nazwa
 
         // NAWIGACJA
         window.switchTab = (target) => {
@@ -179,7 +179,7 @@
 
         window.switchOdczynnikiSubTab = (target) => {
             currentOdczynnikiSubTab = target;
-            ['Standardowe', 'Wzorce'].forEach(sub => {
+            ['Wzorce', 'Odczynniki'].forEach(sub => {
                 const btn = document.getElementById(`subBtnOdczynniki${sub}`);
                 if(btn) btn.className = `px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap ${target === sub ? 'active-sub-tab-odczynniki' : 'bg-white text-gray-500'}`;
             });
@@ -197,9 +197,10 @@
         function renderOdczynniki() {
             const list = document.getElementById('chemicalList'); list.innerHTML = ""; let alertItems = [];
             
-            // Filtrujemy dane - jeśli dokument nie ma pola category, uznajemy go za 'Standardowe'
             const filtered = odczynnikiCache.filter(item => {
-                const cat = item.category || 'Standardowe';
+                // Mapowanie starej kategorii 'Standardowe' na nową 'Wzorce' dla ciągłości danych
+                let cat = item.category || 'Wzorce';
+                if (cat === 'Standardowe') cat = 'Wzorce'; 
                 return cat === currentOdczynnikiSubTab;
             });
 
