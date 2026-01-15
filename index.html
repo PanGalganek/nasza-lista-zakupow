@@ -17,22 +17,21 @@
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
         .calendar-day { min-height: 45px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 1px solid #f3f4f6; position: relative; }
         .calendar-day.today { border: 2px solid #2563eb; font-weight: bold; color: #2563eb; }
-        .calendar-day.selected { background-color: #eff6ff; border-color: #bfdbfe; }
         .has-event::after { content: ''; width: 5px; height: 5px; background-color: #2563eb; border-radius: 50%; position: absolute; bottom: 5px; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center text-left">
 
     <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 Logowanie e-Lab</h2>
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab 2026</h2>
         <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
         <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
-        <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj się</button>
+        <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg hover:bg-blue-700 transition">Zaloguj się</button>
     </div>
 
     <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start">
         <div class="flex justify-between items-center mb-4 px-2">
-            <h1 class="text-lg font-bold text-gray-800 italic">⚗️ e-Lab</h1>
+            <h1 class="text-lg font-bold text-gray-800 italic">⚗️ e-Lab LIMS</h1>
             <button onclick="handleLogout()" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
         </div>
 
@@ -48,7 +47,6 @@
         <div id="tabContentOdczynniki" class="block space-y-4">
             <div id="alertBoxOdczynniki" class="hidden p-3 rounded-lg border text-[10px] bg-orange-50 border-orange-200 text-orange-800"></div>
             <div id="formContainerOdczynniki" class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm">
-                <input type="hidden" id="editIdOdczynniki">
                 <div class="grid grid-cols-1 gap-3">
                     <input type="text" id="nameOdczynniki" placeholder="Nazwa odczynnika" class="w-full border p-2 rounded">
                     <div class="grid grid-cols-2 gap-2">
@@ -57,7 +55,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <input type="date" id="expiryOdczynniki" class="border p-2 rounded">
-                        <button onclick="handleSaveChem('wzorce', 'Odczynniki')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj Odczynnik</button>
+                        <button onclick="handleSaveChem('wzorce', 'Odczynniki')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj</button>
                     </div>
                 </div>
             </div>
@@ -67,7 +65,6 @@
         <div id="tabContentWzorce" class="hidden space-y-4">
             <div id="alertBoxWzorce" class="hidden p-3 rounded-lg border text-[10px] bg-orange-50 border-orange-200 text-orange-800"></div>
             <div id="formContainerWzorce" class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm">
-                <input type="hidden" id="editIdWzorce">
                 <div class="grid grid-cols-1 gap-3">
                     <input type="text" id="nameWzorce" placeholder="Nazwa wzorca" class="w-full border p-2 rounded">
                     <div class="grid grid-cols-2 gap-2">
@@ -76,7 +73,7 @@
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <input type="date" id="expiryWzorce" class="border p-2 rounded">
-                        <button onclick="handleSaveChem('odczynniki', 'Wzorce')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj Wzorzec</button>
+                        <button onclick="handleSaveChem('odczynniki', 'Wzorce')" class="bg-blue-600 text-white font-bold rounded uppercase text-xs">Dodaj</button>
                     </div>
                 </div>
             </div>
@@ -85,55 +82,59 @@
 
         <div id="tabContentWoda" class="hidden space-y-4">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-woda">📦 Archiwalna</button>
+                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
                 <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
                 <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
                 <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
             </div>
-            <div id="subContentWodaArchiwalna" class="space-y-4"><div id="mStatusWodaArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaArchiwalna"></div><div class="flex gap-2"><input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
-            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaSlepa"></div><div class="flex gap-2"><input type="text" id="taskInputWodaSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
-            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaProbkobranie"></div><div class="flex gap-2"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
-            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListWodaPorownania"></div><div class="flex gap-2"><input type="text" id="taskInputWodaPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentWodaArchiwalna" class="space-y-4"><div id="mStatusWodaArchiwalna"></div><div id="yStatusWodaArchiwalna"></div><div id="taskListWodaArchiwalna"></div><div class="flex gap-2"><input type="text" id="taskInputWodaArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa"></div><div id="yStatusWodaSlepa"></div><div id="taskListWodaSlepa"></div><div class="flex gap-2"><input type="text" id="taskInputWodaSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie"></div><div id="yStatusWodaProbkobranie"></div><div id="taskListWodaProbkobranie"></div><div class="flex gap-2"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania"></div><div id="yStatusWodaPorownania"></div><div id="taskListWodaPorownania"></div><div class="flex gap-2"><input type="text" id="taskInputWodaPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 rounded font-bold">+</button></div></div>
         </div>
 
         <div id="tabContentScieki" class="hidden space-y-4">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-scieki">📦 Archiwalna</button>
+                <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
                 <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">⚪ Ślepa</button>
                 <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🧺 Próbkobranie</button>
                 <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500">🤝 Porównanie</button>
             </div>
-            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiArchiwalna"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
-            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiSlepa"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiSlepa" placeholder="Nazwa" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
-            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiProbkobranie"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
-            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 text-[9px] font-bold border rounded text-center"></div><div id="taskListSciekiPorownania"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna"></div><div id="yStatusSciekiArchiwalna"></div><div id="taskListSciekiArchiwalna"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa"></div><div id="yStatusSciekiSlepa"></div><div id="taskListSciekiSlepa"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiSlepa" placeholder="Nazwa oznaczenia" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie"></div><div id="yStatusSciekiProbkobranie"></div><div id="taskListSciekiProbkobranie"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
+            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania"></div><div id="yStatusSciekiPorownania"></div><div id="taskListSciekiPorownania"></div><div class="flex gap-2"><input type="text" id="taskInputSciekiPorownania" placeholder="Analit" class="flex-1 border p-2 rounded text-sm"><button onclick="handleAddTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 rounded font-bold">+</button></div></div>
         </div>
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4">
-            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold shadow-sm"></div>
+            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[11px] font-extrabold shadow-sm"></div>
             <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
             <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
-            <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><button onclick="handleAddEquipment()" class="bg-purple-600 text-white py-2 rounded font-bold text-sm uppercase">Dodaj Sprzęt</button></div>
+            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200 text-sm">
+                <input type="text" id="equipName" placeholder="Nazwa sprzętu" class="w-full border p-2 rounded mb-2">
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <select id="equipType" class="border p-2 rounded bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option></select>
+                    <select id="equipMonth" class="border p-2 rounded bg-white">
+                        <option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option>
+                    </select>
+                </div>
+                <button onclick="handleSaveEquip()" class="w-full bg-purple-600 text-white py-2 rounded font-bold uppercase text-xs">Dodaj Sprzęt</button>
             </div>
             <div id="equipmentList" class="space-y-2"></div>
         </div>
 
         <div id="tabContentKalendarz" class="hidden space-y-4">
             <div class="bg-white border rounded-xl shadow-sm p-4">
-                <div class="flex justify-between items-center mb-4"><button onclick="handleChangeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button onclick="handleChangeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
-                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
+                <div class="flex justify-between items-center mb-4"><button onclick="handleChangeMonth(-1)" class="p-2 text-blue-600 font-bold">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase text-sm"></h2><button onclick="handleChangeMonth(1)" class="p-2 text-blue-600 font-bold">→</button></div>
+                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div>SOB</div><div>NDZ</div></div>
                 <div id="calendarDays" class="calendar-grid"></div>
             </div>
             <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                <h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic mb-2">Plan dnia</h3>
+                <h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic mb-2"></h3>
                 <div id="dayEventsList" class="space-y-2"></div>
-                <button onclick="handleOpenAddEvent()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase">+ Dodaj wydarzenie</button>
+                <button onclick="handleOpenAddEvent()" class="w-full mt-4 bg-blue-600 text-white py-2 rounded text-[10px] font-bold uppercase">+ Wydarzenie</button>
             </div>
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
-                <div id="monthEventsList" class="space-y-2"></div>
-            </div>
+            <div id="monthEventsList" class="space-y-1 bg-white p-4 rounded-xl border shadow-sm"></div>
         </div>
     </div>
 
@@ -150,43 +151,37 @@
         let selectedWMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
         let calDate = new Date();
         let selectedDayStr = new Date().toISOString().split('T')[0];
-        let eventsCache = [], wzorcowanieCache = [];
+        let cache = { wzorcowanie: [], wydarzenia: [] };
 
-        // --- GLOBALNE FUNKCJE NAWIGACJI ---
-        window.switchTab = (target) => {
-            ['odczynniki', 'wzorce', 'woda', 'scieki', 'wzorcowanie', 'kalendarz'].forEach(t => {
-                const c = document.getElementById(`tabContent${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                const b = document.getElementById(`btn${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                if(c) c.classList.add('hidden');
-                if(b) { b.classList.remove('active-tab'); b.classList.add('text-gray-400'); }
+        // --- NAWIGACJA ---
+        window.switchTab = (t) => {
+            ['odczynniki','wzorce','woda','scieki','wzorcowanie','kalendarz'].forEach(id => {
+                document.getElementById(`tabContent${id.charAt(0).toUpperCase()+id.slice(1)}`).classList.add('hidden');
+                document.getElementById(`btn${id.charAt(0).toUpperCase()+id.slice(1)}`).className = "flex-1 px-3 py-3 text-[10px] uppercase text-gray-400 whitespace-nowrap";
             });
-            document.getElementById(`tabContent${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.remove('hidden');
-            document.getElementById(`btn${target.charAt(0).toUpperCase() + target.slice(1)}`).classList.add('active-tab');
-            if(target === 'kalendarz') renderCalendar();
-            if(target === 'wzorcowanie') updateWzorcowanieUI();
+            document.getElementById(`tabContent${t.charAt(0).toUpperCase()+t.slice(1)}`).classList.remove('hidden');
+            document.getElementById(`btn${t.charAt(0).toUpperCase()+t.slice(1)}`).className = "flex-1 px-3 py-3 text-[10px] uppercase active-tab whitespace-nowrap";
+            if(t === 'kalendarz') renderCalendar();
+            if(t === 'wzorcowanie') updateWzorcowanieUI();
         };
 
         window.switchSubTab = (lab, target) => {
-            ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
-                const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
-                const b = document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
-                if(c) c.classList.add('hidden');
-                if(b) b.className = `px-2 py-2 border rounded text-[9px] font-bold bg-white text-gray-500 whitespace-nowrap`;
+            ['Archiwalna','Slepa','Probkobranie','Porownania'].forEach(cat => {
+                document.getElementById(`subContent${lab.charAt(0).toUpperCase()+lab.slice(1)}${cat}`).classList.add('hidden');
+                document.getElementById(`subBtn${lab.charAt(0).toUpperCase()+lab.slice(1)}${cat}`).className = "px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500";
             });
-            document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).classList.remove('hidden');
-            document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-2 py-2 border rounded text-[9px] font-bold active-sub-tab-${lab} whitespace-nowrap`;
+            document.getElementById(`subContent${lab.charAt(0).toUpperCase()+lab.slice(1)}${target}`).classList.remove('hidden');
+            document.getElementById(`subBtn${lab.charAt(0).toUpperCase()+lab.slice(1)}${target}`).className = `px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-${lab}`;
         };
 
-        // --- OBSŁUGA BAZY (POMOSTY) ---
+        // --- FIREBASE POMOSTY ---
         window.handleLogin = async () => {
-            const email = document.getElementById('loginEmail').value;
-            const pass = document.getElementById('loginPassword').value;
-            try { await signInWithEmailAndPassword(auth, email, pass); } catch(err) { alert("Błąd: " + err.message); }
+            try { await signInWithEmailAndPassword(auth, document.getElementById('loginEmail').value, document.getElementById('loginPassword').value); }
+            catch(err) { alert("Błąd logowania!"); }
         };
         window.handleLogout = () => signOut(auth).then(() => location.reload());
 
-        window.handleSaveChem = async (collName, suffix) => {
-            const id = document.getElementById(`editId${suffix}`).value;
+        window.handleSaveChem = async (coll, suffix) => {
             const data = {
                 name: document.getElementById(`name${suffix}`).value,
                 group: document.getElementById(`group${suffix}`).value,
@@ -195,77 +190,73 @@
                 received: new Date().toISOString().split('T')[0],
                 timestamp: Date.now(), ordered: false
             };
-            if(!data.name.trim()) return;
-            if(id) await updateDoc(doc(db, collName, id), data);
-            else await addDoc(collection(db, collName), data);
-            document.getElementById(`editId${suffix}`).value = "";
-            document.getElementById(`name${suffix}`).value = "";
+            if(data.name.trim()) {
+                await addDoc(collection(db, coll), data);
+                document.getElementById(`name${suffix}`).value = "";
+            }
         };
 
         window.handleDelete = async (coll, id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, coll, id)); };
         window.handleToggleOrder = async (coll, id, s) => await updateDoc(doc(db, coll, id), { ordered: !s });
 
         window.handleAddTask = async (lab, cat) => {
-            const inp = document.getElementById(`taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
-            if(inp.value.trim()) { await addDoc(collection(db, 'harmonogram'), { name: inp.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() }); inp.value = ""; }
+            const inp = document.getElementById(`taskInput${lab.charAt(0).toUpperCase()+lab.slice(1)}${cat}`);
+            if(inp.value.trim()) {
+                await addDoc(collection(db, 'harmonogram'), { name: inp.value.trim(), lab, category: cat, doneDate: null, timestamp: Date.now() });
+                inp.value = "";
+            }
         };
         window.handleToggleTask = async (id, isDone) => await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
 
-        window.handleAddEquipment = async () => {
+        window.handleSaveEquip = async () => {
             const name = document.getElementById('equipName').value;
-            if(!name.trim()) return;
-            await addDoc(collection(db, 'wzorcowanie'), { name, month: document.getElementById('equipMonth').value, type: document.getElementById('equipType').value, doneDate: null, timestamp: Date.now() });
-            document.getElementById('equipName').value = "";
+            if(name.trim()) {
+                await addDoc(collection(db, 'wzorcowanie'), { name, month: document.getElementById('equipMonth').value, type: document.getElementById('equipType').value, doneDate: null, timestamp: Date.now() });
+                document.getElementById('equipName').value = "";
+            }
         };
 
-        window.handleChangeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
-        window.handleOpenAddEvent = async () => {
-            const t = prompt("Wydarzenie:");
-            if(t) await addDoc(collection(db, 'wydarzenia'), { title: t, date: selectedDayStr, timestamp: Date.now() });
-        };
-
-        // --- ŁADOWANIE DANYCH ---
-        function loadChem(coll, suffix) {
-            onSnapshot(query(collection(db, coll), orderBy("timestamp", "asc")), (snap) => {
-                const list = document.getElementById(`list${suffix}`); list.innerHTML = ""; let alerts = [];
-                snap.docs.forEach((d, i) => {
-                    const item = d.data(); const exp = item.expiry ? new Date(item.expiry) : null;
-                    const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
-                    if(diff !== null && diff <= 30 && diff >= 0 && !item.ordered) alerts.push(`[${item.group}] ${item.name}`);
-                    const dCol = (diff !== null && diff < 0) ? "text-red-600 font-bold" : (diff <= 30 ? "text-orange-500 font-bold" : "text-gray-500");
-                    const li = document.createElement('li');
-                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border text-[10px] shadow-sm`;
-                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col truncate font-bold text-gray-800">${item.name}<br><span class="text-[8px] text-gray-400 italic font-normal">${item.usage || ''}</span></div><div class="col-span-3 text-center flex flex-col tracking-tighter"><span>P: ${item.received || '--'}</span><span class="${dCol}">W: ${item.expiry || '--'}</span></div><div class="col-span-2 flex justify-end gap-2"><button onclick="handleToggleOrder('${coll}','${d.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="handleDelete('${coll}','${d.id}')">✕</button></div>`;
-                    list.appendChild(li);
-                });
-                const ab = document.getElementById(`alertBox${suffix}`);
-                if(alerts.length > 0) { ab.innerHTML = `⚠️ WAŻNOŚĆ (30 dni):<br>` + alerts.join('<br>'); ab.classList.remove('hidden'); } else ab.classList.add('hidden');
-            });
-        }
-
+        // --- LOGIKA LICZNIKÓW I STATUSÓW ---
         function loadTasks() {
             onSnapshot(collection(db, 'harmonogram'), (snap) => {
-                const labs = ['woda', 'scieki']; const cats = ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'];
-                let stats = {}; labs.forEach(l => cats.forEach(c => { 
-                    const el = document.getElementById(`taskList${l.charAt(0).toUpperCase() + l.slice(1)}${c}`); if(el) el.innerHTML = "";
-                    stats[`${l}${c}`] = { t:0, d:0, m:false };
+                const labs = ['woda', 'scieki']; const cats = ['Archiwalna','Slepa','Probkobranie','Porownania'];
+                let stats = {}; labs.forEach(l => cats.forEach(c => {
+                    const listId = `taskList${l.charAt(0).toUpperCase()+l.slice(1)}${c}`;
+                    if(document.getElementById(listId)) document.getElementById(listId).innerHTML = "";
+                    stats[`${l}${c}`] = { total: 0, doneY: 0, doneM: false };
                 }));
+
+                const now = new Date();
                 snap.docs.forEach(d => {
-                    const t = d.data(); const isY = t.doneDate && new Date(t.doneDate).getFullYear() === new Date().getFullYear();
-                    const isM = isY && new Date(t.doneDate).getMonth() === new Date().getMonth();
-                    const key = `${t.lab}${t.category}`; if(stats[key]) { stats[key].t++; if(isY) stats[key].d++; if(isM) stats[key].m = true; }
-                    const div = document.createElement('div'); div.className = `flex justify-between items-center p-2 border rounded bg-white mb-2 text-[11px] shadow-sm`;
-                    div.innerHTML = `<span class="${isY ? 'line-through text-gray-400' : ''}">${t.name}</span><div class="flex gap-2"><button onclick="handleToggleTask('${d.id}',${isY})">${isY ? '✅' : '⬜'}</button><button onclick="handleDelete('harmonogram','${d.id}')">✕</button></div>`;
-                    const listEl = document.getElementById(`taskList${t.lab.charAt(0).toUpperCase() + t.lab.slice(1)}${t.category}`); if(listEl) listEl.appendChild(div);
+                    const t = d.data();
+                    const dDate = t.doneDate ? new Date(t.doneDate) : null;
+                    const isY = dDate && dDate.getFullYear() === now.getFullYear();
+                    const isM = isY && dDate.getMonth() === now.getMonth();
+                    const key = `${t.lab}${t.category}`;
+
+                    if(stats[key]) {
+                        stats[key].total++;
+                        if(isY) stats[key].doneY++;
+                        if(isM) stats[key].doneM = true;
+                    }
+
+                    const div = document.createElement('div');
+                    div.className = `flex justify-between items-center p-3 border rounded bg-white mb-2 shadow-sm text-[11px]`;
+                    div.innerHTML = `<span class="${isY ? 'line-through text-gray-400' : 'font-bold'}">${t.name}</span><div class="flex gap-3"><button onclick="handleToggleTask('${d.id}',${isY})">${isY ? '✅' : '⬜'}</button><button onclick="handleDelete('harmonogram','${d.id}')">✕</button></div>`;
+                    const listEl = document.getElementById(`taskList${t.lab.charAt(0).toUpperCase()+t.lab.slice(1)}${t.category}`);
+                    if(listEl) listEl.appendChild(div);
                 });
+
                 Object.keys(stats).forEach(key => {
-                    const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
-                    const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase() + key.slice(1)}`);
-                    const s = stats[key]; if(!mEl || !yEl) return;
-                    mEl.className = "p-2 rounded text-[9px] font-bold border text-center mb-1 " + (s.m ? "bg-green-50 text-green-700" : "bg-orange-50 text-orange-800 animate-pulse");
-                    mEl.innerHTML = s.m ? "✅ ZROBIONE W TYM MIESIĄCU" : "⚠️ BRAK W TYM MIESIĄCU!";
-                    yEl.innerHTML = s.d === s.t && s.t > 0 ? "⭐ PLAN ROCZNY ZAKOŃCZONY!" : `PLAN ROCZNY: ${s.d} / ${s.t}`;
-                    yEl.className = "p-2 rounded text-[9px] font-bold border text-center mb-2 bg-slate-50 text-slate-500 uppercase";
+                    const mEl = document.getElementById(`mStatus${key.charAt(0).toUpperCase()+key.slice(1)}`);
+                    const yEl = document.getElementById(`yStatus${key.charAt(0).toUpperCase()+key.slice(1)}`);
+                    const s = stats[key];
+                    if(mEl && yEl) {
+                        mEl.className = `p-2 rounded text-[9px] font-bold border text-center mb-1 ${s.doneM ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-orange-50 text-orange-800 border-orange-100 animate-pulse'}`;
+                        mEl.innerText = s.doneM ? "✅ WYKONANO W TYM MIESIĄCU" : "⚠️ BRAK WPISU W TYM MIESIĄCU!";
+                        yEl.className = "p-2 rounded text-[9px] font-bold border text-center mb-2 bg-gray-50 text-gray-500 uppercase";
+                        yEl.innerText = s.doneY === s.total && s.total > 0 ? "⭐ PLAN ROCZNY ZAKOŃCZONY!" : `POSTĘP ROCZNY: ${s.doneY} / ${s.total}`;
+                    }
                 });
             });
         }
@@ -282,23 +273,50 @@
                 nav.appendChild(btn);
             }
             list.innerHTML = ""; let mTotal=0, mDone=0, upcoming=[];
-            const nextM = ((new Date().getMonth() + 1) % 12 + 1).toString().padStart(2, '0');
+            const nextMonthNum = (new Date().getMonth() + 1) % 12 + 1;
+            const nextMonthStr = nextMonthNum.toString().padStart(2, '0');
+            
             wzorcowanieCache.forEach(eq => {
-                const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === new Date().getFullYear();
-                if(eq.type === "Wzorcowanie" && eq.month === nextM && !isY) upcoming.push(eq.name);
+                const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === 2026;
+                if(eq.type === "Wzorcowanie" && eq.month === nextMonthStr && !isY) upcoming.push(eq.name);
                 if(eq.month === selectedWMonth) {
                     mTotal++; if(isY) mDone++;
-                    const div = document.createElement('div'); div.className = `flex justify-between items-center p-3 border rounded-lg bg-white mb-2 text-[11px] shadow-sm`;
-                    div.innerHTML = `<div><b>${eq.name}</b><br><small>${eq.type}</small></div><div class="flex gap-2"><button onclick="handleToggleTaskWzorcowanie('${eq.id}',${isY})">${isY ? '✅' : '⬜'}</button><button onclick="handleDelete('wzorcowanie','${eq.id}')">✕</button></div>`;
+                    const div = document.createElement('div');
+                    div.className = "flex justify-between items-center p-3 border rounded bg-white mb-2 shadow-sm text-[11px]";
+                    div.innerHTML = `<div><b>${eq.name}</b><br><small>${eq.type}</small></div><div class="flex gap-2"><button onclick="updateDoc(doc(db,'wzorcowanie','${eq.id}'),{doneDate:${isY ? 'null' : '\"2026-01-15\"'}})">${isY ? '✅' : '⬜'}</button><button onclick="handleDelete('wzorcowanie','${eq.id}')">✕</button></div>`;
                     list.appendChild(div);
                 }
             });
-            document.getElementById('monthlyWzorcowanieCounter').innerText = `${mDone} z ${mTotal} WYKONANE`;
+            document.getElementById('monthlyWzorcowanieCounter').innerText = `${mDone} z ${mTotal} ZREALIZOWANE`;
             const ab = document.getElementById('upcomingWzorcowanieAlert');
-            if(upcoming.length > 0) { ab.innerHTML = `📢 PLANOWANE WZORCOWANIA NA LUTY: ` + upcoming.join(', '); ab.classList.remove('hidden'); } else ab.classList.add('hidden');
+            if(upcoming.length > 0) { ab.innerText = `📢 NADCHODZĄCE WZORCOWANIA (LUTY): ${upcoming.join(', ')}`; ab.classList.remove('hidden'); }
+            else ab.classList.add('hidden');
         }
-        window.handleToggleTaskWzorcowanie = async (id, isDone) => await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] });
 
+        // --- ODCZYNNIKI ---
+        function loadChem(coll, suffix) {
+            onSnapshot(query(collection(db, coll), orderBy("timestamp", "asc")), (snap) => {
+                const list = document.getElementById(`list${suffix}`); list.innerHTML = ""; let alerts = [];
+                snap.docs.forEach((d, i) => {
+                    const item = d.data(); const exp = item.expiry ? new Date(item.expiry) : null;
+                    const diff = exp ? Math.ceil((exp - new Date()) / 86400000) : null;
+                    if(diff <= 30 && diff >= 0 && !item.ordered) alerts.push(item.name);
+                    const li = document.createElement('li');
+                    li.className = `${item.ordered ? 'ordered-row' : 'bg-white'} grid grid-cols-12 gap-2 items-center p-3 rounded-lg border text-[10px] shadow-sm`;
+                    li.innerHTML = `<div class="col-span-1 text-gray-400 border-r text-center">${i+1}</div><div class="col-span-2 font-bold text-blue-600 truncate px-1">${item.group || '-'}</div><div class="col-span-4 flex flex-col truncate font-bold">${item.name}<br><span class="font-normal text-gray-400">${item.usage || ''}</span></div><div class="col-span-3 text-center">W: ${item.expiry || '--'}</div><div class="col-span-2 flex justify-end gap-2"><button onclick="handleToggleOrder('${coll}','${d.id}',${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="handleDelete('${coll}','${d.id}')">✕</button></div>`;
+                    list.appendChild(li);
+                });
+                const ab = document.getElementById(`alertBox${suffix}`);
+                if(alerts.length > 0) { ab.innerText = `⚠️ WYGASAJĄCE: ${alerts.join(', ')}`; ab.classList.remove('hidden'); } else ab.classList.add('hidden');
+            });
+        }
+
+        // --- KALENDARZ ---
+        window.handleChangeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
+        window.handleOpenAddEvent = async () => {
+            const t = prompt("Wydarzenie:");
+            if(t) await addDoc(collection(db, 'wydarzenia'), { title: t, date: selectedDayStr, timestamp: Date.now() });
+        };
         function renderCalendar() {
             const grid = document.getElementById('calendarDays');
             const dInM = new Date(calDate.getFullYear(), calDate.getMonth()+1, 0).getDate();
@@ -309,8 +327,9 @@
             for(let i=0; i<offset; i++) grid.innerHTML += `<div></div>`;
             for(let d=1; d<=dInM; d++) {
                 const ds = `${calDate.getFullYear()}-${(calDate.getMonth()+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
-                const hasE = eventsCache.some(e => e.date === ds);
-                const div = document.createElement('div'); div.className = `calendar-day ${ds === selectedDayStr ? 'selected' : ''} ${hasE ? 'has-event' : ''}`;
+                const hasE = cache.wydarzenia.some(e => e.date === ds);
+                const div = document.createElement('div');
+                div.className = `calendar-day ${ds === selectedDayStr ? 'selected' : ''} ${hasE ? 'has-event' : ''}`;
                 div.innerText = d; div.onclick = () => { selectedDayStr = ds; renderCalendar(); updateDayEvents(); };
                 grid.appendChild(div);
             }
@@ -318,21 +337,21 @@
         }
         function updateDayEvents() {
             const list = document.getElementById('dayEventsList'); document.getElementById('selectedDateLabel').innerText = `Dzień: ${selectedDayStr}`;
-            const f = eventsCache.filter(e => e.date === selectedDayStr);
-            list.innerHTML = f.length ? f.map(e => `<div class="bg-white p-2 rounded flex justify-between shadow-sm text-[11px]"><span>${e.title}</span><button onclick="handleDelete('wydarzenia','${e.id}')">✕</button></div>`).join('') : `<p class="text-[10px] italic text-gray-400">Brak planów.</p>`;
+            const f = cache.wydarzenia.filter(e => e.date === selectedDayStr);
+            list.innerHTML = f.length ? f.map(e => `<div class="bg-white p-2 rounded flex justify-between shadow-sm text-[11px]"><span>${e.title}</span><button onclick="handleDelete('wydarzenia','${e.id}')">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400">Brak planów.</p>`;
         }
         function updateMonthEvents() {
             const list = document.getElementById('monthEventsList'); const prefix = `${calDate.getFullYear()}-${(calDate.getMonth()+1).toString().padStart(2,'0')}`;
-            const f = eventsCache.filter(e => e.date.startsWith(prefix)).sort((a,b) => a.date.localeCompare(b.date));
-            list.innerHTML = f.map(e => `<div class="text-[11px] p-2 bg-white rounded shadow-sm mb-1"><b>${e.date.split('-')[2]}.${e.date.split('-')[1]}</b> - ${e.title}</div>`).join('');
+            const f = cache.wydarzenia.filter(e => e.date.startsWith(prefix)).sort((a,b) => a.date.localeCompare(b.date));
+            list.innerHTML = `<h4 class="text-[10px] font-bold mb-2">WYDARZENIA W MIESIĄCU:</h4>` + f.map(e => `<div class="text-[11px] mb-1"><b>${e.date.split('-')[2]}</b> - ${e.title}</div>`).join('');
         }
 
         onAuthStateChanged(auth, (user) => {
-            if (user) { 
-                document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden'); 
+            if (user) {
+                document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden');
                 loadChem('wzorce', 'Odczynniki'); loadChem('odczynniki', 'Wzorce'); loadTasks();
                 onSnapshot(collection(db, 'wzorcowanie'), snap => { wzorcowanieCache = snap.docs.map(d => ({id:d.id, ...d.data()})); updateWzorcowanieUI(); });
-                onSnapshot(collection(db, 'wydarzenia'), snap => { eventsCache = snap.docs.map(d => ({id:d.id, ...d.data()})); renderCalendar(); });
+                onSnapshot(collection(db, 'wydarzenia'), snap => { cache.wydarzenia = snap.docs.map(d => ({id:d.id, ...d.data()})); renderCalendar(); });
             } else { document.getElementById('loginSection').classList.remove('hidden'); }
         });
     </script>
