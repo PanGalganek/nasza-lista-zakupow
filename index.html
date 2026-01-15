@@ -30,18 +30,18 @@
         .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
+<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center text-black">
 
     <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
         <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab</h2>
-        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
-        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500 text-black">
+        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500 text-black">
         <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
     </div>
 
     <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start">
         <div class="flex justify-between items-center mb-4 px-2">
-            <h1 class="text-lg font-bold text-gray-800">⚗️ e-Lab</h1>
+            <h1 class="text-lg font-bold text-gray-800 uppercase tracking-tighter">🧪 e-Lab Panel</h1>
             <button onclick="handleLogout()" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
         </div>
 
@@ -58,9 +58,7 @@
                 <button onclick="switchOdczynnikiSubTab('Wzorce')" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
                 <button onclick="switchOdczynnikiSubTab('Odczynniki')" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
             </div>
-            
             <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
-
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
                 <div id="dynamicItemsContainer" class="space-y-4"></div>
@@ -82,13 +80,10 @@
                 <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
                 <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
             </div>
-            <div id="subContentWodaArchiwalna" class="space-y-4">
-                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div>
-            </div>
-            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
-            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
+            <div id="subContentWodaArchiwalna" class="space-y-4"><div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div></div>
+            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
+            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
+            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
         </div>
 
         <div id="tabContentScieki" class="hidden space-y-4 text-left">
@@ -98,35 +93,35 @@
                 <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
                 <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
             </div>
-            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div>
-            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
-            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
+            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div>
+            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
+            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div>
+            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm text-black"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
         </div>
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
             <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
             <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
-            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
+            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase text-black"></div>
             <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button onclick="cancelEditEquip()" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
+                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm text-black"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white text-black"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white text-black"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm uppercase">Zapisz / Dodaj</button><button onclick="cancelEditEquip()" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
             </div>
             <div id="equipmentList" class="space-y-2"></div>
         </div>
 
         <div id="tabContentKalendarz" class="hidden space-y-4 text-left">
-            <div class="bg-white border rounded-xl shadow-sm p-4">
+            <div class="bg-white border rounded-xl shadow-sm p-4 text-black">
                 <div class="flex justify-between items-center mb-4"><button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button onclick="changeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
                 <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
                 <div id="calendarDays" class="calendar-grid"></div>
             </div>
-            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-black">
                 <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3><button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
-                <div id="dayEventsList" class="space-y-2"></div>
+                <div id="dayEventsList" class="space-y-2 text-black"></div>
             </div>
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 text-black">
                 <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
-                <div id="monthEventsList" class="space-y-2"></div>
+                <div id="monthEventsList" class="space-y-2 text-black"></div>
             </div>
         </div>
     </div>
@@ -141,10 +136,9 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let unsubO, unsubW, unsubT, unsubE, odczynnikiCache = [], currentOdczynnikiSubTab = 'Wzorce', formRowCount = 0;
+        let odczynnikiCache = [], currentOdczynnikiSubTab = 'Wzorce', formRowCount = 0;
         let selectedWMonth = (new Date().getMonth() + 1).toString().padStart(2, '0');
-        let calDate = new Date();
-        let selectedDayStr = new Date().toISOString().split('T')[0];
+        let calDate = new Date(), selectedDayStr = new Date().toISOString().split('T')[0];
         let eventsCache = [], wzorcowanieCache = [];
 
         window.switchTab = (target) => {
@@ -162,7 +156,7 @@
             if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
-        // --- ODCZYNNIKI LOGIKA ---
+        // --- ODCZYNNIKI ---
         window.switchOdczynnikiSubTab = (target) => {
             currentOdczynnikiSubTab = target;
             ['Wzorce', 'Odczynniki'].forEach(sub => {
@@ -177,9 +171,9 @@
             const container = document.getElementById('dynamicItemsContainer');
             const row = document.createElement('div');
             row.id = `formRow_${formRowCount}`;
-            row.className = "p-4 bg-white rounded-lg border border-blue-200 shadow-sm space-y-3 relative animate-fadeIn";
+            row.className = "p-4 bg-white rounded-lg border border-blue-200 shadow-sm space-y-3 relative animate-fadeIn text-black";
             const today = new Date().toISOString().split('T')[0];
-            row.innerHTML = `<div class="flex justify-between items-center border-b pb-1"><span class="text-[9px] font-bold text-blue-400 uppercase">Pozycja #${formRowCount}</span>${formRowCount > 1 ? `<button onclick="removeFormRow(${formRowCount})" class="text-red-300 text-[9px] font-bold">USUŃ</button>` : ''}</div><input type="text" placeholder="Nazwa" class="chem-name w-full border p-2 rounded text-sm outline-none" value="${data ? data.name : ''}"><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Grupa (np. II-4/31)" class="chem-group border p-2 rounded text-sm" value="${data ? data.group : ''}"><input type="text" placeholder="Zastosowanie" class="chem-usage border p-2 rounded text-sm" value="${data ? data.usage : ''}"></div><div class="grid grid-cols-2 gap-2"><div><label class="text-[8px] font-bold text-gray-400 uppercase">Przyjęcie:</label><input type="date" class="chem-received border p-2 rounded text-sm w-full" value="${data ? data.received : today}"></div><div><label class="text-[8px] font-bold text-red-300 uppercase">Ważność:</label><input type="date" class="chem-expiry border p-2 rounded text-sm w-full" value="${data ? data.expiry : ''}"></div></div>`;
+            row.innerHTML = `<div class="flex justify-between items-center border-b pb-1 text-black"><span class="text-[9px] font-bold text-blue-400 uppercase">Pozycja #${formRowCount}</span>${formRowCount > 1 ? `<button onclick="removeFormRow(${formRowCount})" class="text-red-300 text-[9px] font-bold">USUŃ</button>` : ''}</div><input type="text" placeholder="Nazwa" class="chem-name w-full border p-2 rounded text-sm outline-none text-black" value="${data ? data.name : ''}"><div class="grid grid-cols-2 gap-2 text-black"><input type="text" placeholder="Grupa (np. II-4/31)" class="chem-group border p-2 rounded text-sm text-black" value="${data ? data.group : ''}"><input type="text" placeholder="Zastosowanie" class="chem-usage border p-2 rounded text-sm text-black" value="${data ? data.usage : ''}"></div><div class="grid grid-cols-2 gap-2 text-black"><div><label class="text-[8px] font-bold text-gray-400 uppercase">Przyjęcie:</label><input type="date" class="chem-received border p-2 rounded text-sm w-full text-black" value="${data ? data.received : today}"></div><div><label class="text-[8px] font-bold text-red-300 uppercase">Ważność:</label><input type="date" class="chem-expiry border p-2 rounded text-sm w-full text-black" value="${data ? data.expiry : ''}"></div></div>`;
             container.appendChild(row);
         };
         window.removeFormRow = (id) => { document.getElementById(`formRow_${id}`).remove(); };
@@ -208,7 +202,7 @@
             sortedKeys.forEach(key => {
                 const group = groups[key];
                 const groupCard = document.createElement('div');
-                groupCard.className = "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden";
+                groupCard.className = "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden text-black";
                 group.items.sort((a, b) => a.group.localeCompare(b.group, undefined, { numeric: true }));
 
                 const expiringItems = group.items.filter(item => {
@@ -234,10 +228,10 @@
                     const diff = item.expiry ? Math.ceil((new Date(item.expiry) - new Date()) / 86400000) : null;
                     const dCol = (diff !== null && diff < 0) ? "text-red-600 font-bold" : ((diff !== null && diff <= 30) ? "text-orange-500 font-bold" : "text-black font-semibold");
                     const suffix = item.group.includes('/') ? '/' + item.group.split('/')[1] : '•';
-                    return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px]"><div class="flex items-center gap-3"><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col"><span class="text-black text-[9px] uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-black text-[8px] italic">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
+                    return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px] text-black"><div class="flex items-center gap-3"><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col text-black"><span class="uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-[8px] italic">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
                 }).join('');
 
-                groupCard.innerHTML = `<div class="bg-gray-100 px-4 py-2 border-b flex items-center gap-3"><span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">LP ${groupLP}</span><div class="flex items-center gap-2 overflow-hidden"><span class="font-black text-black uppercase text-xs truncate">${group.name}</span><span class="font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300">${group.prefix}</span></div></div>${itemsHtml}`;
+                groupCard.innerHTML = `<div class="bg-gray-100 px-4 py-2 border-b flex items-center gap-3"><span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">LP ${groupLP}</span><div class="flex items-center gap-2 overflow-hidden text-black"><span class="font-black uppercase text-xs truncate">${group.name}</span><span class="font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300">${group.prefix}</span></div></div>${itemsHtml}`;
                 container.appendChild(groupCard);
                 groupLP++;
             });
@@ -314,13 +308,18 @@
                 btn.onclick = () => { selectedWMonth = id; updateWzorcowanieUI(); };
                 btn.className = `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedWMonth === id ? 'active-month' : 'bg-white text-gray-500'}`; nav.appendChild(btn);
             }
-            list.innerHTML = ""; let mTotal = 0, mDone = 0, curY = new Date().getFullYear();
+            list.innerHTML = ""; let mTotal = 0, mDone = 0, upcoming = [], curY = new Date().getFullYear();
+            let dNext = new Date(); dNext.setMonth(dNext.getMonth() + 1); const nextM = (dNext.getMonth() + 1).toString().padStart(2, '0');
+            
             wzorcowanieCache.forEach(eq => {
                 const isY = eq.doneDate && new Date(eq.doneDate).getFullYear() === curY;
+                
+                // PRZYWRÓCONA LOGIKA ALERTU PRZYSZŁEGO MIESIĄCA
+                if ((eq.type === "Wzorcowanie" || !eq.type) && eq.month === nextM && !isY) upcoming.push(eq.name);
+
                 if (eq.month === selectedWMonth) {
                     mTotal++; if(isY) mDone++;
                     
-                    // DODANA LOGIKA KOLORÓW DLA SPRZĘTU
                     let colorClass = "bg-purple-100 text-purple-700";
                     if(eq.type === "Kalibracja") colorClass = "bg-blue-100 text-blue-700";
                     else if(eq.type === "Sprawdzenie") colorClass = "bg-green-100 text-green-700";
@@ -330,7 +329,17 @@
                     list.appendChild(div);
                 }
             });
+            
             document.getElementById('monthlyWzorcowanieCounter').innerText = `${mNames[selectedWMonth]}: ${mDone} z ${mTotal} zrobione`;
+            
+            // PRZYWRÓCONE WYŚWIETLANIE ALERTU
+            const abEq = document.getElementById('upcomingWzorcowanieAlert'); 
+            if (upcoming.length > 0) { 
+                abEq.innerHTML = `📢 PLANOWANE WZORCOWANIA NA ${mNames[nextM]}: ${upcoming.join(', ')}`; 
+                abEq.classList.remove('hidden'); 
+            } else { 
+                abEq.classList.add('hidden'); 
+            }
         }
         window.addEquipment = async () => { const n = document.getElementById('equipName'), m = document.getElementById('equipMonth'), t = document.getElementById('equipType'); if(n.value.trim()) { await addDoc(collection(db, 'wzorcowanie'), { name: n.value.trim(), month: m.value, type: t.value, doneDate: null, timestamp: Date.now() }); n.value = ""; } };
         window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
@@ -363,7 +372,7 @@
         function updateMonthEvents() {
             const list = document.getElementById('monthEventsList'), mStr = `${calDate.getFullYear()}-${(calDate.getMonth() + 1).toString().padStart(2, '0')}`;
             const f = eventsCache.filter(e => e.date.startsWith(mStr)).sort((a,b) => a.date.localeCompare(b.date));
-            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1 text-black font-bold"><span><span class="text-blue-600">${e.date.split('-')[2]}</span> ${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-gray-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń.</p>`;
+            list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1 text-black font-bold"><span><span class="text-blue-600">${e.date.split('-')[2]}</span> ${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-gray-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w miesiącu.</p>`;
         }
 
         // --- INIT ---
