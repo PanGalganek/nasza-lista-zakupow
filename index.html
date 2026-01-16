@@ -163,14 +163,10 @@
         function calculateBusinessDays(startDate, endDate) {
             let count = 0;
             let curDate = new Date(startDate.getTime());
-            // Ustawiamy godziny na 0, aby porównywać same daty
             curDate.setHours(0,0,0,0);
             const end = new Date(endDate);
             end.setHours(0,0,0,0);
-
-            // Jeśli ważność już minęła
             if (curDate > end) return -1;
-
             while (curDate <= end) {
                 const dayOfWeek = curDate.getDay();
                 if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
@@ -213,7 +209,6 @@
             container.innerHTML = ""; const ab = document.getElementById('alertBox'); ab.innerHTML = "";
             const filtered = odczynnikiCache.filter(item => (item.category || 'Wzorce') === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === 'Wzorce' && item.category === 'Standardowe'));
 
-            // Ustawienie progu dni roboczych zależnie od zakładki
             const businessDaysThreshold = (currentOdczynnikiSubTab === 'Odczynniki') ? 60 : 30;
 
             const groups = filtered.reduce((acc, item) => {
@@ -249,7 +244,9 @@
                         groupAlerts.push({ prefix: group.prefix, name: group.name, type: 'backup', date: bestBackup.expiry });
                     } else {
                         const anyOrdered = expiringItems.some(i => i.ordered);
-                        groupAlerts.push({ prefix: group.prefix, name: group.name, type: anyOrdered ? 'ordered' : 'warning' });
+                        // Pobieramy datę najwcześniejszej butelki, aby wyświetlić ją w alercie
+                        const soonestExpiry = expiringItems.sort((a, b) => new Date(a.expiry) - new Date(b.expiry))[0].expiry;
+                        groupAlerts.push({ prefix: group.prefix, name: group.name, type: anyOrdered ? 'ordered' : 'warning', date: soonestExpiry });
                     }
                 }
 
@@ -269,7 +266,8 @@
                 ab.innerHTML = groupAlerts.map(a => {
                     if (a.type === 'backup') return `<div class="bg-green-50 border border-green-200 text-green-800 p-2 rounded shadow-sm flex items-center gap-2 font-bold"><span class="text-[14px]">🛡️</span><span>[${a.prefix}] ${a.name} - Jest drugi zapasowy wzorzec/odczynnik (Ważny do: ${a.date})</span></div>`;
                     if (a.type === 'ordered') return `<div class="bg-green-100 border border-green-200 text-green-800 p-2 rounded shadow-sm flex items-center gap-2 font-bold"><span class="text-[14px]">✅</span><span>[${a.prefix}] ${a.name} - ZAMÓWIONO</span></div>`;
-                    return `<div class="bg-orange-100 border border-orange-200 text-orange-800 p-2 rounded shadow-sm flex items-center gap-2 font-bold"><span class="text-[14px]">⚠️</span><span>[${a.prefix}] ${a.name}</span></div>`;
+                    // Pomarańczowy alert teraz wyświetla datę ważności
+                    return `<div class="bg-orange-100 border border-orange-200 text-orange-800 p-2 rounded shadow-sm flex items-center gap-2 font-bold"><span class="text-[14px]">⚠️</span><span>[${a.prefix}] ${a.name} - <span class="underline">Ważny do: ${a.date}</span></span></div>`;
                 }).join('');
                 ab.classList.remove('hidden');
             } else ab.classList.add('hidden');
@@ -297,7 +295,7 @@
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- HARMONOGRAMY (STABILNA LOGIKA ALERTÓW) ---
+        // --- HARMONOGRAMY ---
         window.switchSubTab = (lab, target) => {
             ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
                 const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
