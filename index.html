@@ -159,6 +159,26 @@
             if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
+        // --- POMOCNICZA FUNKCJA DNI ROBOCZYCH ---
+        function calculateBusinessDays(startDate, endDate) {
+            let count = 0;
+            let curDate = new Date(startDate.getTime());
+            // Ustawiamy godziny na 0, aby porównywać same daty
+            curDate.setHours(0,0,0,0);
+            const end = new Date(endDate);
+            end.setHours(0,0,0,0);
+
+            // Jeśli ważność już minęła
+            if (curDate > end) return -1;
+
+            while (curDate <= end) {
+                const dayOfWeek = curDate.getDay();
+                if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+                curDate.setDate(curDate.getDate() + 1);
+            }
+            return count;
+        }
+
         // --- ODCZYNNIKI ---
         window.switchOdczynnikiSubTab = (target) => {
             currentOdczynnikiSubTab = target;
@@ -193,6 +213,9 @@
             container.innerHTML = ""; const ab = document.getElementById('alertBox'); ab.innerHTML = "";
             const filtered = odczynnikiCache.filter(item => (item.category || 'Wzorce') === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === 'Wzorce' && item.category === 'Standardowe'));
 
+            // Ustawienie progu dni roboczych zależnie od zakładki
+            const businessDaysThreshold = (currentOdczynnikiSubTab === 'Odczynniki') ? 60 : 30;
+
             const groups = filtered.reduce((acc, item) => {
                 const prefix = (item.group || 'Inne').split('/')[0];
                 if (!acc[prefix]) acc[prefix] = { prefix, items: [], name: item.name };
@@ -209,12 +232,15 @@
                 group.items.sort((a, b) => a.group.localeCompare(b.group, undefined, { numeric: true }));
 
                 const expiringItems = group.items.filter(item => {
-                    const diff = item.expiry ? Math.ceil((new Date(item.expiry) - new Date()) / 86400000) : null;
-                    return diff !== null && diff <= 30 && diff >= 0;
+                    if (!item.expiry) return false;
+                    const bDays = calculateBusinessDays(new Date(), new Date(item.expiry));
+                    return bDays !== -1 && bDays <= businessDaysThreshold;
                 });
+                
                 const backupItems = group.items.filter(item => {
-                    const diff = item.expiry ? Math.ceil((new Date(item.expiry) - new Date()) / 86400000) : null;
-                    return diff !== null && diff > 30;
+                    if (!item.expiry) return false;
+                    const bDays = calculateBusinessDays(new Date(), new Date(item.expiry));
+                    return bDays > businessDaysThreshold;
                 });
 
                 if (expiringItems.length > 0) {
@@ -228,10 +254,10 @@
                 }
 
                 let itemsHtml = group.items.map(item => {
-                    const diff = item.expiry ? Math.ceil((new Date(item.expiry) - new Date()) / 86400000) : null;
-                    const dCol = (diff !== null && diff < 0) ? "text-red-600 font-bold" : ((diff !== null && diff <= 30) ? "text-orange-500 font-bold" : "text-black font-semibold");
+                    const bDays = item.expiry ? calculateBusinessDays(new Date(), new Date(item.expiry)) : null;
+                    const dCol = (bDays === -1) ? "text-red-600 font-bold" : ((bDays !== null && bDays <= businessDaysThreshold) ? "text-orange-500 font-bold" : "text-black font-semibold");
                     const suffix = item.group.includes('/') ? '/' + item.group.split('/')[1] : '•';
-                    return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px] text-black"><div class="flex items-center gap-3"><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col text-black"><span class="uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span></span><span class="text-[8px] italic text-gray-500">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
+                    return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px] text-black"><div class="flex items-center gap-3"><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col text-black"><span class="uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span> <span class="text-[8px] text-gray-400">(${bDays !== -1 ? bDays + ' d.rob' : 'PO TERMINIE'})</span></span><span class="text-[8px] italic text-gray-500">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
                 }).join('');
 
                 groupCard.innerHTML = `<div class="bg-gray-100 px-4 py-2 border-b flex items-center gap-3"><span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">LP ${groupLP}</span><div class="flex items-center gap-2 overflow-hidden text-black"><span class="font-black uppercase text-xs truncate">${group.name}</span><span class="font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300">${group.prefix}</span></div></div>${itemsHtml}`;
