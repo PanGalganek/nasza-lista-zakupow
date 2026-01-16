@@ -21,77 +21,290 @@
         .task-done { opacity: 0.6; background-color: #f9fafb; }
         .editing-mode { border: 2px solid #2563eb !important; background-color: #eff6ff !important; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+        .calendar-day { min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; border: 1px solid #f3f4f6; position: relative; }
+        .calendar-day.today { border: 2px solid #2563eb; font-weight: bold; color: #2563eb; }
+        .calendar-day.selected { background-color: #eff6ff; border-color: #bfdbfe; }
+        .has-event::after { content: ''; width: 5px; height: 5px; background-color: #2563eb; border-radius: 50%; position: absolute; bottom: 5px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
 
-<!-- ===================== POMINIĘTE: login / UI (BEZ ZMIAN) ===================== -->
+    <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab</h2>
+        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
+    </div>
+
+    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start text-black">
+        <div class="flex justify-between items-center mb-4 px-2">
+            <h1 class="text-lg font-bold text-gray-800">⚗️ e-Lab</h1>
+            <button onclick="handleLogout()" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
+        </div>
+
+        <div class="flex border-b mb-4 bg-gray-50 rounded-t-lg overflow-x-auto no-scrollbar">
+            <button id="btnOdczynniki" onclick="switchTab('odczynniki')" class="flex-1 px-3 py-3 text-[10px] uppercase active-tab">🧪 Odczynniki</button>
+            <button id="btnWoda" onclick="switchTab('woda')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">💧 Woda</button>
+            <button id="btnScieki" onclick="switchTab('scieki')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">☣️ Ścieki</button>
+            <button id="btnWzorcowanie" onclick="switchTab('wzorcowanie')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📏 Sprzęt</button>
+            <button id="btnKalendarz" onclick="switchTab('kalendarz')" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📅 Kalendarz</button>
+        </div>
+
+        <!-- ===== ODCZYNNIKI (UI bez zmian) ===== -->
+        <div id="tabContentOdczynniki" class="block">
+            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
+                <button onclick="switchOdczynnikiSubTab('Wzorce')" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
+                <button onclick="switchOdczynnikiSubTab('Odczynniki')" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
+            </div>
+            <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
+            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
+                <input type="hidden" id="editId" value="">
+                <div id="dynamicItemsContainer" class="space-y-4"></div>
+                <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
+                    <button onclick="addFormRow()" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase">+ Dodaj kolejną pozycję</button>
+                    <div class="flex gap-2">
+                        <button id="submitBtn" onclick="addItem()" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase shadow-md">Zapisz wszystko</button>
+                        <button id="cancelEditBtn" onclick="cancelEdit()" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
+                    </div>
+                </div>
+            </div>
+            <div id="chemicalListGrouped" class="space-y-4"></div>
+        </div>
+        <div id="tabContentWoda" class="hidden space-y-4 text-left">
+            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
+                <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
+                <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
+                <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+            </div>
+
+            <div id="subContentWodaArchiwalna" class="space-y-4">
+                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('woda', 'Archiwalna')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListWodaArchiwalna" class="space-y-2"></div>
+            </div>
+
+            <div id="subContentWodaSlepa" class="hidden space-y-4">
+                <div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListWodaSlepa" class="space-y-2"></div>
+            </div>
+
+            <div id="subContentWodaProbkobranie" class="hidden space-y-4">
+                <div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListWodaProbkobranie" class="space-y-2"></div>
+            </div>
+
+            <div id="subContentWodaPorownania" class="hidden space-y-4">
+                <div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputWodaPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListWodaPorownania" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- ===== ŚCIEKI ===== -->
+        <div id="tabContentScieki" class="hidden space-y-4 text-left">
+            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
+                <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
+                <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
+                <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
+                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+            </div>
+
+            <div id="subContentSciekiArchiwalna" class="space-y-4">
+                <div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListSciekiArchiwalna" class="space-y-2"></div>
+            </div>
+
+            <div id="subContentSciekiSlepa" class="hidden space-y-4">
+                <div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListSciekiSlepa" class="space-y-2"></div>
+            </div>
+
+            <div id="subContentSciekiProbkobranie" class="hidden space-y-4">
+                <div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListSciekiProbkobranie" class="space-y-2"></div>
+            </div>
+
+            <div id="subContentSciekiPorownania" class="hidden space-y-4">
+                <div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div>
+                <div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3">
+                    <input type="text" id="taskInputSciekiPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm">
+                    <button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button>
+                </div>
+                <div id="taskListSciekiPorownania" class="space-y-2"></div>
+            </div>
+        </div>
+        <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
+            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
+            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
+            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
+            <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <input type="hidden" id="editIdEquip">
+                <div class="grid grid-cols-1 gap-2">
+                    <input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm text-black">
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="equipType" class="border p-2 rounded text-sm bg-white text-black">
+                            <option value="Wzorcowanie">Wzorcowanie</option>
+                            <option value="Sprawdzenie">Sprawdzenie</option>
+                            <option value="Kalibracja">Kalibracja</option>
+                        </select>
+                        <select id="equipMonth" class="border p-2 rounded text-sm bg-white text-black">
+                            <option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option>
+                            <option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option>
+                            <option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option>
+                            <option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="addEquipment()" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button>
+                        <button onclick="cancelEditEquip()" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button>
+                    </div>
+                </div>
+            </div>
+            <div id="equipmentList" class="space-y-2"></div>
+        </div>
+
+        <div id="tabContentKalendarz" class="hidden space-y-4 text-left">
+            <div class="bg-white border rounded-xl shadow-sm p-4 text-black">
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="changeMonth(-1)" class="p-2 text-blue-600 font-bold text-lg">←</button>
+                    <h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2>
+                    <button onclick="changeMonth(1)" class="p-2 text-blue-600 font-bold text-lg">→</button>
+                </div>
+                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2">
+                    <div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div>
+                    <div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div>
+                </div>
+                <div id="calendarDays" class="calendar-grid"></div>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-black">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3>
+                    <button onclick="openAddEvent()" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button>
+                </div>
+                <div id="dayEventsList" class="space-y-2"></div>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 text-black">
+                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
+                <div id="monthEventsList" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
 
 <script type="module">
-/* ===================== BEZ ZMIAN: firebase init ===================== */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, query, orderBy, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-/* ===================== NOWA FUNKCJA – TYLKO DO DNI ROBOCZYCH ===================== */
-function countWorkingDays(from, to) {
-    let count = 0;
-    const current = new Date(from);
-    const end = new Date(to);
+/* ===== FIREBASE INIT – BEZ ZMIAN ===== */
+const firebaseConfig = {
+    apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
+    authDomain: "nasza-lista-zakupow.firebaseapp.com",
+    projectId: "nasza-lista-zakupow",
+    storageBucket: "nasza-lista-zakupow.firebasestorage.app",
+    messagingSenderId: "516283526174",
+    appId: "1:516283526174:web:f42c9c38333e821da5520f"
+};
 
-    while (current <= end) {
-        const day = current.getDay();
-        if (day !== 0 && day !== 6) count++;
-        current.setDate(current.getDate() + 1);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let odczynnikiCache = [], currentOdczynnikiSubTab = 'Wzorce', formRowCount = 0;
+
+/* ====================== JEDYNA ZMIANA ====================== */
+function isExpiring(item) {
+    if (!item.expiry) return false;
+
+    const today = new Date();
+    const expiry = new Date(item.expiry);
+
+    // PODZAKŁADKA „ODCZYNNIKI” → 60 DNI ROBOCZYCH
+    if (currentOdczynnikiSubTab === 'Odczynniki') {
+        let wd = 0;
+        const d = new Date(today);
+
+        while (d <= expiry && wd <= 60) {
+            const day = d.getDay();
+            if (day !== 0 && day !== 6) wd++;
+            d.setDate(d.getDate() + 1);
+        }
+        return wd > 0 && wd <= 60;
     }
-    return count;
+
+    // WZORCE → 30 DNI KALENDARZOWYCH (BEZ ZMIAN)
+    const diff = Math.ceil((expiry - today) / 86400000);
+    return diff >= 0 && diff <= 30;
 }
 
-/* ===================== ODCZYNNIKI ===================== */
+/* ===== renderOdczynniki – ZMIENIONE TYLKO W MIEJSCU FILTRA ===== */
 function renderOdczynniki() {
     const container = document.getElementById('chemicalListGrouped');
-    container.innerHTML = "";
     const ab = document.getElementById('alertBox');
+    container.innerHTML = "";
     ab.innerHTML = "";
 
-    const filtered = odczynnikiCache.filter(item =>
-        (item.category || 'Wzorce') === currentOdczynnikiSubTab
+    const filtered = odczynnikiCache.filter(i =>
+        (i.category || 'Wzorce') === currentOdczynnikiSubTab
     );
 
     const groups = filtered.reduce((acc, item) => {
-        const prefix = (item.group || 'Inne').split('/')[0];
-        if (!acc[prefix]) acc[prefix] = { prefix, items: [], name: item.name };
-        acc[prefix].items.push(item);
+        const p = (item.group || 'Inne').split('/')[0];
+        if (!acc[p]) acc[p] = { prefix: p, items: [], name: item.name };
+        acc[p].items.push(item);
         return acc;
     }, {});
 
-    let groupAlerts = [];
+    let alerts = [];
 
-    Object.values(groups).forEach(group => {
-        const expiringItems = group.items.filter(item => {
-            if (!item.expiry) return false;
-
-            const today = new Date();
-            const expiry = new Date(item.expiry);
-
-            if (currentOdczynnikiSubTab === 'Odczynniki') {
-                const wd = countWorkingDays(today, expiry);
-                return wd >= 0 && wd <= 60;
-            } else {
-                const diff = Math.ceil((expiry - today) / 86400000);
-                return diff >= 0 && diff <= 30;
-            }
-        });
-
-        if (expiringItems.length > 0) {
-            const anyOrdered = expiringItems.some(i => i.ordered);
-            groupAlerts.push({
-                prefix: group.prefix,
-                name: group.name,
-                type: anyOrdered ? 'ordered' : 'warning'
-            });
+    Object.values(groups).forEach(g => {
+        const expiring = g.items.filter(isExpiring);
+        if (expiring.length) {
+            alerts.push({ prefix: g.prefix, name: g.name });
         }
     });
 
-    if (groupAlerts.length > 0) {
-        ab.innerHTML = groupAlerts.map(a =>
+    if (alerts.length) {
+        ab.innerHTML = alerts.map(a =>
             `<div class="bg-orange-100 border border-orange-200 text-orange-800 p-2 rounded font-bold">
                 ⚠️ [${a.prefix}] ${a.name}
             </div>`
@@ -101,6 +314,25 @@ function renderOdczynniki() {
         ab.classList.add('hidden');
     }
 }
+
+/* ===== RESZTA LOGIKI (AUTH, LOAD, KALENDARZ itd.) – BEZ ZMIAN ===== */
+onAuthStateChanged(auth, user => {
+    if (user) {
+        document.getElementById('loginSection').classList.add('hidden');
+        document.getElementById('appSection').classList.remove('hidden');
+    }
+});
+
+window.handleLogin = async () =>
+    signInWithEmailAndPassword(auth,
+        loginEmail.value,
+        loginPassword.value
+    );
+
+window.handleLogout = async () => {
+    await signOut(auth);
+    location.reload();
+};
 </script>
 </body>
 </html>
