@@ -78,7 +78,7 @@
                 <button onclick="switchSubTab('woda', 'Archiwalna')" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
                 <button onclick="switchSubTab('woda', 'Slepa')" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
                 <button onclick="switchSubTab('woda', 'Probkobranie')" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+                <button onclick="switchSubTab('woda', 'Porownania')" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap text-center min-w-[120px]">🤝 Porównanie wewnątrzlaboratoryjne</button>
             </div>
             <div id="subContentWodaArchiwalna" class="space-y-4">
                 <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
@@ -86,7 +86,7 @@
             </div>
             <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Slepa')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
             <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Probkobranie')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
+            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr porów. wewnątrzlaboratoryjnego" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('woda', 'Porownania')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
         </div>
 
         <div id="tabContentScieki" class="hidden space-y-4 text-left">
@@ -94,12 +94,12 @@
                 <button onclick="switchSubTab('scieki', 'Archiwalna')" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
                 <button onclick="switchSubTab('scieki', 'Slepa')" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
                 <button onclick="switchSubTab('scieki', 'Probkobranie')" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🤝 Porównanie</button>
+                <button onclick="switchSubTab('scieki', 'Porownania')" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap text-center min-w-[120px]">🤝 Porównanie wewnątrzlaboratoryjne</button>
             </div>
             <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Archiwalna')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div>
             <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Slepa')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
             <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Probkobranie')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Parametr" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
+            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Parametr porów. wewnątrzlaboratoryjnego" class="flex-1 border p-2 rounded text-sm"><button onclick="addTask('scieki', 'Porownania')" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
         </div>
 
         <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
@@ -159,7 +159,6 @@
             if(target === 'wzorcowanie') updateWzorcowanieUI();
         };
 
-        // --- POMOCNICZA FUNKCJA DNI ROBOCZYCH ---
         function calculateBusinessDays(startDate, endDate) {
             let count = 0;
             let curDate = new Date(startDate.getTime());
@@ -175,7 +174,6 @@
             return count;
         }
 
-        // --- ODCZYNNIKI ---
         window.switchOdczynnikiSubTab = (target) => {
             currentOdczynnikiSubTab = target;
             ['Wzorce', 'Odczynniki'].forEach(sub => {
@@ -208,65 +206,53 @@
             const container = document.getElementById('chemicalListGrouped');
             container.innerHTML = ""; const ab = document.getElementById('alertBox'); ab.innerHTML = "";
             const filtered = odczynnikiCache.filter(item => (item.category || 'Wzorce') === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === 'Wzorce' && item.category === 'Standardowe'));
-
             const businessDaysThreshold = (currentOdczynnikiSubTab === 'Odczynniki') ? 60 : 30;
-
             const groups = filtered.reduce((acc, item) => {
                 const prefix = (item.group || 'Inne').split('/')[0];
                 if (!acc[prefix]) acc[prefix] = { prefix, items: [], name: item.name };
                 acc[prefix].items.push(item); return acc;
             }, {});
-
             const sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
             let groupLP = 1, groupAlerts = [];
-
             sortedKeys.forEach(key => {
                 const group = groups[key];
                 const groupCard = document.createElement('div');
                 groupCard.className = "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden text-black";
                 group.items.sort((a, b) => a.group.localeCompare(b.group, undefined, { numeric: true }));
-
                 const expiringItems = group.items.filter(item => {
                     if (!item.expiry) return false;
                     const bDays = calculateBusinessDays(new Date(), new Date(item.expiry));
                     return bDays !== -1 && bDays <= businessDaysThreshold;
                 });
-                
                 const backupItems = group.items.filter(item => {
                     if (!item.expiry) return false;
                     const bDays = calculateBusinessDays(new Date(), new Date(item.expiry));
                     return bDays > businessDaysThreshold;
                 });
-
                 if (expiringItems.length > 0) {
                     if (backupItems.length > 0) {
                         const bestBackup = backupItems.sort((a,b) => new Date(b.expiry) - new Date(a.expiry))[0];
                         groupAlerts.push({ prefix: group.prefix, name: group.name, type: 'backup', date: bestBackup.expiry });
                     } else {
                         const anyOrdered = expiringItems.some(i => i.ordered);
-                        // Pobieramy datę najwcześniejszej butelki, aby wyświetlić ją w alercie
                         const soonestExpiry = expiringItems.sort((a, b) => new Date(a.expiry) - new Date(b.expiry))[0].expiry;
                         groupAlerts.push({ prefix: group.prefix, name: group.name, type: anyOrdered ? 'ordered' : 'warning', date: soonestExpiry });
                     }
                 }
-
                 let itemsHtml = group.items.map(item => {
                     const bDays = item.expiry ? calculateBusinessDays(new Date(), new Date(item.expiry)) : null;
                     const dCol = (bDays === -1) ? "text-red-600 font-bold" : ((bDays !== null && bDays <= businessDaysThreshold) ? "text-orange-500 font-bold" : "text-black font-semibold");
                     const suffix = item.group.includes('/') ? '/' + item.group.split('/')[1] : '•';
                     return `<div class="${item.ordered ? 'ordered-row' : ''} flex items-center justify-between p-3 border-t text-[11px] text-black"><div class="flex items-center gap-3"><span class="font-black text-blue-400 w-8">${suffix}</span><div class="flex flex-col text-black"><span class="uppercase">Ważność: <span class="${dCol}">${item.expiry || '--'}</span> <span class="text-[8px] text-gray-400">(${bDays !== -1 ? bDays + ' d.rob' : 'PO TERMINIE'})</span></span><span class="text-[8px] italic text-gray-500">${item.usage || ''}</span></div></div><div class="flex gap-4"><button onclick="toggleOrder('${item.id}', ${item.ordered})">${item.ordered ? '✅' : '🛒'}</button><button onclick="startEdit('${item.id}', \`${item.name}\`, \`${item.group}\`, \`${item.usage}\`, '${item.expiry}', '${item.received}')">✏️</button><button onclick="deleteItem('${item.id}')">✕</button></div></div>`;
                 }).join('');
-
                 groupCard.innerHTML = `<div class="bg-gray-100 px-4 py-2 border-b flex items-center gap-3"><span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">LP ${groupLP}</span><div class="flex items-center gap-2 overflow-hidden text-black"><span class="font-black uppercase text-xs truncate">${group.name}</span><span class="font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300">${group.prefix}</span></div></div>${itemsHtml}`;
                 container.appendChild(groupCard);
                 groupLP++;
             });
-
             if (groupAlerts.length > 0) {
                 ab.innerHTML = groupAlerts.map(a => {
                     if (a.type === 'backup') return `<div class="bg-green-50 border border-green-200 text-green-800 p-2 rounded shadow-sm flex items-center gap-2 font-bold"><span class="text-[14px]">🛡️</span><span>[${a.prefix}] ${a.name} - Jest drugi zapasowy wzorzec/odczynnik (Ważny do: ${a.date})</span></div>`;
                     if (a.type === 'ordered') return `<div class="bg-green-100 border border-green-200 text-green-800 p-2 rounded shadow-sm flex items-center gap-2 font-bold"><span class="text-[14px]">✅</span><span>[${a.prefix}] ${a.name} - ZAMÓWIONO</span></div>`;
-                    // Pomarańczowy alert teraz wyświetla datę ważności
                     return `<div class="bg-orange-100 border border-orange-200 text-orange-800 p-2 rounded shadow-sm flex items-center gap-2 font-bold"><span class="text-[14px]">⚠️</span><span>[${a.prefix}] ${a.name} - <span class="underline">Ważny do: ${a.date}</span></span></div>`;
                 }).join('');
                 ab.classList.remove('hidden');
@@ -295,16 +281,15 @@
         window.toggleOrder = async (id, s) => await updateDoc(doc(db, 'odczynniki', id), { ordered: !s });
         window.deleteItem = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'odczynniki', id)); };
 
-        // --- HARMONOGRAMY ---
         window.switchSubTab = (lab, target) => {
             ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'].forEach(cat => {
                 const c = document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
                 const b = document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${cat}`);
                 if(c) c.classList.add('hidden');
-                if(b) b.className = `px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500`;
+                if(b) b.className = `px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 text-center min-w-[120px]`;
             });
             document.getElementById(`subContent${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).classList.remove('hidden');
-            document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-${lab}`;
+            document.getElementById(`subBtn${lab.charAt(0).toUpperCase() + lab.slice(1)}${target}`).className = `px-2 py-2 border rounded text-[9px] font-bold uppercase active-sub-tab-${lab} text-center min-w-[120px]`;
         };
         function loadTasks() {
             onSnapshot(query(collection(db, 'harmonogram'), orderBy("timestamp", "asc")), (snap) => {
@@ -332,7 +317,6 @@
         window.toggleTask = async (id, isDone) => { await updateDoc(doc(db, 'harmonogram', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteTask = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'harmonogram', id)); };
 
-        // --- SPRZĘT ---
         function loadWzorcowanie() { onSnapshot(query(collection(db, 'wzorcowanie'), orderBy("timestamp", "asc")), (snap) => { wzorcowanieCache = snap.docs.map(d => ({ id: d.id, ...d.data() })); updateWzorcowanieUI(); }); }
         function updateWzorcowanieUI() {
             const list = document.getElementById('equipmentList'); if(!list) return;
@@ -366,7 +350,6 @@
         window.toggleEquip = async (id, isDone) => { await updateDoc(doc(db, 'wzorcowanie', id), { doneDate: isDone ? null : new Date().toISOString().split('T')[0] }); };
         window.deleteEquip = async (id) => { if(confirm("Usunąć?")) await deleteDoc(doc(db, 'wzorcowanie', id)); };
 
-        // --- KALENDARZ ---
         window.changeMonth = (v) => { calDate.setMonth(calDate.getMonth() + v); renderCalendar(); };
         window.selectDay = (d) => { selectedDayStr = d; renderCalendar(); updateDayEvents(); };
         window.openAddEvent = async () => { const t = prompt("Nazwa wydarzenia:"); if(t) await addDoc(collection(db, 'wydarzenia'), { title: t.trim(), date: selectedDayStr, timestamp: Date.now() }); };
@@ -396,7 +379,6 @@
             list.innerHTML = f.length ? f.map(e => `<div class="flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1 text-black font-bold"><span><span class="text-blue-600">${e.date.split('-')[2]}</span> ${e.title}</span><button onclick="deleteEvent('${e.id}')" class="text-gray-300">✕</button></div>`).join('') : `<p class="text-[10px] text-gray-400 italic">Brak wydarzeń w miesiącu.</p>`;
         }
 
-        // --- INIT ---
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('loginSection').classList.add('hidden'); document.getElementById('appSection').classList.remove('hidden');
