@@ -74,6 +74,7 @@ test("schema validation rejects unexpected fields and invalid categories", async
   };
   await assertFails(setDoc(doc(database, "odczynniki", "extra"), { ...base, injected: "field" }));
   await assertFails(setDoc(doc(database, "odczynniki", "category"), { ...base, category: "Nieznana" }));
+  await assertFails(setDoc(doc(database, "odczynniki", "invalid-date"), { ...base, received: "2026-99-99" }));
 });
 
 test("legacy task shape remains updatable", async () => {
