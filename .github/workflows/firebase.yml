@@ -50,7 +50,16 @@ jobs:
       - name: Deploy preview channel
         run: |
           npx --yes firebase-tools@15.22.4 hosting:channel:delete pr-${{ github.event.number }} --project 516283526174 --force || true
-          npx --yes firebase-tools@15.22.4 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project 516283526174 --non-interactive
+          for attempt in 1 2 3; do
+            if npx --yes firebase-tools@15.22.4 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project 516283526174 --non-interactive; then
+              break
+            fi
+            if [[ $attempt -eq 3 ]]; then
+              exit 1
+            fi
+            echo "Firebase preview deploy failed; retrying after $((attempt * 5)) seconds."
+            sleep $((attempt * 5))
+          done
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -67,7 +76,7 @@ jobs:
         run: |
           if [[ "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
             echo "deploy=true" >> "$GITHUB_OUTPUT"
-          elif git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- public firebase.json firestore.rules firestore.indexes.json package.json package-lock.json styles.input.css; then
+          elif git diff --quiet "${{ github.event.before }}" "${{ github.sha }}" -- public firebase.json firestore.rules firestore.indexes.json package.json package-lock.json styles.input.css .github/workflows/firebase.yml; then
             echo "deploy=false" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=true" >> "$GITHUB_OUTPUT"
@@ -88,18 +97,24 @@ jobs:
         if: steps.firebase_changes.outputs.deploy == 'true'
         shell: bash
         run: |
-          set +e
-          output=$(npx --yes firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project 516283526174 --non-interactive 2>&1)
-          status=$?
-          set -e
-          printf '%s\n' "$output"
-          if [[ $status -eq 0 ]]; then
-            exit 0
-          fi
-          if grep -Fq "is the current active version" <<< "$output"; then
-            echo "Firebase Hosting confirmed that the requested version is already live."
-            exit 0
-          fi
+          for attempt in 1 2 3; do
+            set +e
+            output=$(npx --yes firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project 516283526174 --non-interactive 2>&1)
+            status=$?
+            set -e
+            printf '%s\n' "$output"
+            if [[ $status -eq 0 ]]; then
+              exit 0
+            fi
+            if grep -Fq "is the current active version" <<< "$output"; then
+              echo "Firebase Hosting confirmed that the requested version is already live."
+              exit 0
+            fi
+            if [[ $attempt -lt 3 ]]; then
+              echo "Firebase live deploy failed; retrying after $((attempt * 5)) seconds."
+              sleep $((attempt * 5))
+            fi
+          done
           exit "$status"
 
   pages:
