@@ -56,3 +56,20 @@ export function isDoneInYear(dateValue, year) {
   const date = parseLocalDate(dateValue);
   return Boolean(date && date.getFullYear() === year);
 }
+
+export function suggestNextGroupValue(items, prefix) {
+  const values = items.map((item) => String(item.group || ""));
+  const numericSuffixes = values
+    .filter((value) => value.startsWith(`${prefix}/`))
+    .map((value) => value.slice(prefix.length + 1))
+    .filter((suffix) => /^\d+$/.test(suffix))
+    .map(Number);
+
+  if (numericSuffixes.length > 0) {
+    return `${prefix}/${Math.max(...numericSuffixes) + 1}`;
+  }
+  if (values.some((value) => value.includes("/"))) {
+    return `${prefix}/`;
+  }
+  return values.find(Boolean) || (prefix === "Inne" ? "" : prefix);
+}

@@ -21,6 +21,12 @@ test("dynamic application data is not rendered with innerHTML", () => {
   assert.match(app, /await updateDoc\(doc\(db, "odczynniki", editId\), items\[0\]\)/);
 });
 
+test("every chemical LP can render its own add-position form", () => {
+  assert.match(app, /Dodaj nową pozycję do:/);
+  assert.match(app, /data-inline-chemical-form/);
+  assert.match(app, /suggestNextGroupValue\(group\.items, group\.prefix\)/);
+});
+
 test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");

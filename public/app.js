@@ -26,6 +26,7 @@ import {
   isDoneInYear,
   parseLocalDate,
   shiftCalendarMonth,
+  suggestNextGroupValue,
 } from "./utils.js";
 
 const firebaseConfig = {
@@ -65,6 +66,7 @@ let selectedWMonth = String(new Date().getMonth() + 1).padStart(2, "0");
 let calDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedDayStr = formatLocalDate();
 let formRowCount = 0;
+let openInlineGroupKey = null;
 let snapshotUnsubscribers = [];
 const reportedListenerErrors = new Set();
 
@@ -132,6 +134,7 @@ function switchTab(target) {
 
 function switchOdczynnikiSubTab(target) {
   currentOdczynnikiSubTab = target;
+  openInlineGroupKey = null;
   ["Wzorce", "Odczynniki"].forEach((tab) => {
     const button = byId(`subBtnOdczynniki${tab}`);
     button.className = `px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap ${
@@ -278,6 +281,69 @@ function renderChemicalAlert(alertData) {
   return row;
 }
 
+function createInlineField(labelText, input, className = "") {
+  const label = createElement("label", className || "flex flex-col gap-1");
+  label.append(createElement("span", "text-[9px] font-bold uppercase text-gray-500", labelText), input);
+  return label;
+}
+
+function createInlineChemicalForm(group) {
+  const form = createElement("form", "border-b border-blue-100 bg-blue-50 p-3 text-left");
+  form.dataset.inlineChemicalForm = group.key;
+  const title = createElement("p", "mb-3 text-[10px] font-black uppercase text-blue-800", `Dodaj nową pozycję do: ${group.name}`);
+
+  const fields = createElement("div", "grid grid-cols-1 gap-2 md:grid-cols-2");
+  const groupInput = createInput("inline-group w-full rounded border p-2 text-sm text-black", "Grupa / numer", suggestNextGroupValue(group.items, group.prefix));
+  groupInput.maxLength = 100;
+  const usageInput = createInput("inline-usage w-full rounded border p-2 text-sm text-black", "Zastosowanie", group.items.find((item) => item.usage)?.usage || "");
+  usageInput.maxLength = 500;
+  const receivedInput = createInput("inline-received w-full rounded border p-2 text-sm text-black", "", formatLocalDate(), "date");
+  const expiryInput = createInput("inline-expiry w-full rounded border p-2 text-sm text-black", "", "", "date");
+  fields.append(
+    createInlineField("Grupa / numer", groupInput),
+    createInlineField("Zastosowanie", usageInput),
+    createInlineField("Data przyjęcia", receivedInput),
+    createInlineField("Data ważności", expiryInput),
+  );
+
+  const actions = createElement("div", "mt-3 flex justify-end gap-2");
+  const cancelButton = createElement("button", "rounded bg-gray-200 px-4 py-2 text-[10px] font-bold uppercase text-gray-700", "Anuluj");
+  cancelButton.type = "button";
+  cancelButton.addEventListener("click", () => {
+    openInlineGroupKey = null;
+    renderOdczynniki();
+  });
+  const submitButton = createElement("button", "rounded bg-blue-600 px-4 py-2 text-[10px] font-bold uppercase text-white", "Zapisz pozycję");
+  submitButton.type = "submit";
+  actions.append(cancelButton, submitButton);
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    runSafely(async () => {
+      submitButton.disabled = true;
+      try {
+        await addDoc(collection(db, "odczynniki"), {
+          name: group.name,
+          group: groupInput.value.trim(),
+          usage: usageInput.value.trim(),
+          received: receivedInput.value,
+          expiry: expiryInput.value,
+          category: currentOdczynnikiSubTab,
+          timestamp: Date.now(),
+          ordered: false,
+        });
+        openInlineGroupKey = null;
+        renderOdczynniki();
+      } finally {
+        submitButton.disabled = false;
+      }
+    }, "Nie udało się dodać nowej pozycji.");
+  });
+
+  form.append(title, fields, actions);
+  return form;
+}
+
 function renderOdczynniki() {
   const container = byId("chemicalListGrouped");
   const alertBox = byId("alertBox");
@@ -295,7 +361,7 @@ function renderOdczynniki() {
     const prefix = String(item.group || "Inne").split("/")[0];
     const name = String(item.name || "Bez nazwy");
     const key = `${prefix}\u0000${name.toLocaleLowerCase("pl")}`;
-    if (!groups.has(key)) groups.set(key, { prefix, name, items: [] });
+    if (!groups.has(key)) groups.set(key, { key, prefix, name, items: [] });
     groups.get(key).items.push(item);
   });
 
@@ -333,13 +399,27 @@ function renderOdczynniki() {
     const card = createElement("section", "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden text-black");
     const header = createElement("div", "bg-gray-100 px-4 py-2 border-b flex items-center gap-3");
     header.append(createElement("span", "bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold", `LP ${groupIndex + 1}`));
-    const headingText = createElement("div", "flex items-center gap-2 overflow-hidden text-black");
+    const headingText = createElement("div", "flex flex-1 items-center gap-2 overflow-hidden text-black");
     headingText.append(
       createElement("span", "font-black uppercase text-xs truncate", group.name),
       createElement("span", "font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300", group.prefix),
     );
-    header.append(headingText);
+    const isInlineFormOpen = openInlineGroupKey === group.key;
+    const addButton = createButton(
+      isInlineFormOpen ? "−" : "+",
+      isInlineFormOpen ? `Zamknij formularz dla ${group.name}` : `Dodaj nową pozycję do ${group.name}`,
+      () => {
+        openInlineGroupKey = isInlineFormOpen ? null : group.key;
+        renderOdczynniki();
+        if (!isInlineFormOpen) {
+          queueMicrotask(() => document.querySelector("[data-inline-chemical-form] .inline-group")?.focus());
+        }
+      },
+      "ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-black text-white shadow-sm hover:bg-blue-700",
+    );
+    header.append(headingText, addButton);
     card.append(header);
+    if (isInlineFormOpen) card.append(createInlineChemicalForm(group));
 
     group.items.forEach((item) => {
       const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
