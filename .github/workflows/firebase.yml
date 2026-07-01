@@ -1,0 +1,70 @@
+name: Verify and deploy Firebase
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: firebase-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  preview:
+    if: github.event_name == 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/516283526174/locations/global/workloadIdentityPools/github/providers/nasza-lista-zakupow
+          service_account: github-deploy@nasza-lista-zakupow.iam.gserviceaccount.com
+      - name: Deploy preview channel
+        run: npx --yes firebase-tools@15.22.4 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project nasza-lista-zakupow --non-interactive
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: verify
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/516283526174/locations/global/workloadIdentityPools/github/providers/nasza-lista-zakupow
+          service_account: github-deploy@nasza-lista-zakupow.iam.gserviceaccount.com
+      - name: Deploy live Hosting and Firestore rules
+        run: npx --yes firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project nasza-lista-zakupow --non-interactive

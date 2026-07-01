@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Wewnętrzny panel e-Laboratorium do zarządzania odczynnikami, harmonogramem i wzorcowaniem.">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self'; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://nasza-lista-zakupow.firebaseapp.com; frame-src 'self' https://nasza-lista-zakupow.firebaseapp.com; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+    <title>e-Laboratorium</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
+
+    <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab</h2>
+        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
+        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
+        <p id="loginError" class="hidden mb-4 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700" role="alert"></p>
+        <button type="button" data-action="login" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
+    </div>
+
+    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start text-black">
+        <div class="flex justify-between items-center mb-4 px-2">
+            <h1 class="text-lg font-bold text-gray-800">⚗️ e-Lab</h1>
+            <button type="button" data-action="logout" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
+        </div>
+
+        <div class="flex border-b mb-4 bg-gray-50 rounded-t-lg overflow-x-auto no-scrollbar">
+            <button type="button" id="btnOdczynniki" data-action="switch-tab" data-tab="odczynniki" class="flex-1 px-3 py-3 text-[10px] uppercase active-tab">🧪 Odczynniki</button>
+            <button type="button" id="btnWoda" data-action="switch-tab" data-tab="woda" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">💧 Woda</button>
+            <button type="button" id="btnScieki" data-action="switch-tab" data-tab="scieki" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">☣️ Ścieki</button>
+            <button type="button" id="btnWzorcowanie" data-action="switch-tab" data-tab="wzorcowanie" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📏 Sprzęt</button>
+            <button type="button" id="btnKalendarz" data-action="switch-tab" data-tab="kalendarz" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📅 Kalendarz</button>
+        </div>
+
+        <div id="tabContentOdczynniki" class="block">
+            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
+                <button type="button" data-action="switch-chemical-tab" data-tab="Wzorce" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
+                <button type="button" data-action="switch-chemical-tab" data-tab="Odczynniki" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
+            </div>
+            <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
+            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
+                <input type="hidden" id="editId" value="">
+                <div id="dynamicItemsContainer" class="space-y-4"></div>
+                <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
+                    <button type="button" data-action="add-form-row" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase">+ Dodaj kolejną pozycję</button>
+                    <div class="flex gap-2">
+                        <button type="button" id="submitBtn" data-action="save-items" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase shadow-md">Zapisz wszystko</button>
+                        <button type="button" id="cancelEditBtn" data-action="cancel-edit" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
+                    </div>
+                </div>
+            </div>
+            <div id="chemicalListGrouped" class="space-y-4"></div>
+        </div>
+
+        <div id="tabContentWoda" class="hidden space-y-4 text-left">
+            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
+                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Archiwalna" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
+                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Slepa" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
+                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Probkobranie" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
+                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Porownania" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap text-center min-w-[120px]">🤝 Porównanie wewnątrzlaboratoryjne</button>
+            </div>
+            <div id="subContentWodaArchiwalna" class="space-y-4">
+                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
+                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Archiwalna" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div>
+            </div>
+            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Slepa" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
+            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Probkobranie" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
+            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr porów. wewnątrzlaboratoryjnego" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Porownania" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
+        </div>
+
+        <div id="tabContentScieki" class="hidden space-y-4 text-left">
+            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
+                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Archiwalna" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
+                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Slepa" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
+                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Probkobranie" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
+                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Porownania" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap text-center min-w-[120px]">🤝 Porównanie wewnątrzlaboratoryjne</button>
+            </div>
+            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Archiwalna" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div>
+            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Slepa" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
+            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Probkobranie" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div>
+            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Parametr porów. wewnątrzlaboratoryjnego" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Porownania" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
+        </div>
+
+        <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
+            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
+            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
+            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
+            <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm text-black"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white text-black"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white text-black"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button type="button" data-action="add-equipment" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button type="button" data-action="cancel-equipment-edit" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
+            </div>
+            <div id="equipmentList" class="space-y-2"></div>
+        </div>
+
+        <div id="tabContentKalendarz" class="hidden space-y-4 text-left">
+            <div class="bg-white border rounded-xl shadow-sm p-4 text-black">
+                <div class="flex justify-between items-center mb-4"><button type="button" data-action="change-month" data-offset="-1" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button type="button" data-action="change-month" data-offset="1" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
+                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
+                <div id="calendarDays" class="calendar-grid"></div>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-black">
+                <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3><button type="button" data-action="add-event" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
+                <div id="dayEventsList" class="space-y-2"></div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 text-black">
+                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
+                <div id="monthEventsList" class="space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

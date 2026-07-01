@@ -1,0 +1,91 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function activeUser() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/app_users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/app_users/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/app_users/$(request.auth.uid)).data.role in ['admin', 'operator'];
+    }
+
+    function validDate(value) {
+      return value is string && (value == '' || value.matches('^\\d{4}-\\d{2}-\\d{2}$'));
+    }
+
+    function validChemical(data) {
+      return data.keys().hasAll(['name', 'group', 'usage', 'received', 'expiry', 'timestamp', 'ordered'])
+        && data.keys().hasOnly(['name', 'group', 'usage', 'received', 'expiry', 'timestamp', 'ordered', 'category'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.group is string && data.group.size() <= 100
+        && data.usage is string && data.usage.size() <= 500
+        && validDate(data.received)
+        && validDate(data.expiry)
+        && data.timestamp is int
+        && data.ordered is bool
+        && (!('category' in data) || data.category in ['Wzorce', 'Odczynniki', 'Standardowe']);
+    }
+
+    function validTask(data) {
+      return data.keys().hasAll(['name', 'lab', 'doneDate', 'timestamp'])
+        && data.keys().hasOnly(['name', 'lab', 'category', 'doneDate', 'timestamp', 'lastDoneYear'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.lab in ['woda', 'scieki']
+        && (!('category' in data) || data.category in ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'])
+        && (data.doneDate == null || validDate(data.doneDate))
+        && data.timestamp is int
+        && (!('lastDoneYear' in data) || data.lastDoneYear == null || data.lastDoneYear is int);
+    }
+
+    function validEquipment(data) {
+      return data.keys().hasAll(['name', 'month', 'doneDate', 'timestamp'])
+        && data.keys().hasOnly(['name', 'month', 'type', 'doneDate', 'timestamp'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.month is string && data.month.matches('^(0[1-9]|1[0-2])$')
+        && (!('type' in data) || data.type in ['Wzorcowanie', 'Sprawdzenie', 'Kalibracja'])
+        && (data.doneDate == null || validDate(data.doneDate))
+        && data.timestamp is int;
+    }
+
+    function validEvent(data) {
+      return data.keys().hasAll(['title', 'date', 'timestamp'])
+        && data.keys().hasOnly(['title', 'date', 'timestamp'])
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && validDate(data.date) && data.date != ''
+        && data.timestamp is int;
+    }
+
+    match /app_users/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    match /odczynniki/{documentId} {
+      allow read, delete: if activeUser();
+      allow create, update: if activeUser() && validChemical(request.resource.data);
+    }
+
+    match /harmonogram/{documentId} {
+      allow read, delete: if activeUser();
+      allow create, update: if activeUser() && validTask(request.resource.data);
+    }
+
+    match /wzorcowanie/{documentId} {
+      allow read, delete: if activeUser();
+      allow create, update: if activeUser() && validEquipment(request.resource.data);
+    }
+
+    match /wydarzenia/{documentId} {
+      allow read, delete: if activeUser();
+      allow create, update: if activeUser() && validEvent(request.resource.data);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
