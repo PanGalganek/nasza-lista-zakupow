@@ -99,7 +99,7 @@ jobs:
         run: |
           for attempt in 1 2 3; do
             set +e
-            output=$(npx --yes firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project 516283526174 --non-interactive 2>&1)
+            output=$(npx --yes firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project nasza-lista-zakupow --non-interactive 2>&1)
             status=$?
             set -e
             printf '%s\n' "$output"
