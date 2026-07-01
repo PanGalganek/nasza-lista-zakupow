@@ -42,7 +42,7 @@ test("PWA assets use the correctly cased service worker and local icon", () => {
 
 test("Firebase deployment uses Application Default Credentials", () => {
   assert.match(firebaseWorkflow, /google-github-actions\/auth@v3/);
-  assert.match(firebaseWorkflow, /deploy --only hosting,firestore:rules --project 516283526174/);
+  assert.match(firebaseWorkflow, /deploy --only hosting,firestore:rules --project nasza-lista-zakupow/);
   assert.match(firebaseWorkflow, /styles\.input\.css \.github\/workflows\/firebase\.yml/);
   assert.equal(firebaseWorkflow.match(/for attempt in 1 2 3/g)?.length, 2);
   assert.doesNotMatch(firebaseWorkflow, /token_format:\s*access_token/);
