@@ -1,4 +1,4 @@
-const CACHE_NAME = "e-lab-v1";
+const CACHE_NAME = "e-lab-v2";
 const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./utils.js", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (event) => {

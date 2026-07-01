@@ -739,7 +739,12 @@ async function handleAuthChange(user) {
 
   try {
     const access = await getDoc(doc(db, "app_users", user.uid));
-    if (!access.exists() || access.data().active !== true) {
+    const accessData = access.exists() ? access.data() : null;
+    if (
+      !accessData
+      || accessData.active !== true
+      || !["admin", "operator"].includes(accessData.role)
+    ) {
       await signOut(auth);
       setLoginError("To konto nie ma dostępu do aplikacji.");
       return;
