@@ -90,7 +90,21 @@ jobs:
           token_format: access_token
       - name: Deploy live Hosting and Firestore rules
         if: steps.firebase_changes.outputs.deploy == 'true'
-        run: npx --yes firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project nasza-lista-zakupow --non-interactive
+        shell: bash
+        run: |
+          set +e
+          output=$(npx --yes firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project nasza-lista-zakupow --non-interactive 2>&1)
+          status=$?
+          set -e
+          printf '%s\n' "$output"
+          if [[ $status -eq 0 ]]; then
+            exit 0
+          fi
+          if grep -Fq "is the current active version" <<< "$output"; then
+            echo "Firebase Hosting confirmed that the requested version is already live."
+            exit 0
+          fi
+          exit "$status"
         env:
           FIREBASE_TOKEN: ${{ steps.auth.outputs.access_token }}
 
