@@ -1,6 +1,6 @@
 # e-Laboratorium
 
-Wewnętrzna aplikacja laboratoryjna do obsługi odczynników i wzorców, harmonogramu badań, sprzętu oraz kalendarza. Kod jest przechowywany na GitHubie, a produkcja działa na Firebase Hosting z Firebase Authentication i Cloud Firestore.
+Wewnętrzna aplikacja laboratoryjna do obsługi odczynników i wzorców, harmonogramu badań, sprzętu oraz kalendarza. Publiczny interfejs jest publikowany na Firebase Hosting i GitHub Pages, ale dostęp do danych wymaga konta Firebase Authentication wpisanego na listę uprawnionych użytkowników.
 
 ## Wymagania
 
@@ -21,7 +21,7 @@ Hosting emulatora: `http://127.0.0.1:5000`.
 
 ## Wdrożenie
 
-Push do chronionej gałęzi `main` uruchamia testy i automatyczne wdrożenie Firebase Hosting oraz reguł Firestore przez GitHub Actions. Pull request otrzymuje siedmiodniowy kanał podglądowy Firebase Hosting.
+Push do chronionej gałęzi `main` uruchamia testy oraz automatyczne wdrożenie Firebase Hosting, GitHub Pages i reguł Firestore przez GitHub Actions. Pull request otrzymuje siedmiodniowy kanał podglądowy Firebase Hosting.
 
 Ręczne wdrożenie awaryjne:
 
