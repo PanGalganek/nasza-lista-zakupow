@@ -6,6 +6,7 @@ import {
   isDoneInYear,
   parseLocalDate,
   shiftCalendarMonth,
+  suggestNextGroupValue,
 } from "../public/utils.js";
 
 test("formatLocalDate uses the local calendar date", () => {
@@ -32,4 +33,13 @@ test("isDoneInYear handles empty and valid dates", () => {
   assert.equal(isDoneInYear(null, 2026), false);
   assert.equal(isDoneInYear("2026-05-10", 2026), true);
   assert.equal(isDoneInYear("2025-05-10", 2026), false);
+});
+
+test("suggestNextGroupValue proposes the next numeric position", () => {
+  assert.equal(
+    suggestNextGroupValue([{ group: "II-4/31" }, { group: "II-4/33" }], "II-4"),
+    "II-4/34",
+  );
+  assert.equal(suggestNextGroupValue([{ group: "WZ/A" }], "WZ"), "WZ/");
+  assert.equal(suggestNextGroupValue([{ group: "Bez numeru" }], "Bez numeru"), "Bez numeru");
 });

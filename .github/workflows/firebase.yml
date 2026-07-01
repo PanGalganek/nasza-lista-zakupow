@@ -49,7 +49,9 @@ jobs:
           service_account: github-deploy@nasza-lista-zakupow.iam.gserviceaccount.com
           token_format: access_token
       - name: Deploy preview channel
-        run: npx --yes firebase-tools@15.22.4 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project nasza-lista-zakupow --non-interactive
+        run: |
+          npx --yes firebase-tools@15.22.4 hosting:channel:delete pr-${{ github.event.number }} --project 516283526174 --force || true
+          npx --yes firebase-tools@15.22.4 hosting:channel:deploy pr-${{ github.event.number }} --expires 7d --project 516283526174 --non-interactive
         env:
           FIREBASE_TOKEN: ${{ steps.auth.outputs.access_token }}
 
