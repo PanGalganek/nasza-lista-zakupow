@@ -1,5 +1,5 @@
-const CACHE_NAME = "e-lab-v2";
-const APP_SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./utils.js", "./manifest.json", "./icon.svg"];
+const CACHE_NAME = "e-lab-v3";
+const APP_SHELL = ["./", "./index.html", "./styles.css", "./import-export.css", "./app.js", "./utils.js", "./import-export.js", "./vendor/jszip.min.js", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
@@ -27,3 +27,4 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html"))),
   );
 });
+

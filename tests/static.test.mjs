@@ -38,6 +38,15 @@ test("chemical inventory provides search, status filters, and sorting", () => {
   assert.match(app, /Brak pozycji spełniających kryteria\./);
 });
 
+test("chemical inventory provides local DOCX import and CSV/JSON export", () => {
+  assert.match(html, /id="wordImportFile"/);
+  assert.match(html, /\.\/vendor\/jszip\.min\.js/);
+  assert.match(app, /readChemicalRowsFromDocx/);
+  assert.match(app, /confirmWordImport/);
+  assert.match(app, /exportChemicalsCsv/);
+  assert.match(app, /exportChemicalsJson/);
+});
+
 test("frontend access requires an active admin or operator account", () => {
   assert.match(app, /accessData\.active !== true/);
   assert.match(app, /!\["admin", "operator"\]\.includes\(accessData\.role\)/);
@@ -47,7 +56,7 @@ test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v2"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v3"/);
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {
