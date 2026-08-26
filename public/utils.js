@@ -23,29 +23,17 @@ export function parseLocalDate(value) {
   return date;
 }
 
-export function calculateBusinessDays(startDate, endDate) {
+export function calculateCalendarDays(startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
-  start.setHours(0, 0, 0, 0);
-  end.setHours(0, 0, 0, 0);
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
     return null;
   }
-  if (start > end) {
-    return -1;
-  }
 
-  let count = 0;
-  const cursor = new Date(start);
-  while (cursor <= end) {
-    const weekday = cursor.getDay();
-    if (weekday !== 0 && weekday !== 6) {
-      count += 1;
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return count;
+  const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.round((endUtc - startUtc) / 86_400_000);
 }
 
 export function shiftCalendarMonth(date, offset) {
@@ -73,3 +61,4 @@ export function suggestNextGroupValue(items, prefix) {
   }
   return values.find(Boolean) || (prefix === "Inne" ? "" : prefix);
 }
+
