@@ -28,6 +28,16 @@ test("every chemical LP can render its own add-position form", () => {
   assert.match(app, /suggestNextGroupValue\(group\.items, group\.prefix\)/);
 });
 
+test("chemical inventory provides search, status filters, and sorting", () => {
+  assert.match(html, /id="chemicalSearch"/);
+  assert.match(html, /id="chemicalStatusFilter"/);
+  assert.match(html, /id="chemicalSort"/);
+  assert.match(app, /statusFilter === "attention"/);
+  assert.match(app, /statusFilter === "ordered"/);
+  assert.match(app, /statusFilter === "expired"/);
+  assert.match(app, /Brak pozycji spełniających kryteria\./);
+});
+
 test("frontend access requires an active admin or operator account", () => {
   assert.match(app, /accessData\.active !== true/);
   assert.match(app, /!\["admin", "operator"\]\.includes\(accessData\.role\)/);
@@ -56,3 +66,4 @@ test("Firebase Hosting serves only the public directory with security headers", 
   assert.ok(headers.some(({ key }) => key === "Content-Security-Policy"));
   assert.ok(headers.some(({ key }) => key === "X-Content-Type-Options"));
 });
+

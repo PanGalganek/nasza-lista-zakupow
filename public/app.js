@@ -344,35 +344,74 @@ function createInlineChemicalForm(group) {
   return form;
 }
 
-function renderOdczynniki() {
-  const container = byId("chemicalListGrouped");
-  const alertBox = byId("alertBox");
-  container.replaceChildren();
-  alertBox.replaceChildren();
-
-  const filtered = odczynnikiCache.filter((item) => {
-    const category = item.category || "Wzorce";
-    return category === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === "Wzorce" && category === "Standardowe");
-  });
-  const threshold = currentOdczynnikiSubTab === "Odczynniki" ? 70 : 40;
+function groupChemicalItems(items) {
   const groups = new Map();
-
-  filtered.forEach((item) => {
+  items.forEach((item) => {
     const prefix = String(item.group || "Inne").split("/")[0];
     const name = String(item.name || "Bez nazwy");
     const key = `${prefix}\u0000${name.toLocaleLowerCase("pl")}`;
     if (!groups.has(key)) groups.set(key, { key, prefix, name, items: [] });
     groups.get(key).items.push(item);
   });
+  return [...groups.values()];
+}
 
-  const sortedGroups = [...groups.values()].sort((a, b) => {
+function earliestGroupExpiry(group) {
+  return group.items
+    .map((item) => String(item.expiry || ""))
+    .filter(Boolean)
+    .sort()[0] || "9999-12-31";
+}
+
+function normalizeSearchValue(value) {
+  return String(value || "")
+    .toLocaleLowerCase("pl")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ł/g, "l");
+}
+
+function renderOdczynniki() {
+  const container = byId("chemicalListGrouped");
+  const alertBox = byId("alertBox");
+  container.replaceChildren();
+  alertBox.replaceChildren();
+
+  const categoryItems = odczynnikiCache.filter((item) => {
+    const category = item.category || "Wzorce";
+    return category === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === "Wzorce" && category === "Standardowe");
+  });
+  const threshold = currentOdczynnikiSubTab === "Odczynniki" ? 70 : 40;
+  const searchQuery = normalizeSearchValue(byId("chemicalSearch").value.trim());
+  const statusFilter = byId("chemicalStatusFilter").value;
+  const sortMode = byId("chemicalSort").value;
+  const filtered = categoryItems.filter((item) => {
+    const searchableText = normalizeSearchValue([item.name, item.group, item.usage].join(" "));
+    if (searchQuery && !searchableText.includes(searchQuery)) return false;
+
+    const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
+    const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
+    if (statusFilter === "attention") return days !== null && days <= threshold;
+    if (statusFilter === "ordered") return item.ordered === true;
+    if (statusFilter === "expired") return days !== null && days < 0;
+    return true;
+  });
+
+  const sortedGroups = groupChemicalItems(filtered).sort((a, b) => {
+    if (sortMode === "name") {
+      return a.name.localeCompare(b.name, "pl", { sensitivity: "base" })
+        || a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" });
+    }
+    if (sortMode === "expiry") {
+      return earliestGroupExpiry(a).localeCompare(earliestGroupExpiry(b))
+        || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+    }
     const prefixOrder = a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" });
     return prefixOrder || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
   });
   const groupAlerts = [];
 
-  sortedGroups.forEach((group, groupIndex) => {
-    group.items.sort((a, b) => String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
+  groupChemicalItems(categoryItems).forEach((group) => {
     const expiring = group.items.filter((item) => {
       if (!item.expiry) return false;
       const days = calculateCalendarDays(new Date(), parseLocalDate(item.expiry));
@@ -395,6 +434,13 @@ function renderOdczynniki() {
         groupAlerts.push({ prefix: group.prefix, name: group.name, type, date: candidate.expiry });
       }
     }
+  });
+
+  sortedGroups.forEach((group, groupIndex) => {
+    group.items.sort((a, b) => {
+      if (sortMode === "expiry") return String(a.expiry || "9999-12-31").localeCompare(String(b.expiry || "9999-12-31"));
+      return String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true });
+    });
 
     const card = createElement("section", "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden text-black");
     const header = createElement("div", "bg-gray-100 px-4 py-2 border-b flex items-center gap-3");
@@ -451,6 +497,11 @@ function renderOdczynniki() {
 
     container.append(card);
   });
+
+  byId("chemicalResultSummary").textContent = `Pozycje: ${filtered.length} • Grupy: ${sortedGroups.length}`;
+  if (sortedGroups.length === 0) {
+    container.append(createElement("p", "rounded-lg border border-dashed bg-gray-50 p-6 text-center text-sm text-gray-500", "Brak pozycji spełniających kryteria."));
+  }
 
   groupAlerts.forEach((alertData) => alertBox.append(renderChemicalAlert(alertData)));
   alertBox.classList.toggle("hidden", groupAlerts.length === 0);
@@ -789,6 +840,10 @@ document.addEventListener("click", (event) => {
   runSafely(() => action(button), "Nie udało się wykonać operacji.");
 });
 
+byId("chemicalSearch").addEventListener("input", renderOdczynniki);
+byId("chemicalStatusFilter").addEventListener("change", renderOdczynniki);
+byId("chemicalSort").addEventListener("change", renderOdczynniki);
+
 byId("loginPassword").addEventListener("keydown", (event) => {
   if (event.key === "Enter") runSafely(handleLogin, "Logowanie nie powiodło się.");
 });
@@ -798,4 +853,5 @@ onAuthStateChanged(auth, (user) => runSafely(() => handleAuthChange(user), "Nie 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("Service worker nie został uruchomiony.", error));
 }
+
 

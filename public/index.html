@@ -40,6 +40,30 @@
                 <button type="button" data-action="switch-chemical-tab" data-tab="Wzorce" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
                 <button type="button" data-action="switch-chemical-tab" data-tab="Odczynniki" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
             </div>
+            <div class="grid grid-cols-1 gap-2 mb-4 rounded-lg border bg-gray-50 p-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <label class="flex flex-col gap-1 text-left">
+                    <span class="text-[9px] font-bold uppercase text-gray-500">Szukaj</span>
+                    <input type="search" id="chemicalSearch" placeholder="Nazwa, numer grupy lub zastosowanie" maxlength="200" autocomplete="off" class="w-full rounded border bg-white p-2 text-sm text-black outline-none focus:ring-2 focus:ring-blue-500">
+                </label>
+                <label class="flex flex-col gap-1 text-left">
+                    <span class="text-[9px] font-bold uppercase text-gray-500">Status</span>
+                    <select id="chemicalStatusFilter" class="rounded border bg-white p-2 text-sm text-black">
+                        <option value="all">Wszystkie</option>
+                        <option value="attention">Wymagają uwagi</option>
+                        <option value="ordered">Zamówione</option>
+                        <option value="expired">Przeterminowane</option>
+                    </select>
+                </label>
+                <label class="flex flex-col gap-1 text-left">
+                    <span class="text-[9px] font-bold uppercase text-gray-500">Sortowanie</span>
+                    <select id="chemicalSort" class="rounded border bg-white p-2 text-sm text-black">
+                        <option value="group">Numer grupy</option>
+                        <option value="name">Nazwa</option>
+                        <option value="expiry">Najbliższy termin</option>
+                    </select>
+                </label>
+            </div>
+            <p id="chemicalResultSummary" class="mb-3 text-left text-[10px] font-bold uppercase text-gray-500"></p>
             <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
             <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
                 <input type="hidden" id="editId" value="">
@@ -113,3 +137,4 @@
 
 </body>
 </html>
+
