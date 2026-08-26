@@ -75,4 +75,3 @@ test("Firebase Hosting serves only the public directory with security headers", 
   assert.ok(headers.some(({ key }) => key === "Content-Security-Policy"));
   assert.ok(headers.some(({ key }) => key === "X-Content-Type-Options"));
 });
-

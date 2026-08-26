@@ -129,4 +129,3 @@ export function createChemicalBackup(items, exportedAt = new Date().toISOString(
     items: items.map(({ id, ...item }) => ({ id, ...item })),
   };
 }
-

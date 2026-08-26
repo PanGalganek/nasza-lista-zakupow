@@ -51,4 +51,3 @@ test("exports are compatible with Polish Excel and preserve backup metadata", ()
   assert.equal(backup.version, 1);
   assert.equal(backup.items[0].id, "abc");
 });
-
