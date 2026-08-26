@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  calculateBusinessDays,
+  calculateCalendarDays,
   formatLocalDate,
   isDoneInYear,
   parseLocalDate,
@@ -18,10 +18,10 @@ test("parseLocalDate rejects impossible dates", () => {
   assert.equal(formatLocalDate(parseLocalDate("2026-07-01")), "2026-07-01");
 });
 
-test("calculateBusinessDays counts weekdays inclusively", () => {
-  assert.equal(calculateBusinessDays(new Date(2026, 6, 3), new Date(2026, 6, 6)), 2);
-  assert.equal(calculateBusinessDays(new Date(2026, 6, 6), new Date(2026, 6, 6)), 1);
-  assert.equal(calculateBusinessDays(new Date(2026, 6, 7), new Date(2026, 6, 6)), -1);
+test("calculateCalendarDays counts calendar-day distance", () => {
+  assert.equal(calculateCalendarDays(new Date(2026, 6, 3), new Date(2026, 6, 6)), 3);
+  assert.equal(calculateCalendarDays(new Date(2026, 6, 6), new Date(2026, 6, 6)), 0);
+  assert.equal(calculateCalendarDays(new Date(2026, 6, 7), new Date(2026, 6, 6)), -1);
 });
 
 test("shiftCalendarMonth never skips February from the 31st", () => {
@@ -43,3 +43,4 @@ test("suggestNextGroupValue proposes the next numeric position", () => {
   assert.equal(suggestNextGroupValue([{ group: "WZ/A" }], "WZ"), "WZ/");
   assert.equal(suggestNextGroupValue([{ group: "Bez numeru" }], "Bez numeru"), "Bez numeru");
 });
+

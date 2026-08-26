@@ -21,7 +21,7 @@ import {
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import {
-  calculateBusinessDays,
+  calculateCalendarDays,
   formatLocalDate,
   isDoneInYear,
   parseLocalDate,
@@ -354,7 +354,7 @@ function renderOdczynniki() {
     const category = item.category || "Wzorce";
     return category === currentOdczynnikiSubTab || (currentOdczynnikiSubTab === "Wzorce" && category === "Standardowe");
   });
-  const threshold = currentOdczynnikiSubTab === "Odczynniki" ? 60 : 30;
+  const threshold = currentOdczynnikiSubTab === "Odczynniki" ? 70 : 40;
   const groups = new Map();
 
   filtered.forEach((item) => {
@@ -375,12 +375,12 @@ function renderOdczynniki() {
     group.items.sort((a, b) => String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
     const expiring = group.items.filter((item) => {
       if (!item.expiry) return false;
-      const days = calculateBusinessDays(new Date(), parseLocalDate(item.expiry));
-      return days === -1 || (days !== null && days <= threshold);
+      const days = calculateCalendarDays(new Date(), parseLocalDate(item.expiry));
+      return days !== null && days <= threshold;
     });
     const backups = group.items.filter((item) => {
       if (!item.expiry) return false;
-      const days = calculateBusinessDays(new Date(), parseLocalDate(item.expiry));
+      const days = calculateCalendarDays(new Date(), parseLocalDate(item.expiry));
       return days !== null && days > threshold;
     });
 
@@ -389,7 +389,7 @@ function renderOdczynniki() {
         const bestBackup = [...backups].sort((a, b) => String(b.expiry).localeCompare(String(a.expiry)))[0];
         groupAlerts.push({ prefix: group.prefix, name: group.name, type: "backup", date: bestBackup.expiry });
       } else {
-        const expired = expiring.filter((item) => calculateBusinessDays(new Date(), parseLocalDate(item.expiry)) === -1);
+        const expired = expiring.filter((item) => calculateCalendarDays(new Date(), parseLocalDate(item.expiry)) < 0);
         const candidate = [...(expired.length ? expired : expiring)].sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)))[0];
         const type = expired.length ? "expired" : expiring.some((item) => item.ordered) ? "ordered" : "warning";
         groupAlerts.push({ prefix: group.prefix, name: group.name, type, date: candidate.expiry });
@@ -423,8 +423,8 @@ function renderOdczynniki() {
 
     group.items.forEach((item) => {
       const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
-      const days = expiryDate ? calculateBusinessDays(new Date(), expiryDate) : null;
-      const color = days === -1 ? "text-red-600 font-bold" : days !== null && days <= threshold ? "text-orange-500 font-bold" : "text-black font-semibold";
+      const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
+      const color = days !== null && days < 0 ? "text-red-600 font-bold" : days !== null && days <= threshold ? "text-orange-500 font-bold" : "text-black font-semibold";
       const suffix = String(item.group || "").includes("/") ? `/${String(item.group).split("/")[1]}` : "•";
       const row = createElement("div", `${item.ordered ? "ordered-row " : ""}flex items-center justify-between p-3 border-t text-[11px] text-black`);
       const info = createElement("div", "flex items-center gap-3");
@@ -432,7 +432,7 @@ function renderOdczynniki() {
       const details = createElement("div", "flex flex-col text-black");
       const expiryLine = createElement("span", "uppercase");
       expiryLine.append(document.createTextNode("Ważność: "), createElement("span", color, item.expiry || "--"));
-      const dayText = days === -1 ? "PO TERMINIE" : days === null ? "brak daty" : `${days} d.rob`;
+      const dayText = days !== null && days < 0 ? "PO TERMINIE" : days === null ? "brak daty" : `${days} dni`;
       expiryLine.append(document.createTextNode(" "), createElement("span", "text-[8px] text-gray-400", `(${dayText})`));
       details.append(expiryLine, createElement("span", "text-[8px] italic text-gray-500", item.usage || ""));
       info.append(details);
@@ -798,3 +798,4 @@ onAuthStateChanged(auth, (user) => runSafely(() => handleAuthChange(user), "Nie 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("Service worker nie został uruchomiony.", error));
 }
+
