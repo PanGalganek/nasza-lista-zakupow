@@ -28,6 +28,12 @@ import {
   shiftCalendarMonth,
   suggestNextGroupValue,
 } from "./utils.js";
+import {
+  chemicalsToCsv,
+  createChemicalBackup,
+  readChemicalRowsFromDocx,
+  rowsToChemicalDrafts,
+} from "./import-export.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -67,6 +73,7 @@ let calDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedDayStr = formatLocalDate();
 let formRowCount = 0;
 let openInlineGroupKey = null;
+let wordImportDrafts = [];
 let snapshotUnsubscribers = [];
 const reportedListenerErrors = new Set();
 
@@ -261,6 +268,173 @@ function cancelEdit() {
   byId("dynamicItemsContainer").replaceChildren();
   formRowCount = 0;
   addFormRow();
+}
+
+function normalizedGroup(value) {
+  return String(value || "").toLocaleLowerCase("pl").replace(/\s+/g, "");
+}
+
+function markImportDuplicates() {
+  const existingGroups = new Set(odczynnikiCache.map((item) => normalizedGroup(item.group)).filter(Boolean));
+  wordImportDrafts.forEach((draft) => {
+    draft.duplicate = existingGroups.has(normalizedGroup(draft.group));
+    if (draft.selected === undefined) draft.selected = !draft.duplicate;
+  });
+}
+
+function createImportInput(labelText, value, onInput, { type = "text", maxLength } = {}) {
+  const input = createInput("w-full rounded border bg-white p-2 text-xs text-black", "", value, type);
+  if (maxLength) input.maxLength = maxLength;
+  input.addEventListener("input", () => onInput(input.value));
+  return createInlineField(labelText, input);
+}
+
+function renderWordImportPreview() {
+  const preview = byId("wordImportPreview");
+  preview.replaceChildren();
+  markImportDuplicates();
+
+  const duplicates = wordImportDrafts.filter((draft) => draft.duplicate).length;
+  const selected = wordImportDrafts.filter((draft) => draft.selected).length;
+  byId("wordImportStatus").textContent = `Rozpoznano: ${wordImportDrafts.length} • zaznaczono: ${selected} • już w aplikacji: ${duplicates}`;
+  byId("wordImportActions").classList.toggle("hidden", wordImportDrafts.length === 0);
+
+  wordImportDrafts.forEach((draft, index) => {
+    const card = createElement("article", `rounded-lg border p-3 ${draft.duplicate ? "border-orange-300 bg-orange-50" : "border-gray-200 bg-gray-50"}`);
+    const heading = createElement("div", "mb-3 flex items-start gap-2");
+    const checkbox = createElement("input", "word-import-checkbox");
+    checkbox.type = "checkbox";
+    checkbox.checked = Boolean(draft.selected);
+    checkbox.addEventListener("change", () => {
+      draft.selected = checkbox.checked;
+      renderWordImportPreview();
+    });
+    const title = createElement("div", "flex-1");
+    title.append(createElement("p", "text-[10px] font-black uppercase text-gray-700", `Pozycja ${index + 1}${draft.duplicate ? " • ten numer grupy już istnieje" : ""}`));
+    const warnings = [...draft.warnings, ...(draft.duplicate ? ["Domyślnie pominięto możliwy duplikat"] : [])];
+    if (warnings.length) title.append(createElement("p", "mt-1 text-[9px] font-bold text-orange-700", warnings.join(" • ")));
+    heading.append(checkbox, title);
+
+    const fields = createElement("div", "grid grid-cols-1 gap-2 md:grid-cols-2");
+    fields.append(
+      createImportInput("Grupa", draft.group, (value) => { draft.group = value.trim(); }, { maxLength: 100 }),
+      createImportInput("Data ważności", draft.expiry, (value) => { draft.expiry = value; }, { type: "date" }),
+      createImportInput("Nazwa", draft.name, (value) => { draft.name = value.trim(); }, { maxLength: 200 }),
+      createImportInput("Zastosowanie", draft.usage, (value) => { draft.usage = value.trim(); }, { maxLength: 500 }),
+    );
+    const source = createElement("details", "word-import-source mt-2 text-[9px] text-gray-500");
+    source.append(createElement("summary", "font-bold", "Pokaż oryginalny opis z Worda"), createElement("p", "mt-1", draft.sourceName));
+    card.append(heading, fields, source);
+    preview.append(card);
+  });
+}
+
+function closeWordImport() {
+  wordImportDrafts = [];
+  byId("wordImportFile").value = "";
+  byId("wordImportPreview").replaceChildren();
+  byId("wordImportActions").classList.add("hidden");
+  byId("wordImportPanel").classList.add("hidden");
+}
+
+function chooseWordFile() {
+  byId("wordImportFile").value = "";
+  byId("wordImportFile").click();
+}
+
+function openWordImport() {
+  byId("wordImportCategory").value = currentOdczynnikiSubTab;
+  byId("wordImportReceived").value = formatLocalDate();
+  byId("wordImportStatus").textContent = "Wybierz dokument DOCX. Starszy format DOC zapisz najpierw w Wordzie jako DOCX.";
+  byId("wordImportPanel").classList.remove("hidden");
+  chooseWordFile();
+}
+
+async function handleWordImportFile(file) {
+  if (!file) return;
+  const extension = file.name.toLocaleLowerCase("pl").split(".").pop();
+  if (extension === "doc") {
+    wordImportDrafts = [];
+    byId("wordImportPreview").replaceChildren();
+    byId("wordImportActions").classList.add("hidden");
+    byId("wordImportStatus").textContent = "To jest format DOC (Word 97–2003). Otwórz plik w Wordzie, wybierz „Zapisz jako” → „Dokument programu Word (*.docx)” i wskaż nowy plik.";
+    return;
+  }
+  if (extension !== "docx") throw new Error("Obsługiwane są dokumenty DOCX.");
+
+  byId("wordImportStatus").textContent = `Odczytuję „${file.name}”…`;
+  const rows = await readChemicalRowsFromDocx(await file.arrayBuffer());
+  wordImportDrafts = rowsToChemicalDrafts(rows, {
+    category: byId("wordImportCategory").value,
+    received: byId("wordImportReceived").value,
+  });
+  if (wordImportDrafts.length === 0) throw new Error("Nie znaleziono tabeli z kolumnami Grupa, Nazwa i Zastosowanie.");
+  renderWordImportPreview();
+}
+
+function isIsoDate(value, allowEmpty = false) {
+  if (allowEmpty && value === "") return true;
+  return /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value);
+}
+
+async function confirmWordImport() {
+  const selected = wordImportDrafts.filter((draft) => draft.selected);
+  if (selected.length === 0) {
+    alert("Zaznacz co najmniej jedną pozycję do importu.");
+    return;
+  }
+  const invalid = selected.find((draft) => !draft.name || !draft.group || !isIsoDate(draft.received) || !isIsoDate(draft.expiry, true));
+  if (invalid) {
+    alert(`Uzupełnij nazwę, grupę i poprawne daty dla pozycji „${invalid.group || invalid.name || "bez nazwy"}”.`);
+    return;
+  }
+  const duplicateCount = selected.filter((draft) => draft.duplicate).length;
+  if (duplicateCount && !confirm(`Zaznaczono ${duplicateCount} pozycji z numerami grup, które już istnieją. Dodać je mimo to?`)) return;
+  if (!confirm(`Dodać ${selected.length} pozycji do bazy?`)) return;
+
+  const button = byId("confirmWordImportBtn");
+  button.disabled = true;
+  try {
+    const batch = writeBatch(db);
+    selected.forEach((draft, index) => {
+      const reference = doc(collection(db, "odczynniki"));
+      batch.set(reference, {
+        name: draft.name.slice(0, 200),
+        group: draft.group.slice(0, 100),
+        usage: draft.usage.slice(0, 500),
+        received: draft.received,
+        expiry: draft.expiry,
+        category: draft.category,
+        timestamp: Date.now() + index,
+        ordered: false,
+      });
+    });
+    await batch.commit();
+    closeWordImport();
+    alert(`Dodano ${selected.length} pozycji.`);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function downloadFile(filename, data, type) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const link = createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportChemicalsCsv() {
+  downloadFile(`e-laboratorium-${formatLocalDate()}.csv`, chemicalsToCsv(odczynnikiCache), "text/csv;charset=utf-8");
+}
+
+function exportChemicalsJson() {
+  const backup = createChemicalBackup(odczynnikiCache);
+  downloadFile(`e-laboratorium-kopia-${formatLocalDate()}.json`, JSON.stringify(backup, null, 2), "application/json;charset=utf-8");
 }
 
 function renderChemicalAlert(alertData) {
@@ -825,6 +999,12 @@ const delegatedActions = {
   "add-form-row": () => addFormRow(),
   "save-items": () => saveItems(),
   "cancel-edit": () => cancelEdit(),
+  "open-word-import": () => openWordImport(),
+  "choose-word-file": () => chooseWordFile(),
+  "close-word-import": () => closeWordImport(),
+  "confirm-word-import": () => confirmWordImport(),
+  "export-chemicals-csv": () => exportChemicalsCsv(),
+  "export-chemicals-json": () => exportChemicalsJson(),
   "add-task": (button) => addTask(button.dataset.lab, button.dataset.category),
   "add-equipment": () => saveEquipment(),
   "cancel-equipment-edit": () => cancelEquipmentEdit(),
@@ -843,6 +1023,15 @@ document.addEventListener("click", (event) => {
 byId("chemicalSearch").addEventListener("input", renderOdczynniki);
 byId("chemicalStatusFilter").addEventListener("change", renderOdczynniki);
 byId("chemicalSort").addEventListener("change", renderOdczynniki);
+byId("wordImportFile").addEventListener("change", (event) => {
+  runSafely(() => handleWordImportFile(event.target.files?.[0]), "Nie udało się odczytać dokumentu Word.");
+});
+byId("wordImportCategory").addEventListener("change", () => {
+  wordImportDrafts.forEach((draft) => { draft.category = byId("wordImportCategory").value; });
+});
+byId("wordImportReceived").addEventListener("change", () => {
+  wordImportDrafts.forEach((draft) => { draft.received = byId("wordImportReceived").value; });
+});
 
 byId("loginPassword").addEventListener("keydown", (event) => {
   if (event.key === "Enter") runSafely(handleLogin, "Logowanie nie powiodło się.");
@@ -853,5 +1042,4 @@ onAuthStateChanged(auth, (user) => runSafely(() => handleAuthChange(user), "Nie 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("Service worker nie został uruchomiony.", error));
 }
-
 
