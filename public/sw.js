@@ -1,5 +1,24 @@
-const CACHE_NAME = "e-lab-v4";
-const APP_SHELL = ["./", "./index.html", "./styles.css", "./import-export.css", "./app.js", "./utils.js", "./import-export.js", "./vendor/jszip.min.js", "./manifest.json", "./icon.svg"];
+const CACHE_NAME = "e-lab-v5";
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./import-export.css",
+  "./app.js",
+  "./utils.js",
+  "./import-export.js",
+  "./modules/auth.js",
+  "./modules/calendar.js",
+  "./modules/chemical-transfer.js",
+  "./modules/chemicals.js",
+  "./modules/constants.js",
+  "./modules/equipment.js",
+  "./modules/schedule.js",
+  "./modules/ui.js",
+  "./vendor/jszip.min.js",
+  "./manifest.json",
+  "./icon.svg",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
