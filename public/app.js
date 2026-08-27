@@ -22,7 +22,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import { createAuthModule } from "./modules/auth.js";
 import { createCalendarModule } from "./modules/calendar.js";
-import { createChemicalsModule } from "./modules/chemicals.js";
+import { createChemicalsModule } from "./modules/chemicals.js?v=6";
 import { createEquipmentModule } from "./modules/equipment.js";
 import { createScheduleModule } from "./modules/schedule.js";
 import { byId, runSafely } from "./modules/ui.js";

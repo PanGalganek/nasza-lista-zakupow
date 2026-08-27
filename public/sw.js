@@ -1,4 +1,4 @@
-const CACHE_NAME = "e-lab-v6";
+const CACHE_NAME = "e-lab-v7";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,7 +10,7 @@ const APP_SHELL = [
   "./modules/auth.js",
   "./modules/calendar.js",
   "./modules/chemical-transfer.js",
-  "./modules/chemicals.js",
+  "./modules/chemicals.js?v=6",
   "./modules/constants.js",
   "./modules/equipment.js",
   "./modules/schedule.js",
