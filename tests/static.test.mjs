@@ -2,9 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const [html, app, manifest, serviceWorker, firebaseConfig, firebaseWorkflow] = await Promise.all([
+const moduleUrls = ["auth", "calendar", "chemical-transfer", "chemicals", "constants", "equipment", "schedule", "ui"]
+  .map((name) => new URL(`../public/modules/${name}.js`, import.meta.url));
+
+const [html, app, modules, manifest, serviceWorker, firebaseConfig, firebaseWorkflow] = await Promise.all([
   readFile(new URL("../public/index.html", import.meta.url), "utf8"),
   readFile(new URL("../public/app.js", import.meta.url), "utf8"),
+  Promise.all(moduleUrls.map((url) => readFile(url, "utf8"))).then((files) => files.join("\n")),
   readFile(new URL("../public/manifest.json", import.meta.url), "utf8"),
   readFile(new URL("../public/sw.js", import.meta.url), "utf8"),
   readFile(new URL("../firebase.json", import.meta.url), "utf8"),
@@ -18,47 +22,56 @@ test("HTML has no inline event handlers or inline scripts", () => {
 });
 
 test("dynamic application data is not rendered with innerHTML", () => {
-  assert.doesNotMatch(app, /\.innerHTML\s*=/);
-  assert.match(app, /await updateDoc\(doc\(db, "odczynniki", editId\), items\[0\]\)/);
+  assert.doesNotMatch(`${app}\n${modules}`, /\.innerHTML\s*=/);
+  assert.match(modules, /await updateDoc\(doc\(db, "odczynniki", editId\), selectedItems\[0\]\)/);
 });
 
 test("every chemical LP can render its own add-position form", () => {
-  assert.match(app, /Dodaj nową pozycję do:/);
-  assert.match(app, /data-inline-chemical-form/);
-  assert.match(app, /suggestNextGroupValue\(group\.items, group\.prefix\)/);
+  assert.match(modules, /Dodaj nową pozycję do:/);
+  assert.match(modules, /data-inline-chemical-form/);
+  assert.match(modules, /suggestNextGroupValue\(group\.items, group\.prefix\)/);
 });
 
 test("chemical inventory provides search, status filters, and sorting", () => {
   assert.match(html, /id="chemicalSearch"/);
   assert.match(html, /id="chemicalStatusFilter"/);
   assert.match(html, /id="chemicalSort"/);
-  assert.match(app, /statusFilter === "attention"/);
-  assert.match(app, /statusFilter === "ordered"/);
-  assert.match(app, /statusFilter === "expired"/);
-  assert.match(app, /Brak pozycji spełniających kryteria\./);
+  assert.match(modules, /statusFilter === "attention"/);
+  assert.match(modules, /statusFilter === "ordered"/);
+  assert.match(modules, /statusFilter === "expired"/);
+  assert.match(modules, /Brak pozycji spełniających kryteria\./);
 });
 
 test("chemical inventory provides local DOCX import and CSV/JSON export", () => {
   assert.match(html, /id="wordImportFile"/);
   assert.match(html, /\.\/vendor\/jszip\.min\.js/);
-  assert.match(app, /readChemicalRowsFromDocx/);
-  assert.match(app, /confirmWordImport/);
-  assert.match(app, /batch\.update\(doc\(db, "odczynniki", draft\.matchId\)/);
-  assert.match(app, /Zaktualizuj istniejącą/);
-  assert.match(app, /exportChemicalsCsv/);
-  assert.match(app, /exportChemicalsJson/);
+  assert.match(modules, /readChemicalRowsFromDocx/);
+  assert.match(modules, /confirmImport/);
+  assert.match(modules, /batch\.update\(doc\(db, "odczynniki", draft\.matchId\)/);
+  assert.match(modules, /Zaktualizuj istniejącą/);
+  assert.match(modules, /exportCsv/);
+  assert.match(modules, /exportJson/);
 });
 
 test("frontend access requires an active admin or operator account", () => {
-  assert.match(app, /accessData\.active !== true/);
-  assert.match(app, /!\["admin", "operator"\]\.includes\(accessData\.role\)/);
+  assert.match(modules, /accessData\.active !== true/);
+  assert.match(modules, /!\["admin", "operator"\]\.includes\(accessData\.role\)/);
+});
+
+test("application responsibilities are split into focused modules", () => {
+  assert.ok(app.split("\n").length < 200);
+  for (const name of ["auth", "calendar", "chemicals", "equipment", "schedule", "ui"]) {
+    assert.match(app, new RegExp(`\\./modules/${name}\\.js`));
+  }
+  assert.match(modules, /\.\/chemical-transfer\.js/);
 });
 
 test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v4"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v5"/);
+  assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {
