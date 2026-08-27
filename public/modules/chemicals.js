@@ -82,7 +82,10 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     byId("formContainer").classList.add("editing-mode");
     byId("cancelEditBtn").classList.remove("hidden");
     byId("submitBtn").textContent = "Zaktualizuj wybraną butelkę";
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    queueMicrotask(() => {
+      byId("formContainer").scrollIntoView({ behavior: "smooth", block: "start" });
+      byId("formContainer").querySelector(".chem-name")?.focus({ preventScroll: true });
+    });
   }
 
   function cancelEdit() {
@@ -109,7 +112,17 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     if (alertData.type === "expired") message += ` — TERMIN MINĄŁ ${alertData.date}`;
     if (alertData.type === "warning") message += ` — ważny do ${alertData.date}`;
     const row = createElement("div", styles[alertData.type]);
-    row.append(createElement("span", "text-[14px]", icons[alertData.type]), createElement("span", "", message));
+    const editButton = createButton(
+      "✏️ Edytuj",
+      `Edytuj pozycję ${alertData.item.group || alertData.name}`,
+      () => startEdit(alertData.item),
+      "ml-auto shrink-0 rounded border border-current bg-white px-2 py-1 text-[9px] font-black uppercase shadow-sm",
+    );
+    row.append(
+      createElement("span", "text-[14px]", icons[alertData.type]),
+      createElement("span", "min-w-0 flex-1", message),
+      editButton,
+    );
     return row;
   }
 
@@ -213,11 +226,15 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       if (expiring.length > 0) {
         if (backups.length > 0) {
           const best = [...backups].sort((a, b) => String(b.expiry).localeCompare(String(a.expiry)))[0];
-          alerts.push({ prefix: group.prefix, name: group.name, type: "backup", date: best.expiry });
+          const candidate = [...expiring].sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)))[0];
+          alerts.push({ prefix: group.prefix, name: group.name, type: "backup", date: best.expiry, item: candidate });
         } else {
           const expired = expiring.filter((item) => calculateCalendarDays(new Date(), parseLocalDate(item.expiry)) < 0);
-          const candidate = [...(expired.length ? expired : expiring)].sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)))[0];
-          alerts.push({ prefix: group.prefix, name: group.name, type: expired.length ? "expired" : expiring.some((item) => item.ordered) ? "ordered" : "warning", date: candidate.expiry });
+          const ordered = expiring.filter((item) => item.ordered);
+          const type = expired.length ? "expired" : ordered.length ? "ordered" : "warning";
+          const candidates = expired.length ? expired : ordered.length ? ordered : expiring;
+          const candidate = [...candidates].sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)))[0];
+          alerts.push({ prefix: group.prefix, name: group.name, type, date: candidate.expiry, item: candidate });
         }
       }
     });
