@@ -47,8 +47,9 @@ test("chemical alerts provide direct editing of the affected record", () => {
   assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
   assert.match(modules, /formContainer"\)\.scrollIntoView/);
   assert.match(modules, /item: candidate/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=6/);
-  assert.match(html, /\.\/app\.js\?v=7/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=9/);
+  assert.match(modules, /\.\.\/import-export\.js\?v=9/);
+  assert.match(html, /\.\/app\.js\?v=9/);
 });
 
 test("chemical inventory provides local DOCX import and CSV/JSON export", () => {
@@ -75,11 +76,18 @@ test("application responsibilities are split into focused modules", () => {
   assert.match(modules, /\.\/chemical-transfer\.js/);
 });
 
+test("all local JavaScript imports use one cache version", () => {
+  const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
+    .map((match) => match[1]);
+  assert.ok(localImports.length > 0);
+  assert.ok(localImports.every((path) => path.endsWith("?v=9")));
+});
+
 test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v8"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v9"/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
 });
 

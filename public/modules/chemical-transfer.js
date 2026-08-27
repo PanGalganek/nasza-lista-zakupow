@@ -4,9 +4,9 @@ import {
   createChemicalBackup,
   readChemicalRowsFromDocx,
   rowsToChemicalDrafts,
-} from "../import-export.js";
-import { formatLocalDate } from "../utils.js";
-import { byId, createElement, createInput, runSafely } from "./ui.js";
+} from "../import-export.js?v=9";
+import { formatLocalDate } from "../utils.js?v=9";
+import { byId, createElement, createInput, runSafely } from "./ui.js?v=9";
 
 export function createChemicalTransferModule({ db, firestore, getItems, getCategory, createInlineField }) {
   const { collection, doc, writeBatch } = firestore;
