@@ -43,6 +43,8 @@ test("chemical inventory provides local DOCX import and CSV/JSON export", () => 
   assert.match(html, /\.\/vendor\/jszip\.min\.js/);
   assert.match(app, /readChemicalRowsFromDocx/);
   assert.match(app, /confirmWordImport/);
+  assert.match(app, /batch\.update\(doc\(db, "odczynniki", draft\.matchId\)/);
+  assert.match(app, /Zaktualizuj istniejącą/);
   assert.match(app, /exportChemicalsCsv/);
   assert.match(app, /exportChemicalsJson/);
 });
@@ -56,7 +58,7 @@ test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v3"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v4"/);
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {
