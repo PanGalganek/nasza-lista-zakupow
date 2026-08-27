@@ -1,6 +1,6 @@
-import { calculateCalendarDays, formatLocalDate, parseLocalDate, suggestNextGroupValue } from "../utils.js";
-import { createChemicalTransferModule } from "./chemical-transfer.js";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js";
+import { calculateCalendarDays, formatLocalDate, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=9";
+import { createChemicalTransferModule } from "./chemical-transfer.js?v=9";
+import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=9";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
