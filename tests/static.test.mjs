@@ -42,6 +42,13 @@ test("chemical inventory provides search, status filters, and sorting", () => {
   assert.match(modules, /Brak pozycji spełniających kryteria\./);
 });
 
+test("chemical alerts provide direct editing of the affected record", () => {
+  assert.match(modules, /✏️ Edytuj/);
+  assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
+  assert.match(modules, /formContainer"\)\.scrollIntoView/);
+  assert.match(modules, /item: candidate/);
+});
+
 test("chemical inventory provides local DOCX import and CSV/JSON export", () => {
   assert.match(html, /id="wordImportFile"/);
   assert.match(html, /\.\/vendor\/jszip\.min\.js/);
@@ -70,7 +77,7 @@ test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v5"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v6"/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
 });
 

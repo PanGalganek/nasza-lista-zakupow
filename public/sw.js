@@ -1,4 +1,4 @@
-const CACHE_NAME = "e-lab-v5";
+const CACHE_NAME = "e-lab-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
