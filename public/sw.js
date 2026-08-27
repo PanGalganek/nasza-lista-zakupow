@@ -1,10 +1,10 @@
-const CACHE_NAME = "e-lab-v7";
+const CACHE_NAME = "e-lab-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./import-export.css",
-  "./app.js",
+  "./app.js?v=7",
   "./utils.js",
   "./import-export.js",
   "./modules/auth.js",
