@@ -89,6 +89,136 @@ export function rowsToChemicalDrafts(rows, { category, received }) {
   });
 }
 
+function normalizedCategory(value) {
+  return value === "Standardowe" ? "Wzorce" : String(value || "Wzorce");
+}
+
+export function normalizeImportText(value) {
+  return cleanText(value)
+    .toLocaleLowerCase("pl")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ł/g, "l")
+    .replace(/[^a-z0-9µ]+/g, " ")
+    .trim();
+}
+
+export function normalizeGroupNumber(value) {
+  return String(value || "").toLocaleUpperCase("pl").replace(/\s+/g, "");
+}
+
+export function groupBaseNumber(value) {
+  const group = normalizeGroupNumber(value);
+  const codes = group.match(/[IVXLCDM]+-\d+(?:\/\d+)+/g) || [];
+  if (codes.length !== 1) return "";
+  return codes[0].split("/")[0];
+}
+
+function materialChanges(draft, existing) {
+  const definitions = [
+    ["group", "Numer grupy", normalizeGroupNumber],
+    ["expiry", "Data ważności", String],
+    ["name", "Nazwa", normalizeImportText],
+    ["usage", "Zastosowanie", normalizeImportText],
+  ];
+  return definitions.flatMap(([field, label, normalize]) => (
+    normalize(existing?.[field] || "") === normalize(draft[field] || "")
+      ? []
+      : [{ field, label, before: String(existing?.[field] || "—"), after: String(draft[field] || "—") }]
+  ));
+}
+
+function attachMatch(draft, existing, matchType) {
+  const changes = materialChanges(draft, existing);
+  return {
+    ...draft,
+    matchId: existing.id,
+    existing,
+    matchType,
+    status: changes.length ? "changed" : "unchanged",
+    action: "skip",
+    changes,
+  };
+}
+
+export function classifyChemicalDrafts(drafts, existingItems) {
+  const sourceDrafts = drafts.map(({ status, action, changes, matchId, existing, matchType, ...draft }) => draft);
+  const existing = existingItems.map((item) => ({
+    ...item,
+    normalizedCategory: normalizedCategory(item.category),
+    normalizedGroup: normalizeGroupNumber(item.group),
+    groupBase: groupBaseNumber(item.group),
+    normalizedName: normalizeImportText(item.name),
+  }));
+  const claimedIds = new Set();
+  const results = new Array(sourceDrafts.length);
+
+  sourceDrafts.forEach((draft, index) => {
+    const category = normalizedCategory(draft.category);
+    const group = normalizeGroupNumber(draft.group);
+    const exact = existing.filter((item) => item.normalizedCategory === category && item.normalizedGroup === group);
+    if (exact.length === 1 && !claimedIds.has(exact[0].id)) {
+      claimedIds.add(exact[0].id);
+      results[index] = attachMatch(draft, exact[0], "exact");
+    } else if (exact.length > 1 || (exact.length === 1 && claimedIds.has(exact[0].id))) {
+      results[index] = { ...draft, status: "ambiguous", action: "skip", changes: [], matchType: "multiple-exact" };
+    }
+  });
+
+  const pendingByFamily = new Map();
+  sourceDrafts.forEach((draft, index) => {
+    if (results[index]) return;
+    const base = groupBaseNumber(draft.group);
+    const key = `${normalizedCategory(draft.category)}\u0000${base}`;
+    if (!base) {
+      results[index] = { ...draft, status: "ambiguous", action: "skip", changes: [], matchType: "invalid-group" };
+      return;
+    }
+    if (!pendingByFamily.has(key)) pendingByFamily.set(key, []);
+    pendingByFamily.get(key).push(index);
+  });
+
+  pendingByFamily.forEach((indices, key) => {
+    const [category, base] = key.split("\u0000");
+    let candidates = existing.filter((item) => (
+      item.normalizedCategory === category && item.groupBase === base && !claimedIds.has(item.id)
+    ));
+    const unresolved = new Set(indices);
+
+    const names = new Set(indices.map((index) => normalizeImportText(sourceDrafts[index].name)).filter(Boolean));
+    names.forEach((name) => {
+      const draftMatches = [...unresolved].filter((index) => normalizeImportText(sourceDrafts[index].name) === name);
+      const existingMatches = candidates.filter((item) => item.normalizedName === name);
+      if (draftMatches.length === 1 && existingMatches.length === 1) {
+        const index = draftMatches[0];
+        const match = existingMatches[0];
+        results[index] = attachMatch(sourceDrafts[index], match, "family-name");
+        unresolved.delete(index);
+        claimedIds.add(match.id);
+        candidates = candidates.filter((item) => item.id !== match.id);
+      }
+    });
+
+    if (unresolved.size === 1 && candidates.length === 1) {
+      const index = [...unresolved][0];
+      const match = candidates[0];
+      results[index] = attachMatch(sourceDrafts[index], match, "family-single");
+      unresolved.delete(index);
+      claimedIds.add(match.id);
+    }
+
+    unresolved.forEach((index) => {
+      if (candidates.length === 0) {
+        results[index] = { ...sourceDrafts[index], status: "new", action: "add", changes: [], matchType: "none" };
+      } else {
+        results[index] = { ...sourceDrafts[index], status: "ambiguous", action: "skip", changes: [], matchType: "multiple-family" };
+      }
+    });
+  });
+
+  return results;
+}
+
 export async function readChemicalRowsFromDocx(arrayBuffer, zipLibrary = globalThis.JSZip) {
   if (!zipLibrary) throw new Error("Nie załadowano modułu odczytu DOCX.");
   const archive = await zipLibrary.loadAsync(arrayBuffer);
