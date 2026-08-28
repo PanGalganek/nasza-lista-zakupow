@@ -2,6 +2,8 @@
 
 Wewnętrzna aplikacja laboratoryjna do obsługi odczynników i wzorców, harmonogramu badań, sprzętu oraz kalendarza. Publiczny interfejs jest publikowany na Firebase Hosting i GitHub Pages, ale dostęp do danych wymaga konta Firebase Authentication wpisanego na listę uprawnionych użytkowników.
 
+Pozycje odczynników i wzorców są utrzymywane bezpośrednio w aplikacji, w tym przez szybką edycję z panelu alertów. Import i eksport plików nie są częścią obsługiwanego procesu.
+
 ## Wymagania
 
 - Node.js 24
