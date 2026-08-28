@@ -1,6 +1,5 @@
-import { calculateCalendarDays, formatLocalDate, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=9";
-import { createChemicalTransferModule } from "./chemical-transfer.js?v=9";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=9";
+import { calculateCalendarDays, formatLocalDate, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=10";
+import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=10";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -14,10 +13,6 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     label.append(createElement("span", "text-[9px] font-bold uppercase text-gray-500", labelText), input);
     return label;
   }
-
-  const transfer = createChemicalTransferModule({
-    db, firestore, getItems: () => items, getCategory: () => category, createInlineField,
-  });
 
   function addFormRow(data = null) {
     formRowCount += 1;
@@ -316,14 +311,11 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     byId("chemicalSearch").addEventListener("input", render);
     byId("chemicalStatusFilter").addEventListener("change", render);
     byId("chemicalSort").addEventListener("change", render);
-    transfer.bind();
   }
 
   return {
     actions: {
       addFormRow, cancelEdit, saveItems, switchSubTab,
-      openImport: transfer.open, chooseImportFile: transfer.chooseFile, closeImport: transfer.close,
-      confirmImport: transfer.confirmImport, exportCsv: transfer.exportCsv, exportJson: transfer.exportJson,
     },
     bind, initializeForm, start,
   };

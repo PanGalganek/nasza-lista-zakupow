@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const moduleUrls = ["auth", "calendar", "chemical-transfer", "chemicals", "constants", "equipment", "schedule", "ui"]
+const moduleUrls = ["auth", "calendar", "chemicals", "constants", "equipment", "schedule", "ui"]
   .map((name) => new URL(`../public/modules/${name}.js`, import.meta.url));
 
 const [html, app, modules, manifest, serviceWorker, firebaseConfig, firebaseWorkflow] = await Promise.all([
@@ -47,20 +47,14 @@ test("chemical alerts provide direct editing of the affected record", () => {
   assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
   assert.match(modules, /formContainer"\)\.scrollIntoView/);
   assert.match(modules, /item: candidate/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=9/);
-  assert.match(modules, /\.\.\/import-export\.js\?v=9/);
-  assert.match(html, /\.\/app\.js\?v=9/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=10/);
+  assert.match(html, /\.\/app\.js\?v=10/);
 });
 
-test("chemical inventory provides local DOCX import and CSV/JSON export", () => {
-  assert.match(html, /id="wordImportFile"/);
-  assert.match(html, /\.\/vendor\/jszip\.min\.js/);
-  assert.match(modules, /readChemicalRowsFromDocx/);
-  assert.match(modules, /confirmImport/);
-  assert.match(modules, /batch\.update\(doc\(db, "odczynniki", draft\.matchId\)/);
-  assert.match(modules, /Zaktualizuj istniejącą/);
-  assert.match(modules, /exportCsv/);
-  assert.match(modules, /exportJson/);
+test("retired chemical import and export are absent from the interface and modules", () => {
+  assert.doesNotMatch(html, /wordImport|Import z Worda|Eksport CSV|Kopia JSON|jszip/i);
+  assert.doesNotMatch(`${app}\n${modules}`, /chemical-transfer|import-export|confirmImport|exportCsv|exportJson/i);
+  assert.doesNotMatch(serviceWorker, /chemical-transfer|import-export|jszip/i);
 });
 
 test("frontend access requires an active admin or operator account", () => {
@@ -73,21 +67,20 @@ test("application responsibilities are split into focused modules", () => {
   for (const name of ["auth", "calendar", "chemicals", "equipment", "schedule", "ui"]) {
     assert.match(app, new RegExp(`\\./modules/${name}\\.js`));
   }
-  assert.match(modules, /\.\/chemical-transfer\.js/);
 });
 
 test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=9")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=10")));
 });
 
 test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v9"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v10"/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
 });
 

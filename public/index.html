@@ -9,9 +9,7 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./styles.css">
-    <link rel="stylesheet" href="./import-export.css">
-    <script defer src="./vendor/jszip.min.js"></script>
-    <script type="module" src="./app.js?v=9"></script>
+    <script type="module" src="./app.js?v=10"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
 
@@ -42,34 +40,6 @@
                 <button type="button" data-action="switch-chemical-tab" data-tab="Wzorce" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
                 <button type="button" data-action="switch-chemical-tab" data-tab="Odczynniki" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
             </div>
-            <div class="mb-4 flex flex-wrap gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3">
-                <button type="button" data-action="open-word-import" class="rounded bg-blue-600 px-3 py-2 text-[10px] font-bold uppercase text-white">📄 Import z Worda</button>
-                <button type="button" data-action="export-chemicals-csv" class="rounded border border-blue-300 bg-white px-3 py-2 text-[10px] font-bold uppercase text-blue-700">Eksport CSV</button>
-                <button type="button" data-action="export-chemicals-json" class="rounded border border-blue-300 bg-white px-3 py-2 text-[10px] font-bold uppercase text-blue-700">Kopia JSON</button>
-                <input type="file" id="wordImportFile" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
-            </div>
-            <section id="wordImportPanel" class="hidden mb-5 rounded-xl border border-blue-200 bg-white p-4 text-left shadow-sm">
-                <div class="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                        <h2 class="text-sm font-black uppercase text-blue-800">Import pozycji z dokumentu Word</h2>
-                        <p id="wordImportStatus" class="mt-1 text-[10px] text-gray-600">Wybierz dokument DOCX.</p>
-                    </div>
-                    <button type="button" data-action="close-word-import" class="text-lg font-bold text-gray-500" aria-label="Zamknij import">✕</button>
-                </div>
-                <div class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-2">
-                    <label class="flex flex-col gap-1 text-[9px] font-bold uppercase text-gray-500">Kategoria
-                        <select id="wordImportCategory" class="word-import-select rounded border bg-white p-2 text-sm text-black"><option value="Wzorce">Wzorce</option><option value="Odczynniki">Odczynniki</option></select>
-                    </label>
-                    <label class="flex flex-col gap-1 text-[9px] font-bold uppercase text-gray-500">Data przyjęcia dla importu
-                        <input type="date" id="wordImportReceived" class="rounded border bg-white p-2 text-sm font-normal text-black">
-                    </label>
-                </div>
-                <div id="wordImportPreview" class="word-import-preview space-y-2 overflow-y-auto"></div>
-                <div id="wordImportActions" class="word-import-actions hidden mt-4 flex flex-col gap-2 border-t pt-4">
-                    <button type="button" data-action="choose-word-file" class="rounded bg-gray-200 px-4 py-2 text-[10px] font-bold uppercase text-gray-700">Wybierz inny plik</button>
-                    <button type="button" id="confirmWordImportBtn" data-action="confirm-word-import" class="rounded bg-green-600 px-4 py-2 text-[10px] font-bold uppercase text-white">Zastosuj wybrane działania</button>
-                </div>
-            </section>
             <div class="grid grid-cols-1 gap-2 mb-4 rounded-lg border bg-gray-50 p-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <label class="flex flex-col gap-1 text-left">
                     <span class="text-[9px] font-bold uppercase text-gray-500">Szukaj</span>

@@ -20,12 +20,12 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=9";
-import { createCalendarModule } from "./modules/calendar.js?v=9";
-import { createChemicalsModule } from "./modules/chemicals.js?v=9";
-import { createEquipmentModule } from "./modules/equipment.js?v=9";
-import { createScheduleModule } from "./modules/schedule.js?v=9";
-import { byId, runSafely } from "./modules/ui.js?v=9";
+import { createAuthModule } from "./modules/auth.js?v=10";
+import { createCalendarModule } from "./modules/calendar.js?v=10";
+import { createChemicalsModule } from "./modules/chemicals.js?v=10";
+import { createEquipmentModule } from "./modules/equipment.js?v=10";
+import { createScheduleModule } from "./modules/schedule.js?v=10";
+import { byId, runSafely } from "./modules/ui.js?v=10";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -110,12 +110,6 @@ const delegatedActions = {
   "add-form-row": () => chemicals.actions.addFormRow(),
   "save-items": () => chemicals.actions.saveItems(),
   "cancel-edit": () => chemicals.actions.cancelEdit(),
-  "open-word-import": () => chemicals.actions.openImport(),
-  "choose-word-file": () => chemicals.actions.chooseImportFile(),
-  "close-word-import": () => chemicals.actions.closeImport(),
-  "confirm-word-import": () => chemicals.actions.confirmImport(),
-  "export-chemicals-csv": () => chemicals.actions.exportCsv(),
-  "export-chemicals-json": () => chemicals.actions.exportJson(),
   "add-task": (button) => schedule.addTask(button.dataset.lab, button.dataset.category),
   "add-equipment": () => equipment.save(),
   "cancel-equipment-edit": () => equipment.cancelEdit(),
