@@ -1,5 +1,5 @@
-import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=11";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=11";
+import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=12";
+import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=12";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -102,10 +102,10 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     };
     const icons = { backup: "🛡️", ordered: "✅", expired: "⛔", warning: "⚠️" };
     let message = `[${alertData.prefix}] ${alertData.name}`;
-    if (alertData.type === "backup") message += ` — jest zapasowa pozycja ważna do ${alertData.date}`;
+    if (alertData.type === "backup") message += ` — jest zapasowa pozycja ważna do ${formatPolishDate(alertData.date)}`;
     if (alertData.type === "ordered") message += " — ZAMÓWIONO";
-    if (alertData.type === "expired") message += ` — TERMIN MINĄŁ ${alertData.date}`;
-    if (alertData.type === "warning") message += ` — ważny do ${alertData.date}`;
+    if (alertData.type === "expired") message += ` — TERMIN MINĄŁ ${formatPolishDate(alertData.date)}`;
+    if (alertData.type === "warning") message += ` — ważny do ${formatPolishDate(alertData.date)}`;
     const row = createElement("div", styles[alertData.type]);
     const editButton = createButton(
       "✏️ Edytuj",
@@ -223,7 +223,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         info.append(createElement("span", "font-black text-blue-400 w-8", suffix));
         const details = createElement("div", "flex flex-col text-black");
         const expiryLine = createElement("span", "uppercase");
-        expiryLine.append(document.createTextNode("Ważność: "), createElement("span", color, item.expiry || "--"));
+        expiryLine.append(document.createTextNode("Ważność: "), createElement("span", color, formatPolishDate(item.expiry)));
         const dayText = days !== null && days < 0 ? "PO TERMINIE" : days === null ? "brak daty" : `${days} dni`;
         expiryLine.append(document.createTextNode(" "), createElement("span", "text-[8px] text-gray-400", `(${dayText})`));
         details.append(expiryLine, createElement("span", "text-[8px] italic text-gray-500", item.usage || ""));

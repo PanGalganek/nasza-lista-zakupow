@@ -1,6 +1,6 @@
-import { monthNames } from "./constants.js?v=11";
-import { byId, createButton, createElement } from "./ui.js?v=11";
-import { formatLocalDate, shiftCalendarMonth } from "../utils.js?v=11";
+import { monthNames } from "./constants.js?v=12";
+import { byId, createButton, createElement } from "./ui.js?v=12";
+import { formatLocalDate, formatPolishDate, shiftCalendarMonth } from "../utils.js?v=12";
 
 export function createCalendarModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query } = firestore;
@@ -33,7 +33,7 @@ export function createCalendarModule({ db, firestore, registerSnapshot, reportLi
     }
     selectedEvents.forEach((event) => {
       const row = createElement("div", showDay ? "flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1 text-black font-bold" : "flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold text-black");
-      const label = showDay ? `${String(event.date || "").split("-")[2] || "--"} ${event.title || "Bez nazwy"}` : event.title || "Bez nazwy";
+      const label = showDay ? `${formatPolishDate(event.date)} — ${event.title || "Bez nazwy"}` : event.title || "Bez nazwy";
       row.append(
         createElement("span", "", label),
         createButton("✕", "Usuń wydarzenie", async () => {
@@ -60,12 +60,12 @@ export function createCalendarModule({ db, firestore, registerSnapshot, reportLi
       const hasEvent = events.some((event) => event.date === date);
       const cell = createElement("button", `calendar-day ${date === today ? "today" : ""} ${date === selectedDay ? "selected" : ""} ${hasEvent ? "has-event" : ""}`, day);
       cell.type = "button";
-      cell.setAttribute("aria-label", `Wybierz ${date}`);
+      cell.setAttribute("aria-label", `Wybierz ${formatPolishDate(date)}`);
       cell.addEventListener("click", () => selectDay(date));
       grid.append(cell);
     }
 
-    byId("selectedDateLabel").textContent = `Dzień: ${selectedDay}`;
+    byId("selectedDateLabel").textContent = `Dzień: ${formatPolishDate(selectedDay)}`;
     renderEventList(byId("dayEventsList"), events.filter((event) => event.date === selectedDay), "Brak wydarzeń.");
     const monthPrefix = `${calendarDate.getFullYear()}-${monthId}`;
     const monthEvents = events.filter((event) => typeof event.date === "string" && event.date.startsWith(monthPrefix)).sort((a, b) => a.date.localeCompare(b.date));

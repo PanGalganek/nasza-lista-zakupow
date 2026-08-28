@@ -1,6 +1,6 @@
-import { taskCategories, taskLabs } from "./constants.js?v=11";
-import { byId, createButton, createElement } from "./ui.js?v=11";
-import { formatLocalDate, parseLocalDate } from "../utils.js?v=11";
+import { taskCategories, taskLabs } from "./constants.js?v=12";
+import { byId, createButton, createElement } from "./ui.js?v=12";
+import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=12";
 
 export function createScheduleModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;
@@ -55,7 +55,7 @@ export function createScheduleModule({ db, firestore, registerSnapshot, reportLi
           const row = createElement("div", `flex justify-between items-center p-3 border rounded-lg ${doneThisYear ? "task-done" : "bg-white shadow-sm"} mb-2 text-[11px] text-black`);
           const description = createElement("div", "flex flex-col");
           description.append(createElement("span", "font-bold text-black", task.name || "Bez nazwy"));
-          if (doneThisYear) description.append(createElement("span", "text-[9px] text-green-600 font-bold uppercase mt-1", `Wykonano: ${task.doneDate}`));
+          if (doneThisYear) description.append(createElement("span", "text-[9px] text-green-600 font-bold uppercase mt-1", `Wykonano: ${formatPolishDate(task.doneDate)}`));
           const actions = createElement("div", "flex gap-4");
           actions.append(
             createButton(doneThisYear ? "✅" : "⬜", doneThisYear ? "Oznacz jako niewykonane" : "Oznacz jako wykonane", () => updateDoc(doc(db, "harmonogram", documentSnapshot.id), { doneDate: doneThisYear ? null : formatLocalDate() }), "text-xl"),
