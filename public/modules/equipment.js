@@ -1,6 +1,6 @@
-import { monthNames } from "./constants.js?v=11";
-import { byId, createButton, createElement } from "./ui.js?v=11";
-import { formatLocalDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=11";
+import { monthNames } from "./constants.js?v=12";
+import { byId, createButton, createElement } from "./ui.js?v=12";
+import { formatLocalDate, formatPolishDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=12";
 
 export function createEquipmentModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;
@@ -62,8 +62,11 @@ export function createEquipmentModule({ db, firestore, registerSnapshot, reportL
       const type = equipment.type || "Wzorcowanie";
       const colorClass = type === "Kalibracja" ? "bg-blue-100 text-blue-700" : type === "Sprawdzenie" ? "bg-green-100 text-green-700" : "bg-purple-100 text-purple-700";
       const row = createElement("div", `flex justify-between items-center p-3 border rounded-lg ${doneThisYear ? "task-done" : "bg-white shadow-sm"} mb-2 text-[11px] text-black`);
-      const info = createElement("div");
-      info.append(createElement("span", `${colorClass} px-1 rounded text-[8px] uppercase mr-2 font-bold`, type), createElement("span", "font-bold text-black", equipment.name || "Bez nazwy"));
+      const info = createElement("div", "flex flex-col");
+      const heading = createElement("div");
+      heading.append(createElement("span", `${colorClass} px-1 rounded text-[8px] uppercase mr-2 font-bold`, type), createElement("span", "font-bold text-black", equipment.name || "Bez nazwy"));
+      info.append(heading);
+      if (doneThisYear) info.append(createElement("span", "mt-1 text-[9px] font-bold uppercase text-green-600", `Wykonano: ${formatPolishDate(equipment.doneDate)}`));
       const actions = createElement("div", "flex gap-3");
       actions.append(
         createButton(doneThisYear ? "✅" : "⬜", doneThisYear ? "Oznacz jako niewykonane" : "Oznacz jako wykonane", () => updateDoc(doc(db, "wzorcowanie", equipment.id), { doneDate: doneThisYear ? null : formatLocalDate() }), "text-xl"),

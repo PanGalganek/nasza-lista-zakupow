@@ -47,8 +47,18 @@ test("chemical alerts provide direct editing of the affected record", () => {
   assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
   assert.match(modules, /formContainer"\)\.scrollIntoView/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=11/);
-  assert.match(html, /\.\/app\.js\?v=11/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=12/);
+  assert.match(html, /\.\/app\.js\?v=12/);
+});
+
+test("all visible full dates use the Polish day-month-year format", () => {
+  assert.match(modules, /ważna do \$\{formatPolishDate\(alertData\.date\)\}/);
+  assert.match(modules, /TERMIN MINĄŁ \$\{formatPolishDate\(alertData\.date\)\}/);
+  assert.match(modules, /Ważność:.*formatPolishDate\(item\.expiry\)/s);
+  assert.match(modules, /Wykonano: \$\{formatPolishDate\(task\.doneDate\)\}/);
+  assert.match(modules, /Wykonano: \$\{formatPolishDate\(equipment\.doneDate\)\}/);
+  assert.match(modules, /Dzień: \$\{formatPolishDate\(selectedDay\)\}/);
+  assert.doesNotMatch(modules, /Wykonano: \$\{task\.doneDate\}|Dzień: \$\{selectedDay\}|ważny do \$\{alertData\.date\}/);
 });
 
 test("retired chemical import and export are absent from the interface and modules", () => {
@@ -73,14 +83,14 @@ test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=11")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=12")));
 });
 
 test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js"\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v11"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v12"/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
 });
 

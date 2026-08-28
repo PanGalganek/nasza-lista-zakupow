@@ -4,6 +4,7 @@ import {
   buildChemicalAlerts,
   calculateCalendarDays,
   formatLocalDate,
+  formatPolishDate,
   isDoneInYear,
   parseLocalDate,
   shiftCalendarMonth,
@@ -12,6 +13,13 @@ import {
 
 test("formatLocalDate uses the local calendar date", () => {
   assert.equal(formatLocalDate(new Date(2026, 6, 1, 23, 30)), "2026-07-01");
+});
+
+test("formatPolishDate displays day, month, and year", () => {
+  assert.equal(formatPolishDate("2026-09-16"), "16.09.2026");
+  assert.equal(formatPolishDate(new Date(2026, 0, 5)), "05.01.2026");
+  assert.equal(formatPolishDate(""), "--");
+  assert.equal(formatPolishDate("błędna-data"), "--");
 });
 
 test("parseLocalDate rejects impossible dates", () => {
