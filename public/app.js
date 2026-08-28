@@ -20,12 +20,12 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=10";
-import { createCalendarModule } from "./modules/calendar.js?v=10";
-import { createChemicalsModule } from "./modules/chemicals.js?v=10";
-import { createEquipmentModule } from "./modules/equipment.js?v=10";
-import { createScheduleModule } from "./modules/schedule.js?v=10";
-import { byId, runSafely } from "./modules/ui.js?v=10";
+import { createAuthModule } from "./modules/auth.js?v=11";
+import { createCalendarModule } from "./modules/calendar.js?v=11";
+import { createChemicalsModule } from "./modules/chemicals.js?v=11";
+import { createEquipmentModule } from "./modules/equipment.js?v=11";
+import { createScheduleModule } from "./modules/schedule.js?v=11";
+import { byId, runSafely } from "./modules/ui.js?v=11";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",

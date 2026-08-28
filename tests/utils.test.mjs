@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildChemicalAlerts,
   calculateCalendarDays,
   formatLocalDate,
   isDoneInYear,
@@ -22,6 +23,39 @@ test("calculateCalendarDays counts calendar-day distance", () => {
   assert.equal(calculateCalendarDays(new Date(2026, 6, 3), new Date(2026, 6, 6)), 3);
   assert.equal(calculateCalendarDays(new Date(2026, 6, 6), new Date(2026, 6, 6)), 0);
   assert.equal(calculateCalendarDays(new Date(2026, 6, 7), new Date(2026, 6, 6)), -1);
+  assert.equal(calculateCalendarDays(new Date(2026, 6, 7), null), null);
+});
+
+test("chemical alerts follow expiry, ordered state, backup, and quick-edit changes", () => {
+  const today = new Date(2026, 7, 28);
+  const expiring = {
+    id: "old-bottle",
+    name: "Wzorzec PO4",
+    group: "II-3/06",
+    expiry: "2026-09-16",
+    ordered: false,
+  };
+
+  let alerts = buildChemicalAlerts([expiring], 40, today);
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].type, "warning");
+  assert.equal(alerts[0].item.id, "old-bottle");
+
+  alerts = buildChemicalAlerts([{ ...expiring, ordered: true }], 40, today);
+  assert.equal(alerts[0].type, "ordered");
+
+  alerts = buildChemicalAlerts([{ ...expiring, expiry: "2026-08-27", ordered: true }], 40, today);
+  assert.equal(alerts[0].type, "expired");
+
+  const replacement = { ...expiring, id: "new-bottle", group: "II-3/07", expiry: "2027-09-16" };
+  alerts = buildChemicalAlerts([expiring, replacement], 40, today);
+  assert.equal(alerts[0].type, "backup");
+  assert.equal(alerts[0].item.id, "old-bottle");
+  assert.equal(alerts[0].date, "2027-09-16");
+
+  alerts = buildChemicalAlerts([replacement], 40, today);
+  assert.deepEqual(alerts, []);
+  assert.deepEqual(buildChemicalAlerts([{ ...replacement, expiry: "błędna-data" }], 40, today), []);
 });
 
 test("shiftCalendarMonth never skips February from the 31st", () => {

@@ -1,6 +1,6 @@
-import { monthNames } from "./constants.js?v=10";
-import { byId, createButton, createElement } from "./ui.js?v=10";
-import { formatLocalDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=10";
+import { monthNames } from "./constants.js?v=11";
+import { byId, createButton, createElement } from "./ui.js?v=11";
+import { formatLocalDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=11";
 
 export function createEquipmentModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;
