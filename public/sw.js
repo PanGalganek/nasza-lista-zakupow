@@ -1,17 +1,17 @@
-const CACHE_NAME = "e-lab-v10";
+const CACHE_NAME = "e-lab-v11";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
-  "./app.js?v=10",
-  "./utils.js?v=10",
-  "./modules/auth.js?v=10",
-  "./modules/calendar.js?v=10",
-  "./modules/chemicals.js?v=10",
-  "./modules/constants.js?v=10",
-  "./modules/equipment.js?v=10",
-  "./modules/schedule.js?v=10",
-  "./modules/ui.js?v=10",
+  "./app.js?v=11",
+  "./utils.js?v=11",
+  "./modules/auth.js?v=11",
+  "./modules/calendar.js?v=11",
+  "./modules/chemicals.js?v=11",
+  "./modules/constants.js?v=11",
+  "./modules/equipment.js?v=11",
+  "./modules/schedule.js?v=11",
+  "./modules/ui.js?v=11",
   "./manifest.json",
   "./icon.svg",
 ];

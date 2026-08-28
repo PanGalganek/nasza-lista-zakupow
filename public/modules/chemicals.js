@@ -1,5 +1,5 @@
-import { calculateCalendarDays, formatLocalDate, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=10";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=10";
+import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=11";
+import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=11";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -158,18 +158,6 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     return form;
   }
 
-  function groupItems(selectedItems) {
-    const groups = new Map();
-    selectedItems.forEach((item) => {
-      const prefix = String(item.group || "Inne").split("/")[0];
-      const name = String(item.name || "Bez nazwy");
-      const key = `${prefix}\u0000${name.toLocaleLowerCase("pl")}`;
-      if (!groups.has(key)) groups.set(key, { key, prefix, name, items: [] });
-      groups.get(key).items.push(item);
-    });
-    return [...groups.values()];
-  }
-
   function earliestExpiry(group) {
     return group.items.map((item) => String(item.expiry || "")).filter(Boolean).sort()[0] || "9999-12-31";
   }
@@ -201,38 +189,12 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       return true;
     });
 
-    const sortedGroups = groupItems(filtered).sort((a, b) => {
+    const sortedGroups = groupChemicalItems(filtered).sort((a, b) => {
       if (sortMode === "name") return a.name.localeCompare(b.name, "pl", { sensitivity: "base" }) || a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" });
       if (sortMode === "expiry") return earliestExpiry(a).localeCompare(earliestExpiry(b)) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
       return a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" }) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
     });
-    const alerts = [];
-    groupItems(categoryItems).forEach((group) => {
-      const expiring = group.items.filter((item) => {
-        if (!item.expiry) return false;
-        const days = calculateCalendarDays(new Date(), parseLocalDate(item.expiry));
-        return days !== null && days <= threshold;
-      });
-      const backups = group.items.filter((item) => {
-        if (!item.expiry) return false;
-        const days = calculateCalendarDays(new Date(), parseLocalDate(item.expiry));
-        return days !== null && days > threshold;
-      });
-      if (expiring.length > 0) {
-        if (backups.length > 0) {
-          const best = [...backups].sort((a, b) => String(b.expiry).localeCompare(String(a.expiry)))[0];
-          const candidate = [...expiring].sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)))[0];
-          alerts.push({ prefix: group.prefix, name: group.name, type: "backup", date: best.expiry, item: candidate });
-        } else {
-          const expired = expiring.filter((item) => calculateCalendarDays(new Date(), parseLocalDate(item.expiry)) < 0);
-          const ordered = expiring.filter((item) => item.ordered);
-          const type = expired.length ? "expired" : ordered.length ? "ordered" : "warning";
-          const candidates = expired.length ? expired : ordered.length ? ordered : expiring;
-          const candidate = [...candidates].sort((a, b) => String(a.expiry).localeCompare(String(b.expiry)))[0];
-          alerts.push({ prefix: group.prefix, name: group.name, type, date: candidate.expiry, item: candidate });
-        }
-      }
-    });
+    const alerts = buildChemicalAlerts(categoryItems, threshold);
 
     sortedGroups.forEach((group, groupIndex) => {
       group.items.sort((a, b) => sortMode === "expiry" ? String(a.expiry || "9999-12-31").localeCompare(String(b.expiry || "9999-12-31")) : String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
