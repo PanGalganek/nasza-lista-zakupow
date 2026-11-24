@@ -1,10 +1,11 @@
-import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=12";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=12";
+import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=13";
+import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=13";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
   let items = [];
   let category = "Wzorce";
+  let editCategory = null;
   let formRowCount = 0;
   let openInlineGroupKey = null;
 
@@ -47,29 +48,38 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     return {
       name: row.querySelector(".chem-name").value.trim(), group: row.querySelector(".chem-group").value.trim(),
       usage: row.querySelector(".chem-usage").value.trim(), received: row.querySelector(".chem-received").value,
-      expiry: row.querySelector(".chem-expiry").value, category,
+      expiry: row.querySelector(".chem-expiry").value, category: editCategory ?? category,
     };
   }
 
   async function saveItems() {
+    const submitButton = byId("submitBtn");
+    if (submitButton.disabled) return;
+
     const selectedItems = [...byId("dynamicItemsContainer").children].map(payloadFromRow).filter((item) => item.name);
     if (selectedItems.length === 0) {
       alert("Podaj nazwę co najmniej jednej pozycji.");
       return;
     }
     const editId = byId("editId").value;
-    if (editId) {
-      if (selectedItems.length !== 1) throw new Error("Edycja wymaga dokładnie jednego wiersza.");
-      await updateDoc(doc(db, "odczynniki", editId), selectedItems[0]);
-    } else {
-      const batch = writeBatch(db);
-      selectedItems.forEach((item, index) => batch.set(doc(collection(db, "odczynniki")), { ...item, timestamp: Date.now() + index, ordered: false }));
-      await batch.commit();
+    submitButton.disabled = true;
+    try {
+      if (editId) {
+        if (selectedItems.length !== 1) throw new Error("Edycja wymaga dokładnie jednego wiersza.");
+        await updateDoc(doc(db, "odczynniki", editId), selectedItems[0]);
+      } else {
+        const batch = writeBatch(db);
+        selectedItems.forEach((item, index) => batch.set(doc(collection(db, "odczynniki")), { ...item, timestamp: Date.now() + index, ordered: false }));
+        await batch.commit();
+      }
+      cancelEdit();
+    } finally {
+      submitButton.disabled = false;
     }
-    cancelEdit();
   }
 
   function startEdit(item) {
+    editCategory = item.category || "Wzorce";
     byId("editId").value = item.id;
     byId("dynamicItemsContainer").replaceChildren();
     formRowCount = 0;
@@ -84,6 +94,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   }
 
   function cancelEdit() {
+    editCategory = null;
     byId("editId").value = "";
     byId("formContainer").classList.remove("editing-mode");
     byId("cancelEditBtn").classList.add("hidden");
@@ -263,12 +274,6 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     ));
   }
 
-  function initializeForm() {
-    formRowCount = 0;
-    byId("dynamicItemsContainer").replaceChildren();
-    addFormRow();
-  }
-
   function bind() {
     byId("chemicalSearch").addEventListener("input", render);
     byId("chemicalStatusFilter").addEventListener("change", render);
@@ -279,6 +284,6 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     actions: {
       addFormRow, cancelEdit, saveItems, switchSubTab,
     },
-    bind, initializeForm, start,
+    bind, initializeForm: cancelEdit, start,
   };
 }
