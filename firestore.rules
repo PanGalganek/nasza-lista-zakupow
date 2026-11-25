@@ -7,10 +7,12 @@ service cloud.firestore {
     }
 
     function activeUser() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/app_users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/app_users/$(request.auth.uid)).data.active == true
-        && get(/databases/$(database)/documents/app_users/$(request.auth.uid)).data.role in ['admin', 'operator'];
+      return signedIn() && allowedRole(request.auth.uid);
+    }
+
+    function allowedRole(uid) {
+      let user = get(/databases/$(database)/documents/app_users/$(uid)).data;
+      return user.active == true && user.role in ['admin', 'operator'];
     }
 
     function validDate(value) {
@@ -20,7 +22,8 @@ service cloud.firestore {
 
     function validChemical(data) {
       return data.keys().hasAll(['name', 'group', 'usage', 'received', 'expiry', 'timestamp', 'ordered'])
-        && data.keys().hasOnly(['name', 'group', 'usage', 'received', 'expiry', 'timestamp', 'ordered', 'category'])
+        && data.keys().hasOnly(['name', 'group', 'usage', 'received', 'expiry', 'timestamp', 'ordered', 'category',
+          'productId', 'lotNumber', 'producer', 'formula', 'cas', 'packageAmount', 'packageUnit', 'orderPackages'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.group is string && data.group.size() <= 100
         && data.usage is string && data.usage.size() <= 500
@@ -28,7 +31,130 @@ service cloud.firestore {
         && validDate(data.expiry)
         && data.timestamp is int
         && data.ordered is bool
-        && (!('category' in data) || data.category in ['Wzorce', 'Odczynniki', 'Standardowe']);
+        && (!('category' in data) || data.category in ['Wzorce', 'Odczynniki', 'Standardowe'])
+        && (!('productId' in data) || (data.productId is string && data.productId.matches('^[A-Za-z0-9_-]{1,128}$')))
+        && optionalText(data, 'lotNumber', 100)
+        && optionalText(data, 'producer', 200)
+        && optionalText(data, 'formula', 100)
+        && optionalText(data, 'cas', 40)
+        && (!('packageAmount' in data) || (amount(data.packageAmount) && data.packageAmount > 0 && unit(data.packageUnit)))
+        && (!('packageUnit' in data) || 'packageAmount' in data)
+        && (!('orderPackages' in data) || (data.orderPackages is int && data.orderPackages >= 1 && data.orderPackages <= 10000));
+    }
+
+    function optionalText(data, key, limit) {
+      return !(key in data) || (data[key] is string && data[key].size() <= limit);
+    }
+
+    function unit(value) {
+      return value in ['mg', 'g', 'kg', 'µl', 'ml', 'l', 'szt.', 'testów'];
+    }
+
+    function sameDimension(first, second) {
+      return first == second
+        || (first in ['mg', 'g', 'kg'] && second in ['mg', 'g', 'kg'])
+        || (first in ['µl', 'ml', 'l'] && second in ['µl', 'ml', 'l']);
+    }
+
+    function amount(value) {
+      return value is int && value >= 0 && value <= 1000000000000;
+    }
+
+    function stockPath(id) {
+      return /databases/$(database)/documents/magazyn_partie/$(id);
+    }
+
+    function eventPath(id) {
+      return /databases/$(database)/documents/magazyn_operacje/$(id);
+    }
+
+    function chemicalPath(id) {
+      return /databases/$(database)/documents/odczynniki/$(id);
+    }
+
+    function isProductRoot(id, newLot) {
+      let target = getAfter(chemicalPath(id)).data;
+      return target.productId == id
+        && (target.get('category', 'Wzorce') == 'Odczynniki') == (newLot.get('category', 'Wzorce') == 'Odczynniki');
+    }
+
+    function validStock(data) {
+      return data.keys().hasAll(['initial', 'balance', 'unit', 'status', 'lastEvent'])
+        && data.keys().hasOnly(['initial', 'balance', 'unit', 'status', 'lastEvent'])
+        && data.status in ['active', 'used', 'withdrawn']
+        && data.lastEvent is string && data.lastEvent.matches('^[A-Za-z0-9_-]{1,150}$')
+        && ((amount(data.initial) && amount(data.balance) && data.balance <= data.initial && unit(data.unit))
+          || (data.status != 'active' && data.initial == null && data.balance == null && data.unit == ''));
+    }
+
+    function linkedStock(id, state) {
+      let event = getAfter(eventPath(state.lastEvent)).data;
+      let row = event.changes[id];
+      let lot = getAfter(chemicalPath(id)).data;
+      return !exists(eventPath(state.lastEvent))
+        && row.productId == lot.get('productId', id) && row.number == lot.get('lotNumber', '')
+        && row.name == lot.name && row.unit == state.unit && row.initial == state.initial
+        && row.after == state.balance && row.status == state.status;
+    }
+
+    function startingStock(id, state) {
+      let event = getAfter(eventPath(state.lastEvent)).data;
+      let row = event.changes[id];
+      let lot = getAfter(chemicalPath(id)).data;
+      return (event.kind == 'receipt' && !exists(chemicalPath(id)) && row.before == 0
+          && state.status == 'active' && state.initial > 0 && state.balance == state.initial
+          && state.unit == lot.packageUnit && state.initial <= lot.packageAmount
+          && lot.lotNumber is string && lot.lotNumber.size() > 0)
+        || (event.kind == 'opening' && exists(chemicalPath(id)) && row.before == state.initial
+          && state.status == 'active' && state.balance == state.initial
+          && sameDimension(state.unit, lot.get('packageUnit', state.unit)))
+        || (event.kind in ['used', 'withdrawn'] && exists(chemicalPath(id)) && state.status == event.kind
+          && row.before == null && state.initial == null);
+    }
+
+    function reversalAmount(event, id) {
+      let prior = get(eventPath(event.details.originalId)).data.changes[id];
+      return prior.before - prior.after;
+    }
+
+    function changingStock(id, previous, state) {
+      let event = getAfter(eventPath(state.lastEvent)).data;
+      let row = event.changes[id];
+      return previous.status == 'active' && state.initial == previous.initial && state.unit == previous.unit
+        && row.before == previous.balance && state.lastEvent != previous.lastEvent
+        && ((event.kind in ['withdrawal', 'preparation'] && state.status == 'active' && state.balance < previous.balance)
+          || (event.kind in ['used', 'withdrawn'] && state.status == event.kind && state.balance == 0)
+          || (event.kind == 'reversal' && state.status == 'active' && state.balance == previous.balance + reversalAmount(event, id)));
+    }
+
+    function eventTarget(keys, index, id) {
+      return keys.size() <= index || getAfter(stockPath(keys[index])).data.lastEvent == id;
+    }
+
+    function reversalEvent(data, id) {
+      let prior = get(eventPath(data.details.originalId)).data;
+      return id == 'reverse_' + data.details.originalId
+        && prior.kind in ['withdrawal', 'preparation']
+        && prior.changes.keys().toSet() == data.changes.keys().toSet();
+    }
+
+    function validEventChanges(data, id) {
+      let keys = data.changes.keys();
+      return (keys.size() == 0 && data.kind in ['preparation', 'reversal'] && data.anchor == '')
+        || (keys.size() > 0 && keys.size() <= 8 && data.anchor in keys
+          && eventTarget(keys, 0, id) && eventTarget(keys, 1, id) && eventTarget(keys, 2, id) && eventTarget(keys, 3, id)
+          && eventTarget(keys, 4, id) && eventTarget(keys, 5, id) && eventTarget(keys, 6, id) && eventTarget(keys, 7, id));
+    }
+
+    function validPreparation(details) {
+      return details.keys().hasOnly(['intent', 'recipeId', 'recipeVersion', 'recipeName', 'methodId', 'methodName',
+          'volume', 'baseVolume', 'ingredients', 'instruction'])
+        && details.recipeId is string && details.methodId is string
+        && details.recipeName is string && details.methodName is string
+        && details.recipeVersion is int && details.recipeVersion >= 1
+        && details.volume in [50, 100, 250, 500, 1000] && details.baseVolume is int && details.baseVolume > 0
+        && details.ingredients is list && details.ingredients.size() > 0
+        && details.instruction is string && details.instruction.size() <= 4000;
     }
 
     function validTask(data) {
@@ -66,8 +192,86 @@ service cloud.firestore {
     }
 
     match /odczynniki/{documentId} {
-      allow read, delete: if activeUser();
-      allow create, update: if activeUser() && validChemical(request.resource.data);
+      allow read: if activeUser();
+      allow create: if activeUser() && validChemical(request.resource.data)
+        && (request.resource.data.get('productId', documentId) == documentId
+          || isProductRoot(request.resource.data.productId, request.resource.data));
+      allow update: if activeUser() && validChemical(request.resource.data)
+        && (resource.data.get('productId', documentId) == request.resource.data.get('productId', documentId)
+          || (!('productId' in resource.data) && !exists(stockPath(documentId))
+            && isProductRoot(request.resource.data.productId, request.resource.data)));
+    }
+
+    match /magazyn_partie/{documentId} {
+      allow read: if activeUser();
+      allow create: if activeUser() && validStock(request.resource.data)
+        && linkedStock(documentId, request.resource.data) && startingStock(documentId, request.resource.data);
+      allow update: if activeUser() && validStock(request.resource.data) && linkedStock(documentId, request.resource.data)
+        && changingStock(documentId, resource.data, request.resource.data);
+    }
+
+    match /magazyn_operacje/{documentId} {
+      allow read: if activeUser();
+      allow create: if activeUser()
+        && request.resource.data.keys().hasOnly(['kind', 'anchor', 'changes', 'details', 'createdAt'])
+        && request.resource.data.kind in ['receipt', 'opening', 'withdrawal', 'preparation', 'used', 'withdrawn', 'reversal']
+        && request.resource.data.createdAt == request.time && request.resource.data.details is map
+        && request.resource.data.details.intent is string && request.resource.data.details.intent.matches('^[a-f0-9]{64}$')
+        && validEventChanges(request.resource.data, documentId)
+        && (request.resource.data.kind != 'preparation' || validPreparation(request.resource.data.details))
+        && (request.resource.data.kind != 'reversal' || reversalEvent(request.resource.data, documentId));
+    }
+
+    function named(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 200;
+    }
+
+    match /magazyn_metody/{documentId} {
+      allow read: if activeUser();
+      allow create, update: if activeUser()
+        && request.resource.data.keys().hasOnly(['name', 'usage'])
+        && named(request.resource.data) && request.resource.data.usage is list;
+    }
+
+    function validRecipe(data) {
+      return data.keys().hasOnly(['name', 'baseVolume', 'defaultVolume', 'scalable', 'methods', 'ingredients', 'instruction', 'version'])
+        && named(data) && data.baseVolume is int && data.baseVolume > 0 && data.baseVolume <= 1000000
+        && data.defaultVolume in [50, 100, 250, 500, 1000] && data.scalable is bool
+        && (data.scalable || data.defaultVolume == data.baseVolume)
+        && data.methods is list && data.methods.size() > 0 && data.ingredients is list && data.ingredients.size() > 0
+        && data.instruction is string && data.instruction.size() <= 4000 && data.version is int && data.version > 0;
+    }
+
+    match /magazyn_receptury/{documentId} {
+      allow read: if activeUser();
+      allow create: if activeUser() && validRecipe(request.resource.data) && request.resource.data.version == 1;
+      allow update: if activeUser() && validRecipe(request.resource.data)
+        && request.resource.data.version == resource.data.version + 1;
+    }
+
+    match /magazyn_obliczenia/{documentId} {
+      allow read: if activeUser();
+      allow create: if activeUser()
+        && request.resource.data.keys().hasOnly(['methodId', 'methodName', 'date', 'count', 'counts', 'solutions', 'commercial', 'createdAt'])
+        && request.resource.data.methodId is string && request.resource.data.methodName is string
+        && validDate(request.resource.data.date) && request.resource.data.date != ''
+        && request.resource.data.count is int && request.resource.data.count > 0 && request.resource.data.count <= 1000000
+        && request.resource.data.counts is list && request.resource.data.counts.size() == 5
+        && request.resource.data.solutions is list && request.resource.data.commercial is list
+        && request.resource.data.createdAt == request.time;
+    }
+
+    match /magazyn_zamowienia/{documentId} {
+      allow read: if activeUser();
+      allow create: if activeUser()
+        && request.resource.data.keys().hasOnly(['lines', 'date', 'status', 'createdAt'])
+        && request.resource.data.lines is list && request.resource.data.lines.size() > 0
+        && validDate(request.resource.data.date) && request.resource.data.date != ''
+        && request.resource.data.status == 'generated' && request.resource.data.createdAt == request.time;
+      allow update: if activeUser()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'orderedAt'])
+        && resource.data.status == 'generated' && request.resource.data.status == 'ordered'
+        && request.resource.data.orderedAt == request.time;
     }
 
     match /harmonogram/{documentId} {

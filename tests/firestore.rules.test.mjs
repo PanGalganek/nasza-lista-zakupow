@@ -14,7 +14,11 @@ import {
   getDocs,
   setDoc,
   updateDoc,
+  runTransaction,
+  serverTimestamp,
 } from "firebase/firestore";
+import { createInventoryStore } from "../public/modules/inventory-store.js";
+import { quantity } from "../public/modules/inventory-quantity.js";
 
 const projectId = "demo-nasza-lista-zakupow";
 const allowedUid = "allowed-user";
@@ -45,9 +49,13 @@ test("unauthenticated and unlisted users cannot read application data", async ()
   const unlisted = testEnvironment.authenticatedContext("unlisted-user").firestore();
   await assertFails(getDoc(doc(unauthenticated, "odczynniki", "one")));
   await assertFails(getDocs(collection(unlisted, "odczynniki")));
+  for (const inventory of ["magazyn_partie", "magazyn_operacje", "magazyn_receptury", "magazyn_metody", "magazyn_zamowienia", "magazyn_obliczenia"]) {
+    await assertFails(getDoc(doc(unauthenticated, inventory, "one")));
+    await assertFails(getDocs(collection(unlisted, inventory)));
+  }
 });
 
-test("an active listed user can complete the chemical create, edit, order, and delete cycle", async () => {
+test("an active listed user can create, edit, order, and archive without deleting a chemical", async () => {
   const database = testEnvironment.authenticatedContext(allowedUid).firestore();
   const reference = doc(database, "odczynniki", "valid");
   await assertSucceeds(setDoc(reference, {
@@ -66,9 +74,103 @@ test("an active listed user can complete the chemical create, edit, order, and d
   assert.equal(updated.data().group, "II-4/32");
   assert.equal(updated.data().expiry, "2028-07-01");
   assert.equal(updated.data().ordered, true);
-  await assertSucceeds(deleteDoc(reference));
-  const deleted = await assertSucceeds(getDoc(reference));
-  assert.equal(deleted.exists(), false);
+  await assertFails(deleteDoc(reference));
+  await assertSucceeds(createInventoryStore(database, { collection, doc, runTransaction, serverTimestamp }).close("valid", "withdrawn"));
+  assert.equal((await getDoc(reference)).exists(), true);
+});
+
+test("stock transactions preserve balances, reject concurrent overspending and retain immutable history", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const legacy = { name: "Odczynnik testowy", group: "A/01", usage: "", received: "", expiry: "", timestamp: 1, ordered: false };
+  await setDoc(doc(db, "odczynniki", "legacy"), legacy);
+  assert.equal((await getDoc(store.ref("stock", "legacy"))).exists(), false);
+  await store.establish("legacy", quantity("500", "g"), "g", "opening");
+  await assert.rejects(store.establish("legacy", 100, "g", "opening-again"), /już ustalony/);
+  await store.receive([{ fields: { ...legacy, productId: "legacy", packageAmount: quantity("500", "g"), packageUnit: "g", lotNumber: "LOT001" }, initial: quantity("500", "g") }], "delivery");
+  const request = { lotId: "legacy", productId: "legacy", unit: "g", quantity: quantity("10", "g") };
+  await Promise.all([store.withdraw([request], { id: "same" }), store.withdraw([request], { id: "same" })])
+    .catch((cause) => { throw new Error("Idempotent withdrawal failed", { cause }); });
+  await assert.rejects(store.withdraw([{ ...request, quantity: quantity("20", "g") }], { id: "same" }), /Wcześniejszy zapis ma inne dane/);
+  assert.equal((await getDoc(store.ref("stock", "legacy"))).data().balance, quantity("490", "g"));
+  await store.reverse("same").catch((cause) => { throw new Error("Reversal failed", { cause }); });
+  await store.reverse("same");
+  assert.equal((await getDoc(store.ref("stock", "legacy"))).data().balance, quantity("500", "g"));
+  const heavy = { ...request, quantity: quantity("400", "g") };
+  const concurrent = await Promise.allSettled([store.withdraw([heavy], { id: "heavy-a" }), store.withdraw([heavy], { id: "heavy-b" })]);
+  assert.equal(concurrent.filter((entry) => entry.status === "fulfilled").length, 1);
+  await assertFails(updateDoc(store.ref("stock", "legacy"), { balance: 1 }));
+  await assertFails(deleteDoc(store.ref("events", "same")));
+  await store.close("legacy", "used");
+  assert.equal((await getDoc(store.ref("stock", "legacy"))).data().status, "used");
+  assert.equal((await getDoc(doc(db, "odczynniki", "legacy"))).exists(), true);
+});
+
+test("multi-ingredient preparation is atomic and retains its recipe snapshot", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const chemicals = Array.from({ length: 8 }, (_, index) => `lot-${index}`);
+  for (const chemical of chemicals) {
+    await setDoc(doc(db, "odczynniki", chemical), { name: chemical, group: "", usage: "", expiry: "", received: "", timestamp: 1, ordered: false });
+    await store.establish(chemical, quantity("500", "g"), "g");
+  }
+  const prep = { recipeId: "recipe", recipeName: "Przygotowanie testowe", recipeVersion: 1, volume: 250, methodId: "method",
+    methodName: "Metoda testowa", baseVolume: 100, ingredients: [{ name: "Składnik testowy", unit: "g", quantity: quantity("25", "g") }], instruction: "" };
+  const recipeReference = store.ref("recipes", "recipe");
+  await setDoc(recipeReference, { name: prep.recipeName, baseVolume: 100, defaultVolume: 100, scalable: true, methods: ["method"],
+    ingredients: [{ productId: chemicals[0], name: "Składnik testowy", unit: "g", quantity: quantity("10", "g") }], instruction: "", version: 1 });
+  const plan = chemicals.map((id) => ({ productId: id, lotId: id, unit: "g", quantity: quantity("25", "g") }));
+  await assert.rejects(store.withdraw([...plan.slice(0, 7), { ...plan[7], quantity: quantity("501", "g") }], { id: "blocked", preparation: prep }), /dostępność/);
+  assert.equal((await getDoc(store.ref("stock", chemicals[0]))).data().balance, quantity("500", "g"));
+  assert.equal((await getDoc(store.ref("events", "blocked"))).exists(), false);
+  await store.withdraw(plan, { id: "prepare", preparation: prep });
+  for (const chemical of chemicals) assert.equal((await getDoc(store.ref("stock", chemical))).data().balance, quantity("475", "g"));
+  await updateDoc(recipeReference, { name: "Zmieniona receptura", version: 2 });
+  assert.equal((await getDoc(store.ref("events", "prepare"))).data().details.recipeVersion, 1);
+  assert.equal((await getDoc(store.ref("events", "prepare"))).data().details.recipeName, prep.recipeName);
+  await store.reverse("prepare");
+  assert.equal((await getDoc(store.ref("stock", chemicals[7]))).data().balance, quantity("500", "g"));
+  await store.withdraw([], { id: "untracked-preparation", preparation: { ...prep, ingredients: [{ name: "Woda", productId: "", unit: "ml", quantity: quantity("50", "ml") }] } });
+  await store.reverse("untracked-preparation");
+  assert.equal((await getDoc(store.ref("events", "reverse_untracked-preparation"))).exists(), true);
+});
+
+test("an existing linked product remains a root while legacy lots can be attached", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const fields = { name: "Partia testowa", group: "", usage: "", expiry: "", received: "", timestamp: 1, ordered: false };
+  const chemical = (id) => doc(db, "odczynniki", id);
+  await Promise.all(["root", "lot", "other"].map((id) => setDoc(chemical(id), fields)));
+  await store.linkLot("lot", { productId: "root" });
+  assert.equal((await getDoc(chemical("root"))).data().productId, "root");
+  await assertFails(updateDoc(chemical("root"), { productId: "lot" }));
+  await assert.rejects(store.linkLot("other", { productId: "lot" }), /główną pozycję/);
+});
+
+test("expired inventory can be withdrawn without recording analytical consumption", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  await setDoc(doc(db, "odczynniki", "expired"), { name: "Partia testowa", group: "", usage: "", expiry: "2020-01-01", received: "", timestamp: 1, ordered: false });
+  await store.establish("expired", quantity("5", "g"), "g");
+  await assert.rejects(store.close("expired", "used"), /wycofaj/);
+  await store.close("expired", "withdrawn", "retired");
+  const event = (await getDoc(store.ref("events", "retired"))).data();
+  assert.equal(event.kind, "withdrawn");
+  assert.equal(event.changes.expired.before, quantity("5", "g"));
+  assert.equal(event.changes.expired.after, 0);
+});
+
+test("bulk receipts record all eight new parties and their own opening amounts", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const fields = { name: "Przyjęcie testowe", group: "", usage: "", expiry: "", received: "", timestamp: 1, ordered: false,
+    packageUnit: "g", packageAmount: quantity("500", "g") };
+  await store.receive(Array.from({ length: 8 }, (_, index) => ({
+    fields: { ...fields, lotNumber: `LOT-${index}` }, initial: quantity(index === 0 ? "400" : "500", "g"),
+  })), "bulk");
+  const events = (await getDoc(store.ref("events", "bulk"))).data();
+  assert.equal(Object.keys(events.changes).length, 8);
+  assert.equal(Object.values(events.changes).find(({ number }) => number === "LOT-0").after, quantity("400", "g"));
 });
 
 test("schema validation rejects unexpected fields and invalid categories", async () => {

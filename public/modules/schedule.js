@@ -1,6 +1,6 @@
-import { taskCategories, taskLabs } from "./constants.js?v=13";
-import { byId, createButton, createElement } from "./ui.js?v=13";
-import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=13";
+import { taskCategories, taskLabs } from "./constants.js?v=15";
+import { byId, createButton, createElement } from "./ui.js?v=15";
+import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=15";
 
 export function createScheduleModule({ db, firestore, registerSnapshot, reportListenerError }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;

@@ -1,6 +1,6 @@
 # Kopia danych Firestore
 
-Kopia obejmuje pięć kolekcji e-Laboratorium, w tym listę dostępu `app_users`. Zachowuje identyfikatory dokumentów oraz format typów Firestore. Konta Firebase Authentication, reguły i indeksy mają osobny cykl odzyskiwania. Reguły i indeksy są wersjonowane w Git.
+Kopia obejmuje rejestry e-Laboratorium, listę dostępu `app_users` oraz kolekcje magazynu, receptur, zamówień i obliczeń. Zachowuje identyfikatory dokumentów oraz format typów Firestore. Starszą kopię bez kolekcji magazynowych można odtworzyć w emulatorze. Konta Firebase Authentication, reguły i indeksy mają osobny cykl odzyskiwania. Reguły i indeksy są wersjonowane w Git.
 
 ## Wykonanie kopii
 

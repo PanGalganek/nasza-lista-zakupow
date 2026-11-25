@@ -8,8 +8,8 @@
     <title>e-Laboratorium</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./styles.css">
-    <script type="module" src="./app.js?v=13"></script>
+    <link rel="stylesheet" href="./styles.css?v=15">
+    <script type="module" src="./app.js?v=15"></script>
 </head>
 <body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
 
@@ -36,6 +36,10 @@
         </div>
 
         <div id="tabContentOdczynniki" class="block">
+            <nav id="inventoryNav" aria-label="Odczynniki i gospodarka magazynowa" class="mb-4 flex flex-wrap gap-2"></nav>
+            <div id="inventoryAction" class="mb-4 text-left"></div>
+            <div id="inventorySection" class="hidden space-y-4 text-left"></div>
+            <div id="inventoryRegistry">
             <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
                 <button type="button" data-action="switch-chemical-tab" data-tab="Wzorce" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
                 <button type="button" data-action="switch-chemical-tab" data-tab="Odczynniki" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
@@ -43,7 +47,7 @@
             <div class="grid grid-cols-1 gap-2 mb-4 rounded-lg border bg-gray-50 p-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <label class="flex flex-col gap-1 text-left">
                     <span class="text-[9px] font-bold uppercase text-gray-500">Szukaj</span>
-                    <input type="search" id="chemicalSearch" placeholder="Nazwa, numer grupy lub zastosowanie" maxlength="200" autocomplete="off" class="w-full rounded border bg-white p-2 text-sm text-black outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="search" id="chemicalSearch" placeholder="Nazwa, LP, partia, producent lub metoda" maxlength="200" autocomplete="off" class="w-full rounded border bg-white p-2 text-sm text-black outline-none focus:ring-2 focus:ring-blue-500">
                 </label>
                 <label class="flex flex-col gap-1 text-left">
                     <span class="text-[9px] font-bold uppercase text-gray-500">Status</span>
@@ -77,6 +81,7 @@
                 </div>
             </div>
             <div id="chemicalListGrouped" class="space-y-4"></div>
+            </div>
         </div>
 
         <div id="tabContentWoda" class="hidden space-y-4 text-left">

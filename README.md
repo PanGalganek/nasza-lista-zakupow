@@ -36,3 +36,5 @@ npx firebase-tools@15.22.4 deploy --only hosting,firestore:rules --project nasza
 Reguły dostępu wymagają aktywnego dokumentu `app_users/{uid}` z rolą `admin` albo `operator`. Tych dokumentów nie można tworzyć z aplikacji klienckiej.
 
 Procedury utrzymania obejmują [lokalną kopię i odzyskiwanie Firestore](docs/firestore-backup.md) oraz [wycofanie aktualizacji](docs/rollback.md).
+
+Model danych, ograniczenia transakcji i procedurę publikacji opisuje [dokumentacja magazynu](docs/inventory.md).
