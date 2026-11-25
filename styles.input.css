@@ -1,4 +1,12 @@
 @import "tailwindcss";
+
+.inventory-meter { height: .5rem; accent-color: #15803d; }
+.inventory-yellow { accent-color: #ca8a04; }
+.inventory-red { accent-color: #b91c1c; }
+.inventory-meter::-webkit-progress-bar { background: #e2e8f0; border-radius: .25rem; }
+.inventory-meter::-webkit-progress-value { background: #15803d; border-radius: .25rem; }
+.inventory-yellow::-webkit-progress-value { background: #ca8a04; }
+.inventory-red::-webkit-progress-value { background: #b91c1c; }
 @source "./public/index.html";
 @source "./public/app.js";
 

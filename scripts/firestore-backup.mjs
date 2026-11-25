@@ -5,7 +5,9 @@ import { basename, delimiter, dirname, join, resolve } from "node:path";
 
 const projectId = "nasza-lista-zakupow";
 const databaseId = "(default)";
-const collections = ["odczynniki", "harmonogram", "wzorcowanie", "wydarzenia", "app_users"];
+const originalCollections = ["odczynniki", "harmonogram", "wzorcowanie", "wydarzenia", "app_users"];
+const collections = [...originalCollections, "magazyn_partie", "magazyn_operacje", "magazyn_receptury",
+  "magazyn_metody", "magazyn_zamowienia", "magazyn_obliczenia"];
 const firestore = "https://firestore.googleapis.com/v1";
 const require = createRequire(import.meta.url);
 
@@ -85,6 +87,7 @@ async function restoreLocal(filename) {
   const writes = [];
   const names = new Set();
   for (const collection of collections) {
+    if (!originalCollections.includes(collection) && !Object.hasOwn(backup.collections ?? {}, collection)) continue;
     if (!Array.isArray(backup.collections?.[collection])) throw new Error(`Brak kolekcji ${collection} w kopii.`);
     const prefix = `projects/${projectId}/databases/${databaseId}/documents/${collection}/`;
     for (const document of backup.collections[collection]) {

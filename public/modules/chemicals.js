@@ -1,13 +1,22 @@
-import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=13";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=13";
+import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=14";
+import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=14";
+import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=14";
+import { productId } from "./inventory-store.js?v=14";
+import { availability } from "./inventory-history.js?v=14";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=14";
+import { renderInventoryAlerts } from "./inventory-alerts.js?v=14";
 
-export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError }) {
-  const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
+export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory }) {
+  const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
   let items = [];
   let category = "Wzorce";
   let editCategory = null;
   let formRowCount = 0;
   let openInlineGroupKey = null;
+  const packageFields = new WeakMap();
+  let receiptDraft;
+  let inlineForm;
+  let inlinePending = false;
 
   function createInlineField(labelText, input, className = "") {
     const label = createElement("label", className || "flex flex-col gap-1");
@@ -35,28 +44,36 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const dateRow = createElement("div", "grid grid-cols-2 gap-2 text-black");
     const receivedWrapper = createElement("div");
     receivedWrapper.append(createElement("label", "text-[8px] font-bold text-gray-400 uppercase", "Przyjęcie:"));
-    receivedWrapper.append(createInput("chem-received border p-2 rounded text-sm w-full text-black", "", data?.received || formatLocalDate(), "date"));
+    receivedWrapper.append(createInput("chem-received border p-2 rounded text-sm w-full text-black", "", data?.received ?? formatLocalDate(), "date"));
     const expiryWrapper = createElement("div");
     expiryWrapper.append(createElement("label", "text-[8px] font-bold text-red-400 uppercase", "Ważność:"));
     expiryWrapper.append(createInput("chem-expiry border p-2 rounded text-sm w-full text-black", "", data?.expiry, "date"));
     dateRow.append(receivedWrapper, expiryWrapper);
     row.append(header, name, groupRow, dateRow);
+    if (inventory) {
+      const packaging = inventory.fields(data || {}, Boolean(data));
+      packageFields.set(row, packaging);
+      row.append(packaging.node);
+    }
     container.append(row);
   }
 
   function payloadFromRow(row) {
-    return {
+    const fields = {
       name: row.querySelector(".chem-name").value.trim(), group: row.querySelector(".chem-group").value.trim(),
       usage: row.querySelector(".chem-usage").value.trim(), received: row.querySelector(".chem-received").value,
       expiry: row.querySelector(".chem-expiry").value, category: editCategory ?? category,
     };
+    if (fields.name && inventory) Object.assign(fields, packageFields.get(row).read());
+    return fields;
   }
 
   async function saveItems() {
     const submitButton = byId("submitBtn");
     if (submitButton.disabled) return;
 
-    const selectedItems = [...byId("dynamicItemsContainer").children].map(payloadFromRow).filter((item) => item.name);
+    const filled = [...byId("dynamicItemsContainer").children].map((row) => [row, payloadFromRow(row)]).filter(([, item]) => item.name);
+    const selectedItems = filled.map(([, item]) => item);
     if (selectedItems.length === 0) {
       alert("Podaj nazwę co najmniej jednej pozycji.");
       return;
@@ -67,6 +84,13 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       if (editId) {
         if (selectedItems.length !== 1) throw new Error("Edycja wymaga dokładnie jednego wiersza.");
         await updateDoc(doc(db, "odczynniki", editId), selectedItems[0]);
+      } else if (inventory) {
+        const payload = filled.map(([row, fields]) => ({ fields, initial: packageFields.get(row).initial(fields) }));
+        const fingerprint = JSON.stringify(payload);
+        if (receiptDraft?.fingerprint !== fingerprint) receiptDraft = { fingerprint, id: inventory.store.operationId() };
+        await inventory.store.receive(payload.map(({ fields, initial }, index) => ({
+          fields: { ...fields, timestamp: Date.now() + index, ordered: false }, initial,
+        })), receiptDraft.id);
       } else {
         const batch = writeBatch(db);
         selectedItems.forEach((item, index) => batch.set(doc(collection(db, "odczynniki")), { ...item, timestamp: Date.now() + index, ordered: false }));
@@ -94,6 +118,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   }
 
   function cancelEdit() {
+    receiptDraft = null;
     editCategory = null;
     byId("editId").value = "";
     byId("formContainer").classList.remove("editing-mode");
@@ -144,25 +169,50 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const receivedInput = createInput("inline-received w-full rounded border p-2 text-sm text-black", "", formatLocalDate(), "date");
     const expiryInput = createInput("inline-expiry w-full rounded border p-2 text-sm text-black", "", "", "date");
     fields.append(createInlineField("Grupa / numer", groupInput), createInlineField("Zastosowanie", usageInput), createInlineField("Data przyjęcia", receivedInput), createInlineField("Data ważności", expiryInput));
+    let packaging;
+    let source;
+    let receipt;
+    if (inventory) {
+      const representatives = [...new Map(group.items.slice().sort((a, b) => a.timestamp - b.timestamp).map((item) => [productId(item), item])).entries()];
+      source = select(representatives.map(([id, item]) => [id, batchLabel(item)]));
+      const box = createElement("div");
+      const suggest = () => {
+        packaging = inventory.fields(representatives.find(([key]) => key === source.value)?.[1] || {});
+        box.replaceChildren(packaging.node);
+      };
+      source.addEventListener("change", suggest);
+      suggest();
+      fields.append(field("Pozycja handlowa", source), box);
+    }
     const actions = createElement("div", "mt-3 flex justify-end gap-2");
     const cancelButton = createElement("button", "rounded bg-gray-200 px-4 py-2 text-[10px] font-bold uppercase text-gray-700", "Anuluj");
     cancelButton.type = "button";
-    cancelButton.addEventListener("click", () => { openInlineGroupKey = null; render(); });
+    cancelButton.addEventListener("click", () => { if (!inlinePending) { openInlineGroupKey = null; inlineForm = null; render(); } });
     const submitButton = createElement("button", "rounded bg-blue-600 px-4 py-2 text-[10px] font-bold uppercase text-white", "Zapisz pozycję");
     submitButton.type = "submit";
     actions.append(cancelButton, submitButton);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
+      if (inlinePending) return;
       runSafely(async () => {
+        inlinePending = true;
         submitButton.disabled = true;
         try {
-          await addDoc(collection(db, "odczynniki"), {
+          const data = {
             name: group.name, group: groupInput.value.trim(), usage: usageInput.value.trim(), received: receivedInput.value,
             expiry: expiryInput.value, category, timestamp: Date.now(), ordered: false,
-          });
+          };
+          if (inventory) {
+            const values = packaging.read();
+            const initial = packaging.initial(values);
+            const fingerprint = JSON.stringify([data.name, data.group, data.usage, data.received, data.expiry, data.category, values, source.value, initial]);
+            if (receipt?.fingerprint !== fingerprint) receipt = { fingerprint, id: inventory.store.operationId() };
+            await inventory.store.receive([{ fields: { ...data, ...values, productId: source.value }, initial }], receipt.id);
+          } else await addDoc(collection(db, "odczynniki"), data);
           openInlineGroupKey = null;
+          inlineForm = null;
           render();
-        } finally { submitButton.disabled = false; }
+        } finally { submitButton.disabled = false; inlinePending = false; }
       }, "Nie udało się dodać nowej pozycji.");
     });
     form.append(title, fields, actions);
@@ -181,8 +231,9 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const container = byId("chemicalListGrouped");
     const alertBox = byId("alertBox");
     container.replaceChildren();
-    alertBox.replaceChildren();
-    const categoryItems = items.filter((item) => {
+    if (!inventory) alertBox.replaceChildren();
+    const activeItems = items.filter((item) => !inventory || ["active", undefined].includes(inventory.withStock(item).stock?.status));
+    const categoryItems = activeItems.filter((item) => {
       const itemCategory = item.category || "Wzorce";
       return itemCategory === category || (category === "Wzorce" && itemCategory === "Standardowe");
     });
@@ -190,8 +241,12 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const searchQuery = normalizeSearch(byId("chemicalSearch").value.trim());
     const statusFilter = byId("chemicalStatusFilter").value;
     const sortMode = byId("chemicalSort").value;
+    const byPrefix = (a, b) => a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" }) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+    const lpByItem = new Map();
+    groupChemicalItems(categoryItems).sort(byPrefix).forEach((group, index) => group.items.forEach((item) => lpByItem.set(item.id, index + 1)));
     const filtered = categoryItems.filter((item) => {
-      if (searchQuery && !normalizeSearch([item.name, item.group, item.usage].join(" ")).includes(searchQuery)) return false;
+      if (searchQuery && !matchesInventorySearch(searchQuery, item.name, item.group, item.usage, item.lotNumber, `LP ${lpByItem.get(item.id)}`,
+        item.producer, item.formula, item.cas, ...(inventory?.searchContext(item) || []))) return false;
       const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
       const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
       if (statusFilter === "attention") return days !== null && days <= threshold;
@@ -203,33 +258,46 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const sortedGroups = groupChemicalItems(filtered).sort((a, b) => {
       if (sortMode === "name") return a.name.localeCompare(b.name, "pl", { sensitivity: "base" }) || a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" });
       if (sortMode === "expiry") return earliestExpiry(a).localeCompare(earliestExpiry(b)) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
-      return a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" }) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+      return byPrefix(a, b);
     });
     const alerts = buildChemicalAlerts(categoryItems, threshold);
 
-    sortedGroups.forEach((group, groupIndex) => {
+    sortedGroups.forEach((group) => {
       group.items.sort((a, b) => sortMode === "expiry" ? String(a.expiry || "9999-12-31").localeCompare(String(b.expiry || "9999-12-31")) : String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
       const card = createElement("section", "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden text-black");
       const header = createElement("div", "bg-gray-100 px-4 py-2 border-b flex items-center gap-3");
-      header.append(createElement("span", "bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold", `LP ${groupIndex + 1}`));
+      header.append(createElement("span", "bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold", `LP ${lpByItem.get(group.items[0].id)}`));
       const headingText = createElement("div", "flex flex-1 items-center gap-2 overflow-hidden text-black");
       headingText.append(createElement("span", "font-black uppercase text-xs truncate", group.name), createElement("span", "font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300", group.prefix));
       const isOpen = openInlineGroupKey === group.key;
       const addButton = createButton(isOpen ? "−" : "+", isOpen ? `Zamknij formularz dla ${group.name}` : `Dodaj nową pozycję do ${group.name}`, () => {
+        if (inlinePending) return;
         openInlineGroupKey = isOpen ? null : group.key;
+        inlineForm = null;
         render();
         if (!isOpen) queueMicrotask(() => document.querySelector("[data-inline-chemical-form] .inline-group")?.focus());
       }, "ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-black text-white shadow-sm hover:bg-blue-700");
       header.append(headingText, addButton);
       card.append(header);
-      if (isOpen) card.append(createInlineForm(group));
+      if (inventory) {
+        for (const id of new Set(group.items.map(productId))) {
+          const related = inventory.lotsFor(id);
+          const total = availability(related);
+          if (total !== "—") card.append(createElement("p", "px-3 pt-2 text-xs text-gray-600",
+            `Dostępny zapas ${related.length > 1 ? `(${related.length} partii) ` : ""}${total}`));
+        }
+      }
+      if (isOpen) {
+        inlineForm ??= createInlineForm(group);
+        card.append(inlineForm);
+      }
 
       group.items.forEach((item) => {
         const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
         const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
         const color = days !== null && days < 0 ? "text-red-600 font-bold" : days !== null && days <= threshold ? "text-orange-500 font-bold" : "text-black font-semibold";
         const suffix = String(item.group || "").includes("/") ? `/${String(item.group).split("/")[1]}` : "•";
-        const row = createElement("div", `${item.ordered ? "ordered-row " : ""}flex items-center justify-between p-3 border-t text-[11px] text-black`);
+        const row = createElement("div", `${item.ordered ? "ordered-row " : ""}flex flex-wrap items-center justify-between gap-2 p-3 border-t text-[11px] text-black`);
         const info = createElement("div", "flex items-center gap-3");
         info.append(createElement("span", "font-black text-blue-400 w-8", suffix));
         const details = createElement("div", "flex flex-col text-black");
@@ -238,12 +306,16 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         const dayText = days !== null && days < 0 ? "PO TERMINIE" : days === null ? "brak daty" : `${days} dni`;
         expiryLine.append(document.createTextNode(" "), createElement("span", "text-[8px] text-gray-400", `(${dayText})`));
         details.append(expiryLine, createElement("span", "text-[8px] italic text-gray-500", item.usage || ""));
+        if (inventory) {
+          if (item.lotNumber) details.append(createElement("span", "", `Partia ${item.lotNumber}`));
+          details.append(showStock(inventory.withStock(item)));
+        }
         info.append(details);
-        const actions = createElement("div", "flex gap-4");
+        const actions = createElement("div", "flex flex-wrap justify-end gap-2");
         actions.append(
           createButton(item.ordered ? "✅" : "🛒", item.ordered ? "Cofnij oznaczenie zamówienia" : "Oznacz jako zamówione", () => updateDoc(doc(db, "odczynniki", item.id), { ordered: !item.ordered })),
           createButton("✏️", "Edytuj pozycję", () => startEdit(item)),
-          createButton("✕", "Usuń pozycję", async () => { if (confirm(`Usunąć „${item.name}”?`)) await deleteDoc(doc(db, "odczynniki", item.id)); }, "text-red-600"),
+          ...(inventory?.actions(item) || []),
         );
         row.append(info, actions);
         card.append(row);
@@ -252,13 +324,24 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     });
     byId("chemicalResultSummary").textContent = `Pozycje: ${filtered.length} • Grupy: ${sortedGroups.length}`;
     if (sortedGroups.length === 0) container.append(createElement("p", "rounded-lg border border-dashed bg-gray-50 p-6 text-center text-sm text-gray-500", "Brak pozycji spełniających kryteria."));
-    alerts.forEach((alertData) => alertBox.append(renderAlert(alertData)));
-    alertBox.classList.toggle("hidden", alerts.length === 0);
+    if (inventory) renderInventoryAlerts(alertBox, activeItems.map(inventory.withStock),
+      (item) => item.category === "Odczynniki" ? 70 : 40, inventory, editFromAlert);
+    else {
+      alerts.forEach((alertData) => alertBox.append(renderAlert(alertData)));
+      alertBox.classList.toggle("hidden", alerts.length === 0);
+    }
+  }
+
+  function editFromAlert(item) {
+    const target = item.category === "Odczynniki" ? "Odczynniki" : "Wzorce";
+    if (category !== target) switchSubTab(target);
+    startEdit(item);
   }
 
   function switchSubTab(target) {
     category = target;
     openInlineGroupKey = null;
+    inlineForm = null;
     ["Wzorce", "Odczynniki"].forEach((tab) => {
       const button = byId(`subBtnOdczynniki${tab}`);
       button.className = `px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap ${target === tab ? "active-sub-tab-odczynniki" : "bg-white text-gray-500"}`;
@@ -269,12 +352,17 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   function start() {
     registerSnapshot(onSnapshot(
       query(collection(db, "odczynniki"), orderBy("timestamp", "asc")),
-      (snapshot) => { items = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })); render(); },
+      (snapshot) => {
+        items = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+        inventory?.setLots(items);
+        render();
+      },
       (error) => reportListenerError("Odczynniki", error),
     ));
   }
 
   function bind() {
+    inventory?.bind(render);
     byId("chemicalSearch").addEventListener("input", render);
     byId("chemicalStatusFilter").addEventListener("change", render);
     byId("chemicalSort").addEventListener("change", render);

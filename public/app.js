@@ -17,15 +17,23 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
+  serverTimestamp,
+  setDoc,
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=13";
-import { createCalendarModule } from "./modules/calendar.js?v=13";
-import { createChemicalsModule } from "./modules/chemicals.js?v=13";
-import { createEquipmentModule } from "./modules/equipment.js?v=13";
-import { createScheduleModule } from "./modules/schedule.js?v=13";
-import { byId, runSafely } from "./modules/ui.js?v=13";
+import { createAuthModule } from "./modules/auth.js?v=14";
+import { createCalendarModule } from "./modules/calendar.js?v=14";
+import { createChemicalsModule } from "./modules/chemicals.js?v=14";
+import { createEquipmentModule } from "./modules/equipment.js?v=14";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=14";
+import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=14";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=14";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=14";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=14";
+import { createScheduleModule } from "./modules/schedule.js?v=14";
+import { byId, runSafely } from "./modules/ui.js?v=14";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -39,7 +47,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const firestore = { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, updateDoc, writeBatch };
+const firestore = { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, writeBatch };
 const authApi = { browserLocalPersistence, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut };
 let snapshotUnsubscribers = [];
 const reportedListenerErrors = new Set();
@@ -63,13 +71,20 @@ function reportListenerError(area, error) {
 }
 
 const moduleDependencies = { db, firestore, registerSnapshot, reportListenerError };
-const chemicals = createChemicalsModule(moduleDependencies);
+const inventory = createInventoryModule(moduleDependencies);
+mountInventoryHistory(inventory);
+mountInventoryStatistics(inventory);
+mountInventoryRecipes(inventory, moduleDependencies);
+mountInventoryTheory(inventory, moduleDependencies);
+mountInventoryOrders(inventory, moduleDependencies);
+const chemicals = createChemicalsModule({ ...moduleDependencies, inventory });
 const schedule = createScheduleModule(moduleDependencies);
 const equipment = createEquipmentModule(moduleDependencies);
 const calendar = createCalendarModule(moduleDependencies);
 
 function startDataListeners() {
   clearSnapshots();
+  inventory.start();
   chemicals.start();
   schedule.start();
   equipment.start();
