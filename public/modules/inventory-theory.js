@@ -1,7 +1,7 @@
-import { formatLocalDate } from "../utils.js?v=14";
-import { createElement } from "./ui.js?v=14";
-import { compatibleUnits, formatQuantity, maxQuantity, quantity, units } from "./inventory-quantity.js?v=14";
-import { button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=14";
+import { formatLocalDate } from "../utils.js?v=15";
+import { createElement } from "./ui.js?v=15";
+import { compatibleUnits, formatQuantity, maxQuantity, quantity, units } from "./inventory-quantity.js?v=15";
+import { button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=15";
 
 function theoreticalAmount(amount, multiplier, divisor = 1n) {
   const numerator = BigInt(amount) * multiplier;
@@ -116,7 +116,7 @@ export function mountInventoryTheory(inventory, { db, firestore }) {
           result.lastElementChild.remove();
           status.textContent = "Zapisano wynik teoretyczny.";
         }, status));
-      }, status), result, status);
+      }, status, { online: false }), result, status);
       content.replaceChildren(config, box);
     };
     filter.addEventListener("change", render);

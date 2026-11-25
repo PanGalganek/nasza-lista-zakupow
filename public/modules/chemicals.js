@@ -1,10 +1,10 @@
-import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=14";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=14";
-import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=14";
-import { productId } from "./inventory-store.js?v=14";
-import { availability } from "./inventory-history.js?v=14";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=14";
-import { renderInventoryAlerts } from "./inventory-alerts.js?v=14";
+import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=15";
+import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=15";
+import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=15";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=15";
+import { availability } from "./inventory-history.js?v=15";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=15";
+import { renderInventoryAlerts } from "./inventory-alerts.js?v=15";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -83,7 +83,9 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     try {
       if (editId) {
         if (selectedItems.length !== 1) throw new Error("Edycja wymaga dokładnie jednego wiersza.");
-        await updateDoc(doc(db, "odczynniki", editId), selectedItems[0]);
+        if (inventory) requireInventoryConnection();
+        if (inventory && selectedItems[0].productId) await inventory.store.linkLot(editId, selectedItems[0]);
+        else await updateDoc(doc(db, "odczynniki", editId), selectedItems[0]);
       } else if (inventory) {
         const payload = filled.map(([row, fields]) => ({ fields, initial: packageFields.get(row).initial(fields) }));
         const fingerprint = JSON.stringify(payload);
@@ -200,7 +202,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         try {
           const data = {
             name: group.name, group: groupInput.value.trim(), usage: usageInput.value.trim(), received: receivedInput.value,
-            expiry: expiryInput.value, category, timestamp: Date.now(), ordered: false,
+            expiry: expiryInput.value, category: group.category || category, timestamp: Date.now(), ordered: false,
           };
           if (inventory) {
             const values = packaging.read();
@@ -227,40 +229,44 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     return String(value || "").toLocaleLowerCase("pl").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l");
   }
 
-  function render() {
+  function render(refreshWarnings = true) {
     const container = byId("chemicalListGrouped");
     const alertBox = byId("alertBox");
     container.replaceChildren();
     if (!inventory) alertBox.replaceChildren();
     const activeItems = items.filter((item) => !inventory || ["active", undefined].includes(inventory.withStock(item).stock?.status));
+    const searchQuery = normalizeSearch(byId("chemicalSearch").value.trim());
+    const categoryOf = (item) => item.category === "Odczynniki" ? "Odczynniki" : "Wzorce";
     const categoryItems = activeItems.filter((item) => {
       const itemCategory = item.category || "Wzorce";
-      return itemCategory === category || (category === "Wzorce" && itemCategory === "Standardowe");
+      return searchQuery || itemCategory === category || (category === "Wzorce" && itemCategory === "Standardowe");
     });
     const threshold = category === "Odczynniki" ? 70 : 40;
-    const searchQuery = normalizeSearch(byId("chemicalSearch").value.trim());
     const statusFilter = byId("chemicalStatusFilter").value;
     const sortMode = byId("chemicalSort").value;
     const byPrefix = (a, b) => a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" }) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+    const partition = (list, kind) => groupChemicalItems(list.filter((item) => categoryOf(item) === kind))
+      .map((group) => ({ ...group, category: kind, key: `${kind}:${group.key}` }));
+    const categories = ["Wzorce", "Odczynniki"];
     const lpByItem = new Map();
-    groupChemicalItems(categoryItems).sort(byPrefix).forEach((group, index) => group.items.forEach((item) => lpByItem.set(item.id, index + 1)));
+    for (const kind of categories) partition(activeItems, kind).sort(byPrefix)
+      .forEach((group, index) => group.items.forEach((item) => lpByItem.set(item.id, index + 1)));
     const filtered = categoryItems.filter((item) => {
       if (searchQuery && !matchesInventorySearch(searchQuery, item.name, item.group, item.usage, item.lotNumber, `LP ${lpByItem.get(item.id)}`,
         item.producer, item.formula, item.cas, ...(inventory?.searchContext(item) || []))) return false;
       const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
       const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
-      if (statusFilter === "attention") return days !== null && days <= threshold;
+      if (statusFilter === "attention") return days !== null && days <= (categoryOf(item) === "Odczynniki" ? 70 : 40);
       if (statusFilter === "ordered") return item.ordered === true;
       if (statusFilter === "expired") return days !== null && days < 0;
       return true;
     });
 
-    const sortedGroups = groupChemicalItems(filtered).sort((a, b) => {
+    const sortedGroups = categories.flatMap((kind) => partition(filtered, kind)).sort((a, b) => {
       if (sortMode === "name") return a.name.localeCompare(b.name, "pl", { sensitivity: "base" }) || a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" });
       if (sortMode === "expiry") return earliestExpiry(a).localeCompare(earliestExpiry(b)) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
       return byPrefix(a, b);
     });
-    const alerts = buildChemicalAlerts(categoryItems, threshold);
 
     sortedGroups.forEach((group) => {
       group.items.sort((a, b) => sortMode === "expiry" ? String(a.expiry || "9999-12-31").localeCompare(String(b.expiry || "9999-12-31")) : String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
@@ -295,12 +301,12 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       group.items.forEach((item) => {
         const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
         const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
-        const color = days !== null && days < 0 ? "text-red-600 font-bold" : days !== null && days <= threshold ? "text-orange-500 font-bold" : "text-black font-semibold";
+        const color = days !== null && days < 0 ? "text-red-600 font-bold" : days !== null && days <= (categoryOf(item) === "Odczynniki" ? 70 : 40) ? "text-orange-500 font-bold" : "text-black font-semibold";
         const suffix = String(item.group || "").includes("/") ? `/${String(item.group).split("/")[1]}` : "•";
         const row = createElement("div", `${item.ordered ? "ordered-row " : ""}flex flex-wrap items-center justify-between gap-2 p-3 border-t text-[11px] text-black`);
-        const info = createElement("div", "flex items-center gap-3");
+        const info = createElement("div", "flex min-w-0 items-center gap-3");
         info.append(createElement("span", "font-black text-blue-400 w-8", suffix));
-        const details = createElement("div", "flex flex-col text-black");
+        const details = createElement("div", "flex min-w-0 flex-col text-black [overflow-wrap:anywhere]");
         const expiryLine = createElement("span", "uppercase");
         expiryLine.append(document.createTextNode("Ważność: "), createElement("span", color, formatPolishDate(item.expiry)));
         const dayText = days !== null && days < 0 ? "PO TERMINIE" : days === null ? "brak daty" : `${days} dni`;
@@ -308,12 +314,15 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         details.append(expiryLine, createElement("span", "text-[8px] italic text-gray-500", item.usage || ""));
         if (inventory) {
           if (item.lotNumber) details.append(createElement("span", "", `Partia ${item.lotNumber}`));
-          details.append(showStock(inventory.withStock(item)));
+          details.append(inventory.ready() ? showStock(inventory.withStock(item)) : createElement("span", "", "Odczyt stanu…"));
         }
         info.append(details);
         const actions = createElement("div", "flex flex-wrap justify-end gap-2");
         actions.append(
-          createButton(item.ordered ? "✅" : "🛒", item.ordered ? "Cofnij oznaczenie zamówienia" : "Oznacz jako zamówione", () => updateDoc(doc(db, "odczynniki", item.id), { ordered: !item.ordered })),
+          createButton(item.ordered ? "✅" : "🛒", item.ordered ? "Cofnij oznaczenie zamówienia" : "Oznacz jako zamówione", () => {
+            if (inventory) requireInventoryConnection();
+            return updateDoc(doc(db, "odczynniki", item.id), { ordered: !item.ordered });
+          }),
           createButton("✏️", "Edytuj pozycję", () => startEdit(item)),
           ...(inventory?.actions(item) || []),
         );
@@ -324,9 +333,12 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     });
     byId("chemicalResultSummary").textContent = `Pozycje: ${filtered.length} • Grupy: ${sortedGroups.length}`;
     if (sortedGroups.length === 0) container.append(createElement("p", "rounded-lg border border-dashed bg-gray-50 p-6 text-center text-sm text-gray-500", "Brak pozycji spełniających kryteria."));
-    if (inventory) renderInventoryAlerts(alertBox, activeItems.map(inventory.withStock),
-      (item) => item.category === "Odczynniki" ? 70 : 40, inventory, editFromAlert);
+    if (inventory) {
+      if (refreshWarnings) renderInventoryAlerts(alertBox, activeItems.map(inventory.withStock),
+        (item) => item.category === "Odczynniki" ? 70 : 40, inventory, editFromAlert);
+    }
     else {
+      const alerts = buildChemicalAlerts(categoryItems, threshold);
       alerts.forEach((alertData) => alertBox.append(renderAlert(alertData)));
       alertBox.classList.toggle("hidden", alerts.length === 0);
     }
@@ -363,9 +375,9 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
 
   function bind() {
     inventory?.bind(render);
-    byId("chemicalSearch").addEventListener("input", render);
-    byId("chemicalStatusFilter").addEventListener("change", render);
-    byId("chemicalSort").addEventListener("change", render);
+    byId("chemicalSearch").addEventListener("input", () => render(false));
+    byId("chemicalStatusFilter").addEventListener("change", () => render(false));
+    byId("chemicalSort").addEventListener("change", () => render(false));
   }
 
   return {

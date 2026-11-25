@@ -12,10 +12,18 @@ Rejestr zachowuje historyczne identyfikatory w `odczynniki`. Po otrzymaniu dosta
 
 ## Publikacja i odzyskiwanie
 
-1. Przed zatwierdzonym wydaniem wykonaj [kopię Firestore](firestore-backup.md). W emulatorze sprawdź odtworzenie kopii, odczyt starszych rekordów i operacje magazynowe.
-2. Wersja aplikacji i reguły Firestore powinny trafić do tego samego wydania. Nie ma skryptu migracji produkcyjnej. Odczyt starszego rekordu działa w istniejącym formacie, a jego stan ilościowy powstaje przy jawnej czynności użytkownika. Stare PWA może odczytać i edytować rekord, ale reguły blokują trwałe usuwanie.
-3. Po wydaniu sprawdź dostępność aplikacji i aktualizację PWA. Podgląd pull requesta korzysta z produkcyjnego Firebase.
-4. W przypadku awarii postępuj zgodnie z [procedurą wycofania](rollback.md). Jeżeli aplikacja zdążyła już zapisać operacje magazynowe, zachowaj nową konfigurację zapobiegającą trwałemu usuwaniu. Stare reguły walidacji nie rozpoznają nowych pól odczynników.
+1. Przed zatwierdzonym wydaniem wykonaj [kopię Firestore](firestore-backup.md), sprawdź sumę kontrolną i przećwicz odtworzenie w emulatorze. Porównaj źródło z aktualnym `main` i zapisz identyfikator poprzedniego sprawnego wydania.
+2. Po akceptacji opublikuj wersję aplikacji i reguły Firestore w jednym wydaniu. Stan ilościowy powstaje przy jawnej czynności użytkownika. Nie ma migracji masowej: nie uzupełniaj stanów domyślnie i nie importuj danych z emulatora. Stare PWA może odczytać i edytować rekord. Reguły blokują trwałe usuwanie.
+3. Po wydaniu sprawdź oba zadania publikacji, dostępność, logowanie i aktualizację PWA z poprzedniej wersji przy zwykłym ponownym wejściu. Na produkcji sprawdzaj wyłącznie odczyt, do pierwszego zatwierdzonego użycia magazynu. Podgląd pull requesta korzysta z produkcyjnego Firebase.
+4. W przypadku awarii postępuj zgodnie z [procedurą wycofania](rollback.md). Zachowaj nowe reguły ochrony danych i historię magazynu. Przed zatwierdzonym cofnięciem sprawdź w emulatorze współpracę starego frontendu z aktualnymi regułami i danymi.
+
+## Odczyty i praca bez połączenia
+
+Po zalogowaniu moduł obserwuje rejestr, stany, metody i receptury. Historia operacji, zamówienia i obliczenia są podłączane przy pierwszym użyciu. Filtry i wyszukiwanie korzystają z danych w pamięci. Wznowienie połączenia może ponownie obciążyć pulę odczytów.
+
+Przy rozchodzie z N partii transakcja wykonuje nominalnie 1 + 2N odczytów dokumentów i N + 1 zapisów. Przyjęcie N nowych samodzielnych partii wykonuje jeden odczyt identyfikatora operacji i 2N + 1 zapisów. Powiązanie z istniejącą pozycją, odczyty zależne od reguł oraz ponowienia transakcji zmieniają faktyczną liczbę. Monitoruj panel Firestore Usage na planie Spark.
+
+Operacje magazynowe wymagają połączenia. W otwartej karcie można korzystać z już odczytanych danych i kalkulatora teoretycznego. Zimny start i synchronizacja całego rejestru offline zależą od dostępności SDK i sesji. Aplikacja nie włącza trwałego lokalnego zapisywania danych laboratoryjnych.
 
 ## Zamówienia
 

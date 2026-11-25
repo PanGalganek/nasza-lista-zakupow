@@ -49,8 +49,8 @@ test("chemical alerts provide direct editing of the affected record", () => {
   assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
   assert.match(modules, /formContainer"\)\.scrollIntoView/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=14/);
-  assert.match(html, /\.\/app\.js\?v=14/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=15/);
+  assert.match(html, /\.\/app\.js\?v=15/);
 });
 
 test("all visible full dates use the Polish day-month-year format", () => {
@@ -85,14 +85,16 @@ test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=14")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=15")));
 });
 
 test("PWA assets use the correctly cased service worker and local icon", () => {
-  assert.match(app, /register\("\.\/sw\.js"\)/);
+  assert.match(app, /register\("\.\/sw\.js", \{ updateViaCache: "none" \}\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v14"/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v15"/);
+  assert.match(html, /styles\.css\?v=15/);
+  assert.match(serviceWorker, /styles\.css\?v=15/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
 });
 

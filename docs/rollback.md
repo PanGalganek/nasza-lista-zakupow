@@ -13,3 +13,5 @@
 3. **Reguły Firestore.** Przywróć sprawdzoną wersję `firestore.rules` przez zatwierdzony PR do `main` i sprawdź wynik wdrożenia. Cofnięcie w konsoli Hostingu dotyczy wyłącznie Hostingu.
 4. **Dane.** Użyj [procedury odzyskiwania Firestore](firestore-backup.md#odzyskanie-pojedynczych-danych-produkcyjnych). Cofnięcie kodu pozostawia dokumenty w stanie zapisanym w bazie.
 5. Zweryfikuj poprawkę na obu adresach i w zainstalowanej PWA. Jeśli karta nadal pokazuje wadliwą wersję, zamknij wszystkie okna aplikacji i otwórz ją ponownie. Potwierdź działanie przed wznowieniem zapisów, jeśli usterka dotyczyła danych.
+
+Po uruchomieniu magazynu nie wycofuj całego commita magazynowego na produkcji. Poprzednie reguły dopuszczały trwałe usuwanie i nie rozpoznawały nowych pól. Cofnij tylko frontend w Firebase Hosting, a dla obu adresów przygotuj oddzielną poprawkę frontendu z utrzymaniem reguł magazynu. Przed publikacją przećwicz zgodność tej pary w emulatorze. W razie niespójności zabezpiecz aktualną kopię i wstrzymaj zapisy do czasu diagnozy, zachowując wszystkie poprzednie dokumenty i operacje.

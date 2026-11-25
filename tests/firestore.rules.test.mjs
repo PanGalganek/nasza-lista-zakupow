@@ -49,6 +49,10 @@ test("unauthenticated and unlisted users cannot read application data", async ()
   const unlisted = testEnvironment.authenticatedContext("unlisted-user").firestore();
   await assertFails(getDoc(doc(unauthenticated, "odczynniki", "one")));
   await assertFails(getDocs(collection(unlisted, "odczynniki")));
+  for (const inventory of ["magazyn_partie", "magazyn_operacje", "magazyn_receptury", "magazyn_metody", "magazyn_zamowienia", "magazyn_obliczenia"]) {
+    await assertFails(getDoc(doc(unauthenticated, inventory, "one")));
+    await assertFails(getDocs(collection(unlisted, inventory)));
+  }
 });
 
 test("an active listed user can create, edit, order, and archive without deleting a chemical", async () => {
@@ -87,6 +91,7 @@ test("stock transactions preserve balances, reject concurrent overspending and r
   const request = { lotId: "legacy", productId: "legacy", unit: "g", quantity: quantity("10", "g") };
   await Promise.all([store.withdraw([request], { id: "same" }), store.withdraw([request], { id: "same" })])
     .catch((cause) => { throw new Error("Idempotent withdrawal failed", { cause }); });
+  await assert.rejects(store.withdraw([{ ...request, quantity: quantity("20", "g") }], { id: "same" }), /Wcześniejszy zapis ma inne dane/);
   assert.equal((await getDoc(store.ref("stock", "legacy"))).data().balance, quantity("490", "g"));
   await store.reverse("same").catch((cause) => { throw new Error("Reversal failed", { cause }); });
   await store.reverse("same");
@@ -109,7 +114,8 @@ test("multi-ingredient preparation is atomic and retains its recipe snapshot", a
     await setDoc(doc(db, "odczynniki", chemical), { name: chemical, group: "", usage: "", expiry: "", received: "", timestamp: 1, ordered: false });
     await store.establish(chemical, quantity("500", "g"), "g");
   }
-  const prep = { recipeId: "recipe", recipeName: "Przygotowanie testowe", recipeVersion: 1, volume: 250, methodId: "method" };
+  const prep = { recipeId: "recipe", recipeName: "Przygotowanie testowe", recipeVersion: 1, volume: 250, methodId: "method",
+    methodName: "Metoda testowa", baseVolume: 100, ingredients: [{ name: "Składnik testowy", unit: "g", quantity: quantity("25", "g") }], instruction: "" };
   const recipeReference = store.ref("recipes", "recipe");
   await setDoc(recipeReference, { name: prep.recipeName, baseVolume: 100, defaultVolume: 100, scalable: true, methods: ["method"],
     ingredients: [{ productId: chemicals[0], name: "Składnik testowy", unit: "g", quantity: quantity("10", "g") }], instruction: "", version: 1 });
@@ -124,9 +130,21 @@ test("multi-ingredient preparation is atomic and retains its recipe snapshot", a
   assert.equal((await getDoc(store.ref("events", "prepare"))).data().details.recipeName, prep.recipeName);
   await store.reverse("prepare");
   assert.equal((await getDoc(store.ref("stock", chemicals[7]))).data().balance, quantity("500", "g"));
-  await store.withdraw([], { id: "untracked-preparation", preparation: prep });
+  await store.withdraw([], { id: "untracked-preparation", preparation: { ...prep, ingredients: [{ name: "Woda", productId: "", unit: "ml", quantity: quantity("50", "ml") }] } });
   await store.reverse("untracked-preparation");
   assert.equal((await getDoc(store.ref("events", "reverse_untracked-preparation"))).exists(), true);
+});
+
+test("an existing linked product remains a root while legacy lots can be attached", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const fields = { name: "Partia testowa", group: "", usage: "", expiry: "", received: "", timestamp: 1, ordered: false };
+  const chemical = (id) => doc(db, "odczynniki", id);
+  await Promise.all(["root", "lot", "other"].map((id) => setDoc(chemical(id), fields)));
+  await store.linkLot("lot", { productId: "root" });
+  assert.equal((await getDoc(chemical("root"))).data().productId, "root");
+  await assertFails(updateDoc(chemical("root"), { productId: "lot" }));
+  await assert.rejects(store.linkLot("other", { productId: "lot" }), /główną pozycję/);
 });
 
 test("expired inventory can be withdrawn without recording analytical consumption", async () => {

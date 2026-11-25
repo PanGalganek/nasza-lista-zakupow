@@ -12,7 +12,8 @@ function documentXml(rows, date) {
     .map((side) => `<w:${side} w:val="single" w:sz="4" w:color="000000"/>`).join("");
   const margins = [["top", 20], ["bottom", 20], ["left", 55], ["right", 55]]
     .map(([side, width]) => `<w:${side} w:w="${width}" w:type="dxa"/>`).join("");
-  const cells = (row) => orderColumns(row, date).map((value, i) => `<w:tc><w:tcPr><w:tcW w:w="${widths[i]}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:keepLines/><w:jc w:val="${i === 2 ? "left" : "center"}"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:color w:val="C00000"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">${xml(value)}</w:t></w:r></w:p></w:tc>`).join("");
+  const typography = '<w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:color w:val="C00000"/><w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr>';
+  const cells = (row) => orderColumns(row, date).map((value, i) => `<w:tc><w:tcPr><w:tcW w:w="${widths[i]}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:keepLines/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="${i === 2 ? "left" : "center"}"/>${typography}</w:pPr><w:r>${typography}<w:t xml:space="preserve">${xml(value)}</w:t></w:r></w:p></w:tc>`).join("");
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
     <w:tbl><w:tblPr><w:tblW w:type="auto" w:w="0"/><w:jc w:val="center"/><w:tblLayout w:type="fixed"/><w:tblBorders>${border}</w:tblBorders><w:tblCellMar>${margins}</w:tblCellMar></w:tblPr>
     <w:tblGrid>${widths.map((value) => `<w:gridCol w:w="${value}"/>`).join("")}</w:tblGrid>

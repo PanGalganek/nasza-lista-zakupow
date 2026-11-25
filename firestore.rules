@@ -7,10 +7,12 @@ service cloud.firestore {
     }
 
     function activeUser() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/app_users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/app_users/$(request.auth.uid)).data.active == true
-        && get(/databases/$(database)/documents/app_users/$(request.auth.uid)).data.role in ['admin', 'operator'];
+      return signedIn() && allowedRole(request.auth.uid);
+    }
+
+    function allowedRole(uid) {
+      let user = get(/databases/$(database)/documents/app_users/$(uid)).data;
+      return user.active == true && user.role in ['admin', 'operator'];
     }
 
     function validDate(value) {
@@ -68,6 +70,12 @@ service cloud.firestore {
 
     function chemicalPath(id) {
       return /databases/$(database)/documents/odczynniki/$(id);
+    }
+
+    function isProductRoot(id, newLot) {
+      let target = getAfter(chemicalPath(id)).data;
+      return target.productId == id
+        && (target.get('category', 'Wzorce') == 'Odczynniki') == (newLot.get('category', 'Wzorce') == 'Odczynniki');
     }
 
     function validStock(data) {
@@ -138,6 +146,17 @@ service cloud.firestore {
           && eventTarget(keys, 4, id) && eventTarget(keys, 5, id) && eventTarget(keys, 6, id) && eventTarget(keys, 7, id));
     }
 
+    function validPreparation(details) {
+      return details.keys().hasOnly(['intent', 'recipeId', 'recipeVersion', 'recipeName', 'methodId', 'methodName',
+          'volume', 'baseVolume', 'ingredients', 'instruction'])
+        && details.recipeId is string && details.methodId is string
+        && details.recipeName is string && details.methodName is string
+        && details.recipeVersion is int && details.recipeVersion >= 1
+        && details.volume in [50, 100, 250, 500, 1000] && details.baseVolume is int && details.baseVolume > 0
+        && details.ingredients is list && details.ingredients.size() > 0
+        && details.instruction is string && details.instruction.size() <= 4000;
+    }
+
     function validTask(data) {
       return data.keys().hasAll(['name', 'lab', 'doneDate', 'timestamp'])
         && data.keys().hasOnly(['name', 'lab', 'category', 'doneDate', 'timestamp', 'lastDoneYear'])
@@ -176,11 +195,11 @@ service cloud.firestore {
       allow read: if activeUser();
       allow create: if activeUser() && validChemical(request.resource.data)
         && (request.resource.data.get('productId', documentId) == documentId
-          || exists(chemicalPath(request.resource.data.productId)));
+          || isProductRoot(request.resource.data.productId, request.resource.data));
       allow update: if activeUser() && validChemical(request.resource.data)
         && (resource.data.get('productId', documentId) == request.resource.data.get('productId', documentId)
           || (!('productId' in resource.data) && !exists(stockPath(documentId))
-            && exists(chemicalPath(request.resource.data.productId))));
+            && isProductRoot(request.resource.data.productId, request.resource.data)));
     }
 
     match /magazyn_partie/{documentId} {
@@ -197,7 +216,9 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['kind', 'anchor', 'changes', 'details', 'createdAt'])
         && request.resource.data.kind in ['receipt', 'opening', 'withdrawal', 'preparation', 'used', 'withdrawn', 'reversal']
         && request.resource.data.createdAt == request.time && request.resource.data.details is map
+        && request.resource.data.details.intent is string && request.resource.data.details.intent.matches('^[a-f0-9]{64}$')
         && validEventChanges(request.resource.data, documentId)
+        && (request.resource.data.kind != 'preparation' || validPreparation(request.resource.data.details))
         && (request.resource.data.kind != 'reversal' || reversalEvent(request.resource.data, documentId));
     }
 

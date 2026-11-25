@@ -1,8 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=14";
-import { createElement } from "./ui.js?v=14";
-import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=14";
-import { button, details, field, input, panel, saveButton, unitSelect } from "./inventory-ui.js?v=14";
-import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=14";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=15";
+import { createElement } from "./ui.js?v=15";
+import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=15";
+import { button, details, field, input, panel, saveButton, unitSelect } from "./inventory-ui.js?v=15";
+import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=15";
+import { requireInventoryConnection } from "./inventory-store.js?v=15";
 
 function download(rows, date) {
   const blob = createOrderDocx(rows, formatPolishDate(date));
@@ -17,8 +18,9 @@ function download(rows, date) {
 }
 
 export function mountInventoryOrders(inventory, { db, firestore }) {
-  const { collection, doc, setDoc, writeBatch, serverTimestamp } = firestore;
+  const { collection, doc, runTransaction, serverTimestamp } = firestore;
   const values = new Map();
+  let pending = false;
   inventory.mount("orders", (container) => {
     const title = createElement("h2", "text-lg font-bold", "Zamówienia");
     const note = createElement("p", "text-sm", "Pobierz osobny plik Word i skopiuj zweryfikowane wiersze do oficjalnego rejestru.");
@@ -90,6 +92,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
       }
       const orderRef = doc(collection(db, "magazyn_zamowienia"));
       if (selections.length) draft.append(saveButton("Generuj dokument Word", async () => {
+        if (pending) return;
         if (selections.some((id) => inventory.lotsFor(id).some((lot) => lot.ordered))
           && !confirm("Zamówienie zawiera pozycje, które już oznaczono jako zamówione. Czy kontynuować?")) return;
         const lines = selections.map((id) => {
@@ -105,12 +108,20 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
           return { productId: id, name, amount, notes: current.notes.trim() };
         });
         const date = formatLocalDate();
-        await setDoc(orderRef, { lines, date, status: "generated", createdAt: serverTimestamp() });
-        download(lines, date);
-        for (const id of selections) inventory.orderSelections.delete(id);
-        renderDraft();
-        renderCandidates();
-        status.textContent = "Wygenerowano dokument. Oznaczenie jako zamówione jest dostępne w historii.";
+        pending = true;
+        try {
+          const current = await runTransaction(db, async (transaction) => {
+            const existing = await transaction.get(orderRef);
+            if (existing.exists()) return existing.data();
+            transaction.set(orderRef, { lines, date, status: "generated", createdAt: serverTimestamp() });
+            return { lines, date };
+          });
+          download(current.lines, current.date);
+          for (const id of selections) inventory.orderSelections.delete(id);
+          renderDraft();
+          renderCandidates();
+          status.textContent = "Wygenerowano dokument. Oznaczenie jako zamówione jest dostępne w historii.";
+        } finally { pending = false; }
       }, status));
       draft.append(status);
     }
@@ -130,12 +141,15 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
           const choice = button("Oznacz jako zamówione", async () => {
             choice.disabled = true;
             try {
-              const batch = writeBatch(db);
-              const lots = order.lines.flatMap((line) => inventory.lotsFor(line.productId));
+              requireInventoryConnection();
+              const lots = [...new Map(order.lines.flatMap((line) => inventory.lotsFor(line.productId)).map((lot) => [lot.id, lot])).values()];
               if (lots.length > 499) throw new Error("Zamówienie obejmuje zbyt wiele partii do jednoczesnego oznaczenia.");
-              for (const lot of lots) batch.update(doc(db, "odczynniki", lot.id), { ordered: true });
-              batch.update(inventory.store.ref("orders", order.id), { status: "ordered", orderedAt: serverTimestamp() });
-              await batch.commit();
+              const orderRef = inventory.store.ref("orders", order.id);
+              await runTransaction(db, async (transaction) => {
+                if ((await transaction.get(orderRef)).data()?.status === "ordered") return;
+                for (const lot of lots) if (!lot.ordered) transaction.update(doc(db, "odczynniki", lot.id), { ordered: true });
+                transaction.update(orderRef, { status: "ordered", orderedAt: serverTimestamp() });
+              });
               choice.remove();
               history.querySelector("summary").setAttribute("aria-live", "polite");
             } catch (error) { message.textContent = error.message; choice.disabled = false; }

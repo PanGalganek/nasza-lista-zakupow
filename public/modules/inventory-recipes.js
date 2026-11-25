@@ -1,7 +1,7 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=14";
-import { createElement } from "./ui.js?v=14";
-import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=14";
-import { batchLabel, button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=14";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=15";
+import { createElement } from "./ui.js?v=15";
+import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=15";
+import { batchLabel, button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=15";
 
 const say = (target, value) => target.append(createElement("p", "text-sm", value));
 const methodOptions = (inventory) => inventory.rows("methods").map((method) => [method.id, method.name]);
@@ -61,6 +61,7 @@ function readLocal(key, fallback) {
 export function mountInventoryRecipes(inventory, { db, firestore }) {
   const { collection, doc, setDoc } = firestore;
   const createRef = (name) => doc(collection(db, name));
+  let preparationPending = false;
   const recipeSearchContext = (recipe, methodName = "") => [recipe.name, methodName,
     ...recipe.ingredients.flatMap((row) => [row.name, ...inventory.lotsFor(row.productId).flatMap((lot) => [lot.name, lot.group, lot.lotNumber, lot.formula, lot.cas, lot.producer])])];
 
@@ -179,6 +180,7 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
       field("Szukaj", search), field("Tylko ulubione", favoritesOnly), editor, list);
 
     function prepare(recipe, methodId, methodName) {
+      if (preparationPending) return;
       const box = panel();
       const choices = createElement("div", "flex flex-wrap gap-2");
       const preview = createElement("div", "space-y-2");
@@ -188,7 +190,6 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
       const preferred = {};
       let volume = recipe.scalable && flaskVolumes.includes(savedVolumes[recipe.id]) ? savedVolumes[recipe.id] : recipe.defaultVolume;
       const id = inventory.store.operationId();
-      let pending = false;
       const show = () => {
         preview.replaceChildren();
         status.textContent = "";
@@ -209,8 +210,8 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
           const plan = allocateIngredients(ingredients, inventory.lotsFor, preferred);
           for (const row of plan.preview) say(preview, `${batchLabel(row.lot)} · przed ${formatQuantity(row.before, row.lot.stock.unit)} · po ${formatQuantity(row.after, row.lot.stock.unit)}`);
           const confirm = saveButton("Zatwierdź przygotowanie", async () => {
-            if (pending) return;
-            pending = true;
+            if (preparationPending) return;
+            preparationPending = true;
             try {
               await inventory.store.withdraw(plan.requests, { id, preparation: {
                 recipeId: recipe.id, recipeVersion: recipe.version, recipeName: recipe.name, methodId, methodName, volume,
@@ -218,13 +219,13 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
               } });
               writeLocal("e-lab-recipe-volumes", { ...savedVolumes, [recipe.id]: volume });
               editor.replaceChildren(createElement("p", "text-sm font-bold text-green-800", "Przygotowanie zapisane."));
-            } finally { pending = false; }
+            } finally { preparationPending = false; }
           }, status);
           preview.append(confirm);
         } catch (error) { status.textContent = error.message; }
       };
       for (const value of flaskVolumes) {
-        const control = button(`${value} ml`, () => { if (!pending) { volume = value; show(); } });
+        const control = button(`${value} ml`, () => { if (!preparationPending) { volume = value; show(); } });
         control.className += " min-h-12 min-w-20";
         control.dataset.volume = String(value);
         control.disabled = !recipe.scalable && value !== recipe.baseVolume;
@@ -232,7 +233,7 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
       }
       box.append(createElement("h3", "font-bold", recipe.name), choices);
       if (recipe.instruction) say(box, recipe.instruction);
-      box.append(preview, status, button("Anuluj", () => { if (!pending) editor.replaceChildren(); }));
+      box.append(preview, status, button("Anuluj", () => { if (!preparationPending) editor.replaceChildren(); }));
       editor.replaceChildren(box);
       show();
       box.scrollIntoView({ block: "nearest" });

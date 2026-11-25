@@ -1,3 +1,5 @@
+import { parseLocalDate } from "../utils.js?v=15";
+
 export const units = {
   mg: ["masa", 1_000], g: ["masa", 1_000_000], kg: ["masa", 1_000_000_000],
   "µl": ["objętość", 1_000], ml: ["objętość", 1_000_000], l: ["objętość", 1_000_000_000],
@@ -47,7 +49,7 @@ export function stockLevel(stock) {
 
 export function validLots(lots, unit, today) {
   return lots.filter((lot) => lot.stock?.status === "active" && lot.stock.balance > 0
-    && compatibleUnits(unit, lot.stock.unit) && (!lot.expiry || lot.expiry >= today))
+    && compatibleUnits(unit, lot.stock.unit) && (!lot.expiry || (parseLocalDate(lot.expiry) && lot.expiry >= today)))
     .sort((a, b) => (a.expiry || "9999").localeCompare(b.expiry || "9999") || a.timestamp - b.timestamp);
 }
 

@@ -23,17 +23,17 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=14";
-import { createCalendarModule } from "./modules/calendar.js?v=14";
-import { createChemicalsModule } from "./modules/chemicals.js?v=14";
-import { createEquipmentModule } from "./modules/equipment.js?v=14";
-import { createInventoryModule } from "./modules/inventory-ui.js?v=14";
-import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=14";
-import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=14";
-import { mountInventoryTheory } from "./modules/inventory-theory.js?v=14";
-import { mountInventoryOrders } from "./modules/inventory-orders.js?v=14";
-import { createScheduleModule } from "./modules/schedule.js?v=14";
-import { byId, runSafely } from "./modules/ui.js?v=14";
+import { createAuthModule } from "./modules/auth.js?v=15";
+import { createCalendarModule } from "./modules/calendar.js?v=15";
+import { createChemicalsModule } from "./modules/chemicals.js?v=15";
+import { createEquipmentModule } from "./modules/equipment.js?v=15";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=15";
+import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=15";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=15";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=15";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=15";
+import { createScheduleModule } from "./modules/schedule.js?v=15";
+import { byId, runSafely } from "./modules/ui.js?v=15";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -142,5 +142,5 @@ chemicals.bind();
 login.bind();
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("Service worker nie został uruchomiony.", error));
+  navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" }).catch((error) => console.warn("Service worker nie został uruchomiony.", error));
 }

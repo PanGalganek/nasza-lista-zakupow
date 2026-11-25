@@ -35,8 +35,11 @@ test("preparation scales each ingredient and allocates the earliest usable batch
     b: [makeLot("b", "", "ml", "5")],
   };
   const ingredients = recipeIngredients(recipe, 250);
-  assert.equal(ingredients[0].quantity, quantity("25", "g"));
-  assert.equal(recipeIngredients(recipe, 500)[0].quantity, quantity("50", "g"));
+  for (const [index, volume] of [50, 100, 250, 500, 1000].entries()) {
+    const scaled = recipeIngredients(recipe, volume);
+    assert.equal(scaled[0].quantity, quantity([5, 10, 25, 50, 100][index], "g"));
+    assert.equal(scaled[1].quantity, quantity([0.5, 1, 2.5, 5, 10][index], "ml"));
+  }
   assert.throws(() => recipeIngredients({ ...recipe, scalable: false }, 250), /objętości/);
   const plan = allocateIngredients(ingredients, (id) => lots[id], {}, "2027-01-01");
   assert.deepEqual(plan.requests.map(({ lotId }) => lotId), ["first", "later", "b"]);
@@ -54,12 +57,16 @@ test("125 determinations calculates 12.5 g without changing inventory", () => {
 });
 
 test("expiry and quantity warnings retain linked backup information", () => {
-  const a = { id: "a", productId: "p", name: "A", expiry: "2026-11-23", stock: { initial: 500, balance: 125 } };
-  const b = { id: "b", productId: "p", name: "A", expiry: "2027-10-01", stock: { initial: 500, balance: 500 } };
+  const a = { id: "a", productId: "p", name: "A", expiry: "2026-11-23", stock: { initial: 500, balance: 125, status: "active" } };
+  const b = { id: "b", productId: "p", name: "A", expiry: "2027-10-01", stock: { initial: 500, balance: 500, status: "active" } };
   const signals = warningGroups([a, b], 40, new Date(2026, 10, 25));
   assert.equal(signals.expired[0].backup.id, "b");
   assert.equal(signals.low[0].lot.id, "a");
   assert.equal(signals.warning.length, 0);
+  const unknown = warningGroups([{ ...a, stock: undefined }, { ...b, stock: undefined }], 40, new Date(2026, 10, 25));
+  assert.equal(unknown.expired[0].possibleBackup.id, "b");
+  assert.equal(unknown.expired[0].backup, undefined);
+  assert.deepEqual([unknown.low.length, unknown.warning.length], [0, 0]);
 });
 
 test("Word order is an editable table with eleven cells and blank supplier and order number", async () => {

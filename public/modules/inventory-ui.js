@@ -1,10 +1,24 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=14";
-import { byId, createButton, createElement, createInput } from "./ui.js?v=14";
-import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=14";
-import { createInventoryStore, inventoryCollections, productId } from "./inventory-store.js?v=14";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=15";
+import { byId, createButton, createElement, createInput } from "./ui.js?v=15";
+import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=15";
+import { createInventoryStore, inventoryCollections, productId, requireInventoryConnection } from "./inventory-store.js?v=15";
 
 const fieldClass = "w-full rounded border bg-white p-2 text-sm text-black";
 const actionClass = "rounded border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800";
+const textValue = (value) => typeof value === "string";
+const integer = (value) => Number.isSafeInteger(value) && value >= 0;
+const material = (row) => row && textValue(row.name) && Object.hasOwn(units, row.unit) && integer(row.quantity);
+const materials = (value) => Array.isArray(value) && value.every(material);
+const inventoryRecords = {
+  recipes: (row) => textValue(row.name) && Array.isArray(row.methods) && row.methods.every(textValue)
+    && materials(row.ingredients) && row.ingredients.every((item) => textValue(item.productId)),
+  methods: (row) => textValue(row.name) && materials(row.usage)
+    && row.usage.every((item) => ["recipe", "product"].includes(item.target) && textValue(item.key)),
+  orders: (row) => textValue(row.date) && Array.isArray(row.lines) && row.lines.every((item) =>
+    item && [item.productId, item.name, item.amount, item.notes].every(textValue)),
+  calculations: (row) => textValue(row.date) && materials(row.commercial)
+    && row.commercial.every((item) => textValue(item.productId)),
+};
 export const sections = [
   ["registry", "Rejestr odczynników i wzorców"], ["preparation", "Przygotowanie odczynników"],
   ["recipes", "Baza receptur"], ["theory", "Zużycie teoretyczne"],
@@ -42,12 +56,15 @@ export function details(label) {
   return box;
 }
 
-export function saveButton(label, action, message) {
+export function saveButton(label, action, message, { online = true } = {}) {
   const control = button(label, async () => {
     if (control.disabled) return;
     control.disabled = true;
     message.textContent = "";
-    try { await action(); } catch (error) { message.textContent = error.message; }
+    try {
+      if (online) requireInventoryConnection();
+      await action();
+    } catch (error) { message.textContent = error.message; }
     finally { control.disabled = false; }
   });
   return control;
@@ -87,14 +104,16 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
   const subscribed = new Set();
   let stockById = new Map();
   let registryById = new Map();
+  let byProduct = new Map();
   let visibleCard = "";
+  let pendingAction = false;
   let lots = [];
   let section = "registry";
   let refreshRegistry = () => {};
 
   const withStock = (lot) => ({ ...lot, stock: stockById.get(lot.id) });
   const allLots = () => lots.map(withStock);
-  const lotsFor = (id) => allLots().filter((lot) => productId(lot) === id);
+  const lotsFor = (id) => (byProduct.get(id) || []).map(withStock);
   const products = () => [...new Map(lots.map((lot) => [productId(lot), registryById.get(productId(lot)) || lot])).entries()];
   const productOptions = () => products().map(([id, lot]) => [id, batchLabel(lot)]);
   const rows = (key) => collections[key] || [];
@@ -109,10 +128,12 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     section = key;
     if (["history", "archive", "statistics"].includes(key)) subscribe("events");
     if (key === "statistics") subscribe("calculations");
+    if (key === "orders") subscribe("orders");
     byId("inventoryRegistry").classList.toggle("hidden", key !== "registry");
     byId("inventorySection").classList.toggle("hidden", key === "registry");
     for (const child of byId("inventoryNav").children) child.setAttribute("aria-pressed", String(child.dataset.section === key));
     refresh();
+    if (key === "registry") refreshRegistry();
   }
 
   function start() {
@@ -123,15 +144,20 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     visibleCard = "";
     byId("inventoryAction").replaceChildren();
     for (const key of Object.keys(inventoryCollections)) delete collections[key];
-    for (const key of ["stock", "recipes", "methods", "orders"]) subscribe(key);
+    for (const key of ["stock", "recipes", "methods"]) subscribe(key);
     switchSection("registry");
   }
 
   function subscribe(key) {
     if (subscribed.has(key)) return;
     subscribed.add(key);
-    registerSnapshot(onSnapshot(collection(db, inventoryCollections[key]), (snapshot) => {
-        collections[key] = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+    registerSnapshot(onSnapshot(collection(db, inventoryCollections[key]), { includeMetadataChanges: true }, (snapshot) => {
+        const wasLoaded = loaded.has(key);
+        if (!wasLoaded && snapshot.metadata.fromCache) return;
+        if (wasLoaded && !snapshot.docChanges().length) return;
+        const data = snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id }));
+        collections[key] = inventoryRecords[key] ? data.filter(inventoryRecords[key]) : data;
+        if (collections[key].length !== data.length) reportListenerError("Niepoprawne dokumenty magazynowe", new Error(key));
         loaded.add(key);
         if (key === "stock") stockById = new Map(collections.stock.map((item) => [item.id, item]));
         if (["stock", "recipes", "methods"].includes(key)) refreshRegistry();
@@ -161,14 +187,15 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     const formula = input("Wzór chemiczny", lot.formula);
     const cas = input("CAS", lot.cas);
     const initial = input("Ilość początkowa", "");
-    const usedAsProduct = rows("recipes").some((recipe) => recipe.ingredients.some((row) => row.productId === lot.id))
+    const usedAsProduct = () => rows("recipes").some((recipe) => recipe.ingredients.some((row) => row.productId === lot.id))
       || rows("methods").some((method) => method.usage.some((row) => row.key === lot.id))
       || lots.some((other) => other.productId === lot.id)
       || rows("orders").some((order) => order.lines.some((row) => row.productId === lot.id));
-    const link = editing && ready() && !lot.productId && !withStock(lot).stock && !usedAsProduct
-      ? select([["", "Osobna pozycja"], ...products()
-        .filter(([id, other]) => id !== lot.id && (other.category === "Odczynniki") === (lot.category === "Odczynniki"))
-        .map(([id, other]) => [id, batchLabel(other)])]) : null;
+    const mayLink = editing && ready() && !lot.productId && !withStock(lot).stock && !usedAsProduct();
+    if (mayLink) subscribe("orders");
+    const link = mayLink ? select([["", "Osobna pozycja"], ...products()
+      .filter(([id, other]) => id !== lot.id && (other.category === "Odczynniki") === (lot.category === "Odczynniki"))
+      .map(([id, other]) => [id, batchLabel(other)])]) : null;
     count.min = "1";
     count.max = "10000";
     number.maxLength = 100;
@@ -196,7 +223,11 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
           result.packageUnit = unit.value;
           result.packageAmount = quantity(size.value, unit.value);
         }
-        if (link?.value) result.productId = link.value;
+        if (link?.value) {
+          if (!loaded.has("orders")) throw new Error("Poczekaj na sprawdzenie historii zamówień i ponów zapis.");
+          if (usedAsProduct()) throw new Error("Ta pozycja jest już używana jako główny wariant handlowy.");
+          result.productId = link.value;
+        }
         return result;
       },
     };
@@ -216,6 +247,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
   }
 
   function showAction(lot, kind) {
+    if (pendingAction) return;
     visibleCard = "";
     const destination = byId("inventoryAction");
     const box = panel();
@@ -247,18 +279,23 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     if (["used", "withdrawn"].includes(kind)) box.append(createElement("p", "text-sm", "Partia zostanie zamknięta. Pozostały stan zostanie wyksięgowany, a historia zachowana."));
     const id = store.operationId();
     box.append(saveButton("Zatwierdź", async () => {
-      if (kind === "opening") await store.establish(lot.id, quantity(amount.value, unit.value, { zero: true }), unit.value, id);
-      else if (kind === "withdrawal") {
-        const batch = chosen();
-        await store.withdraw([{ lotId: batch.id, productId: productId(batch), quantity: quantity(amount.value, batch.stock.unit), unit: batch.stock.unit }], { id });
-      } else await store.close(lot.id, kind, id);
-      destination.replaceChildren();
-    }, message), button("Anuluj", () => destination.replaceChildren()), message);
+      if (pendingAction) return;
+      pendingAction = true;
+      try {
+        if (kind === "opening") await store.establish(lot.id, quantity(amount.value, unit.value, { zero: true }), unit.value, id);
+        else if (kind === "withdrawal") {
+          const batch = chosen();
+          await store.withdraw([{ lotId: batch.id, productId: productId(batch), quantity: quantity(amount.value, batch.stock.unit), unit: batch.stock.unit }], { id });
+        } else await store.close(lot.id, kind, id);
+        destination.replaceChildren();
+      } finally { pendingAction = false; }
+    }, message), button("Anuluj", () => { if (!pendingAction) destination.replaceChildren(); }), message);
     destination.replaceChildren(box);
     box.scrollIntoView({ block: "nearest" });
   }
 
   function showCard(id, focus = true) {
+    if (pendingAction) return;
     visibleCard = id;
     subscribe("events");
     const destination = byId("inventoryAction");
@@ -280,6 +317,12 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     setLots(value) {
       lots = value;
       registryById = new Map(lots.map((item) => [item.id, item]));
+      byProduct = new Map();
+      for (const lot of lots) {
+        const key = productId(lot);
+        if (!byProduct.has(key)) byProduct.set(key, []);
+        byProduct.get(key).push(lot);
+      }
     },
     mount(key, render) { panels.set(key, render); },
     onChange(key, callback) { changes.set(key, callback); },

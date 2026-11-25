@@ -7,6 +7,12 @@
 .inventory-meter::-webkit-progress-value { background: #15803d; border-radius: .25rem; }
 .inventory-yellow::-webkit-progress-value { background: #ca8a04; }
 .inventory-red::-webkit-progress-value { background: #b91c1c; }
+
+#inventoryNav button[aria-pressed="true"],
+#inventorySection button[data-volume][aria-pressed="true"] {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
 @source "./public/index.html";
 @source "./public/app.js";
 
