@@ -106,6 +106,65 @@ test("stock transactions preserve balances, reject concurrent overspending and r
   assert.equal((await getDoc(doc(db, "odczynniki", "legacy"))).exists(), true);
 });
 
+test("an incorrect opening amount can be corrected without replacing the original operation", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const lot = doc(db, "odczynniki", "existing");
+  const fields = { name: "Odczynnik testowy", group: "A/01", usage: "", received: "", expiry: "", timestamp: 1,
+    ordered: false, packageAmount: quantity("100", "g"), packageUnit: "g" };
+  await setDoc(lot, fields);
+  const oldAmount = quantity("500", "g");
+  const corrected = quantity("100", "g");
+  await store.establish("existing", oldAmount, "g", "opening");
+  await assertFails(updateDoc(store.ref("stock", "existing"), { initial: corrected, balance: corrected }));
+  await Promise.all([
+    store.correctOpening("existing", corrected, "opening", "fix"),
+    store.correctOpening("existing", corrected, "opening", "fix"),
+  ]);
+  const read = async (kind, id) => (await getDoc(store.ref(kind, id))).data();
+  assert.deepEqual(await read("stock", "existing"), { initial: corrected, balance: corrected, unit: "g", status: "active", lastEvent: "fix" });
+  assert.equal((await read("events", "opening")).changes.existing.after, oldAmount);
+  const adjustment = await read("events", "fix");
+  assert.equal(adjustment.kind, "opening_correction");
+  assert.equal(adjustment.details.sourceKind, "opening");
+  assert.equal(adjustment.changes.existing.before, oldAmount);
+  assert.equal(adjustment.changes.existing.after, corrected);
+  assert.deepEqual((await getDoc(lot)).data(), fields);
+  await assert.rejects(store.correctOpening("existing", quantity("110", "g"), "opening", "stale"), /Stan partii uległ zmianie/);
+  await store.correctOpening("existing", quantity("95", "g"), "fix", "fix-again");
+  const request = { lotId: "existing", productId: "existing", unit: "g", quantity: quantity("10", "g") };
+  await store.withdraw([request], { id: "withdraw" });
+  await store.reverse("withdraw");
+  const fullStock = await read("stock", "existing");
+  assert.equal(fullStock.initial, fullStock.balance);
+  await assert.rejects(store.correctOpening("existing", corrected, fullStock.lastEvent, "too-late"), /przed pierwszym rozchodem/);
+  await assertFails(runTransaction(db, async (tx) => {
+    const target = store.ref("stock", "existing");
+    tx.set(store.ref("events", "invalid"), {
+      kind: "opening_correction", anchor: "existing", createdAt: serverTimestamp(),
+      details: { intent: "a".repeat(64), previousId: fullStock.lastEvent, sourceKind: "opening" },
+      changes: { existing: { ...adjustment.changes.existing, before: fullStock.balance } },
+    });
+    tx.set(target, { ...fullStock, initial: corrected, balance: corrected, lastEvent: "invalid" });
+  }));
+  assert.deepEqual(await read("stock", "existing"), fullStock);
+});
+
+test("correcting a new receipt keeps it within its package amount", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const packageAmount = quantity("500", "g");
+  const fields = { name: "Odczynnik testowy", group: "A/01", usage: "", received: "", expiry: "", timestamp: 1,
+    ordered: false, lotNumber: "TEST01", packageAmount, packageUnit: "g" };
+  await store.receive([{ fields, initial: packageAmount }], "receipt");
+  const receipt = (await getDoc(store.ref("events", "receipt"))).data();
+  await assert.rejects(store.correctOpening(receipt.anchor, quantity("600", "g"), "receipt", "above-package"), /wielkości opakowania/);
+  await store.correctOpening(receipt.anchor, quantity("100", "g"), "receipt", "smaller");
+  const correction = (await getDoc(store.ref("events", "smaller"))).data();
+  assert.equal(correction.details.sourceKind, "receipt");
+  assert.equal(correction.changes[receipt.anchor].after, quantity("100", "g"));
+});
+
 test("multi-ingredient preparation is atomic and retains its recipe snapshot", async () => {
   const db = testEnvironment.authenticatedContext(allowedUid).firestore();
   const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });

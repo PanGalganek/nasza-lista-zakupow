@@ -1,17 +1,19 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=15";
-import { createElement } from "./ui.js?v=15";
-import { formatQuantity, units, validLots } from "./inventory-quantity.js?v=15";
-import { productId } from "./inventory-store.js?v=15";
-import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=15";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=16";
+import { createElement } from "./ui.js?v=16";
+import { formatQuantity, units, validLots } from "./inventory-quantity.js?v=16";
+import { productId } from "./inventory-store.js?v=16";
+import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=16";
 
 const operationNames = {
-  receipt: "Przychód", opening: "Ustalenie stanu", withdrawal: "Rozchód", preparation: "Przygotowanie",
+  receipt: "Przychód", opening: "Ustalenie stanu", opening_correction: "Korekta ilości początkowej", withdrawal: "Rozchód", preparation: "Przygotowanie",
   used: "Zamknięcie zużytej partii", withdrawn: "Wycofanie", reversal: "Korekta",
 };
 const text = (node, value) => node.append(createElement("p", "text-sm", value));
 const dateOf = (event) => event.createdAt?.toDate?.();
 const sorted = (events) => [...events].sort((a, b) => (dateOf(b)?.getTime() || 0) - (dateOf(a)?.getTime() || 0));
 const amountOf = (entry) => entry.before === null ? null : Math.abs(entry.after - entry.before);
+const receiptAmount = (event, row) => event.kind === "receipt" || (event.kind === "opening_correction" && event.details.sourceKind === "receipt")
+  ? row.after - row.before : null;
 
 function addTotal(totals, unit, amount) {
   if (amount === null || !units[unit]) return;
@@ -50,9 +52,11 @@ function addTable(container, rows) {
   for (const { event, row, lotId } of rows) {
     const tr = createElement("tr");
     const amount = event.kind === "opening" ? row.initial : amountOf(row);
+    const quantityText = event.kind === "opening_correction" ? `${formatQuantity(row.before, row.unit)} → ${formatQuantity(row.after, row.unit)}`
+      : amount === null ? "Stan nieustalony" : formatQuantity(amount, row.unit);
     const values = [dateOf(event)?.toLocaleString("pl-PL") || "Zapisywanie",
       `${row.name} · ${row.number || "bez numeru"} (${lotId})`, operationNames[event.kind],
-      amount === null ? "Stan nieustalony" : formatQuantity(amount, row.unit),
+      quantityText,
       row.after === null ? "Stan nieustalony" : formatQuantity(row.after, row.unit), event.details.recipeName || ""];
     for (const value of values) tr.append(createElement("td", "border p-2", value));
     body.append(tr);
@@ -78,7 +82,7 @@ export function mountInventoryHistory(inventory) {
     const totals = { receipt: new Map(), withdrawal: new Map(), retired: new Map() };
     for (const { event, row } of results) {
       const kind = event.kind;
-      if (kind === "receipt") addTotal(totals.receipt, row.unit, amountOf(row));
+      addTotal(totals.receipt, row.unit, receiptAmount(event, row));
       if (["used", "withdrawn"].includes(kind)) addTotal(totals.retired, row.unit, amountOf(row));
       if (["withdrawal", "preparation", "reversal"].includes(kind)) addTotal(totals.withdrawal, row.unit, kind === "reversal" ? -amountOf(row) : amountOf(row));
     }
@@ -168,7 +172,7 @@ export function mountInventoryStatistics(inventory) {
         if (!date || date < from.value || date > to.value || !belongs(row.productId)
           || (method.value && original?.details.methodId !== method.value)) continue;
         const entry = buckets(date.slice(0, interval.value === "year" ? 4 : 7));
-        if (event.kind === "receipt") addTotal(entry.in, row.unit, amountOf(row));
+        addTotal(entry.in, row.unit, receiptAmount(event, row));
         if (["used", "withdrawn"].includes(event.kind)) addTotal(entry.retired, row.unit, amountOf(row));
         if (["preparation", "withdrawal", "reversal"].includes(event.kind)) {
           const amount = event.kind === "reversal" ? -amountOf(row) : amountOf(row);

@@ -1,5 +1,5 @@
-import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=15";
-import { formatLocalDate } from "../utils.js?v=15";
+import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=16";
+import { formatLocalDate } from "../utils.js?v=16";
 
 export const inventoryCollections = {
   stock: "magazyn_partie",
@@ -12,6 +12,12 @@ export const inventoryCollections = {
 
 const maxLotsPerTransaction = 8;
 export const productId = (lot) => lot.productId || lot.id;
+
+export function openingSource(event) {
+  if (event?.kind === "opening_correction") return event.details?.sourceKind;
+  if (["opening", "receipt"].includes(event?.kind)) return event.kind;
+  return "";
+}
 
 export function requireInventoryConnection() {
   if (globalThis.navigator?.onLine === false) {
@@ -116,6 +122,28 @@ export function createInventoryStore(db, firestore) {
     });
   }
 
+  async function correctOpening(lotId, initial, previousId, id = operationId()) {
+    if (!Number.isSafeInteger(initial) || initial < 0 || initial > maxQuantity) throw new Error("Nieprawidłowa ilość początkowa.");
+    return transact(id, ["opening_correction", lotId, initial, previousId], async (transaction, intent) => {
+      const [batch, state] = await Promise.all([transaction.get(lotRef(lotId)), transaction.get(ref("stock", lotId))]);
+      const stock = state.data();
+      if (!batch.exists() || stock?.status !== "active" || stock.lastEvent !== previousId || stock.balance !== stock.initial) {
+        throw new Error("Stan partii uległ zmianie. Otwórz jej kartę ponownie.");
+      }
+      const previous = await transaction.get(ref("events", previousId));
+      const sourceKind = openingSource(previous.data());
+      if (!sourceKind) throw new Error("Korekta ilości początkowej jest dostępna tylko przed pierwszym rozchodem.");
+      const lot = { ...batch.data(), id: lotId };
+      if (sourceKind === "receipt" && (!compatibleUnits(stock.unit, lot.packageUnit) || initial === 0 || initial > lot.packageAmount)) {
+        throw new Error("Ilość przyjęta musi być większa od zera i mieścić się w podanej wielkości opakowania.");
+      }
+      if (initial === stock.initial) throw new Error("Podaj inną ilość niż aktualnie zapisana.");
+      writeOperation(transaction, id, "opening_correction", {
+        [lotId]: line(lot, stock.unit, initial, stock.balance, initial, "active"),
+      }, { intent, previousId, sourceKind });
+    });
+  }
+
   async function withdraw(requests, { id = operationId(), preparation = null } = {}) {
     const quantities = new Map();
     for (const request of requests) {
@@ -198,5 +226,5 @@ export function createInventoryStore(db, firestore) {
     if (size < 1 || size > maxLotsPerTransaction) throw new Error(`Jedna operacja może objąć najwyżej ${maxLotsPerTransaction} partii.`);
   }
 
-  return { ref, receive, establish, withdraw, close, reverse, operationId, linkLot };
+  return { ref, receive, establish, correctOpening, withdraw, close, reverse, operationId, linkLot };
 }
