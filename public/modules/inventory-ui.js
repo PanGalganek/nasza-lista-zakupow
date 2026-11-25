@@ -1,7 +1,7 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=15";
-import { byId, createButton, createElement, createInput } from "./ui.js?v=15";
-import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=15";
-import { createInventoryStore, inventoryCollections, productId, requireInventoryConnection } from "./inventory-store.js?v=15";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=16";
+import { byId, createButton, createElement, createInput } from "./ui.js?v=16";
+import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=16";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=16";
 
 const fieldClass = "w-full rounded border bg-white p-2 text-sm text-black";
 const actionClass = "rounded border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800";
@@ -206,6 +206,10 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
       ["Producent", producer], ["Wzór chemiczny (opcjonalnie)", formula], ["CAS (opcjonalnie)", cas]];
     for (const [label, control] of inputs) fieldGroup.append(field(label, control));
     if (!editing) fieldGroup.append(field("Ilość początkowa (domyślnie pełne opakowanie)", initial));
+    else if (withStock(lot).stock) {
+      fieldGroup.append(createElement("p", "text-xs text-gray-600 sm:col-span-2 lg:col-span-4",
+        "Stan magazynowy i jego historię znajdziesz w karcie partii."));
+    }
     if (link) fieldGroup.append(field("Powiąż tylko z identycznym wariantem handlowym", link));
     return {
       node: fieldGroup,
@@ -253,7 +257,8 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     const box = panel();
     const message = createElement("p", "text-xs text-red-700");
     message.setAttribute("role", "status");
-    const labels = { opening: "Ustal stan początkowy", withdrawal: "Zużycie", used: "Oznacz jako zużyty", withdrawn: "Wycofaj partię" };
+    const labels = { opening: "Ustal stan początkowy", opening_correction: "Skoryguj ilość początkową",
+      withdrawal: "Zużycie", used: "Oznacz jako zużyty", withdrawn: "Wycofaj partię" };
     box.append(createElement("h3", "font-bold", `${labels[kind]} — ${batchLabel(lot)}`));
     const choices = kind === "withdrawal" ? validLots(lotsFor(productId(lot)), lot.stock.unit, formatLocalDate()) : [lot];
     const selected = select(choices.map((batch) => [batch.id, `${batchLabel(batch)} · ${formatPolishDate(batch.expiry)}`]));
@@ -276,6 +281,10 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
       update();
     }
     if (kind === "opening") box.append(field("Rzeczywisty stan początkowy", amount), field("Jednostka", unit));
+    if (kind === "opening_correction") {
+      box.append(createElement("p", "text-sm", `Zapisana ilość początkowa: ${formatQuantity(lot.stock.initial, lot.stock.unit)}. Korekta pojawi się w historii partii.`),
+        field(`Prawidłowa ilość początkowa (${lot.stock.unit})`, amount));
+    }
     if (["used", "withdrawn"].includes(kind)) box.append(createElement("p", "text-sm", "Partia zostanie zamknięta. Pozostały stan zostanie wyksięgowany, a historia zachowana."));
     const id = store.operationId();
     box.append(saveButton("Zatwierdź", async () => {
@@ -283,7 +292,9 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
       pendingAction = true;
       try {
         if (kind === "opening") await store.establish(lot.id, quantity(amount.value, unit.value, { zero: true }), unit.value, id);
-        else if (kind === "withdrawal") {
+        else if (kind === "opening_correction") {
+          await store.correctOpening(lot.id, quantity(amount.value, lot.stock.unit, { zero: true }), lot.stock.lastEvent, id);
+        } else if (kind === "withdrawal") {
           const batch = chosen();
           await store.withdraw([{ lotId: batch.id, productId: productId(batch), quantity: quantity(amount.value, batch.stock.unit), unit: batch.stock.unit }], { id });
         } else await store.close(lot.id, kind, id);
@@ -301,6 +312,16 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     const destination = byId("inventoryAction");
     const box = panel();
     box.append(createElement("h3", "font-bold", `Karta magazynowa — ${products().find(([key]) => key === id)?.[1]?.name || ""}`));
+    const events = new Map(rows("events").map((event) => [event.id, event]));
+    for (const lot of lotsFor(id)) {
+      const stock = lot.stock;
+      if (stock?.status === "active" && stock.balance === stock.initial && openingSource(events.get(stock.lastEvent))) {
+        const correction = createElement("div", "flex flex-wrap items-center gap-2 text-sm");
+        correction.append(createElement("span", "", `${batchLabel(lot)} · ważność ${formatPolishDate(lot.expiry)} · ${formatQuantity(stock.initial, stock.unit)}`),
+          button("Skoryguj ilość początkową", () => showAction(lot, "opening_correction")));
+        box.append(correction);
+      }
+    }
     panels.get("history")?.(box, id);
     box.append(button("Zamknij kartę", () => { visibleCard = ""; destination.replaceChildren(); }));
     destination.replaceChildren(box);

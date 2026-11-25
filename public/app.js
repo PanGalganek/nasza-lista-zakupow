@@ -23,17 +23,17 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=15";
-import { createCalendarModule } from "./modules/calendar.js?v=15";
-import { createChemicalsModule } from "./modules/chemicals.js?v=15";
-import { createEquipmentModule } from "./modules/equipment.js?v=15";
-import { createInventoryModule } from "./modules/inventory-ui.js?v=15";
-import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=15";
-import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=15";
-import { mountInventoryTheory } from "./modules/inventory-theory.js?v=15";
-import { mountInventoryOrders } from "./modules/inventory-orders.js?v=15";
-import { createScheduleModule } from "./modules/schedule.js?v=15";
-import { byId, runSafely } from "./modules/ui.js?v=15";
+import { createAuthModule } from "./modules/auth.js?v=16";
+import { createCalendarModule } from "./modules/calendar.js?v=16";
+import { createChemicalsModule } from "./modules/chemicals.js?v=16";
+import { createEquipmentModule } from "./modules/equipment.js?v=16";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=16";
+import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=16";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=16";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=16";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=16";
+import { createScheduleModule } from "./modules/schedule.js?v=16";
+import { byId, runSafely } from "./modules/ui.js?v=16";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",

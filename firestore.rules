@@ -127,6 +127,21 @@ service cloud.firestore {
           || (event.kind == 'reversal' && state.status == 'active' && state.balance == previous.balance + reversalAmount(event, id)));
     }
 
+    function correctingOpening(id, previous, state) {
+      let event = getAfter(eventPath(state.lastEvent)).data;
+      let prior = get(eventPath(previous.lastEvent)).data;
+      let source = prior.kind == 'opening_correction' ? prior.details.sourceKind : prior.kind;
+      let lot = getAfter(chemicalPath(id)).data;
+      return event.kind == 'opening_correction' && event.changes.keys().size() == 1
+        && event.details.keys().hasOnly(['intent', 'previousId', 'sourceKind'])
+        && event.details.previousId == previous.lastEvent && event.details.sourceKind == source
+        && source in ['opening', 'receipt'] && previous.status == 'active' && state.status == 'active'
+        && state.unit == previous.unit && previous.balance == previous.initial && state.balance == state.initial
+        && event.changes[id].before == previous.balance && state.initial != previous.initial
+        && (source == 'opening' || (state.initial > 0 && state.initial <= lot.packageAmount
+          && sameDimension(state.unit, lot.packageUnit)));
+    }
+
     function eventTarget(keys, index, id) {
       return keys.size() <= index || getAfter(stockPath(keys[index])).data.lastEvent == id;
     }
@@ -207,14 +222,15 @@ service cloud.firestore {
       allow create: if activeUser() && validStock(request.resource.data)
         && linkedStock(documentId, request.resource.data) && startingStock(documentId, request.resource.data);
       allow update: if activeUser() && validStock(request.resource.data) && linkedStock(documentId, request.resource.data)
-        && changingStock(documentId, resource.data, request.resource.data);
+        && (changingStock(documentId, resource.data, request.resource.data)
+          || correctingOpening(documentId, resource.data, request.resource.data));
     }
 
     match /magazyn_operacje/{documentId} {
       allow read: if activeUser();
       allow create: if activeUser()
         && request.resource.data.keys().hasOnly(['kind', 'anchor', 'changes', 'details', 'createdAt'])
-        && request.resource.data.kind in ['receipt', 'opening', 'withdrawal', 'preparation', 'used', 'withdrawn', 'reversal']
+        && request.resource.data.kind in ['receipt', 'opening', 'opening_correction', 'withdrawal', 'preparation', 'used', 'withdrawn', 'reversal']
         && request.resource.data.createdAt == request.time && request.resource.data.details is map
         && request.resource.data.details.intent is string && request.resource.data.details.intent.matches('^[a-f0-9]{64}$')
         && validEventChanges(request.resource.data, documentId)
