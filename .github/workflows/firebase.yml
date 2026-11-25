@@ -117,17 +117,15 @@ jobs:
           done
           exit "$status"
 
-  pages:
+  build_pages:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: verify
     permissions:
       contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      pages: read
     runs-on: ubuntu-latest
+    outputs:
+      artifact_name: github-pages-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -139,6 +137,20 @@ jobs:
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
+          name: github-pages-${{ github.run_attempt }}
           path: public
+
+  pages:
+    needs: build_pages
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: ${{ needs.build_pages.outputs.artifact_name }}
