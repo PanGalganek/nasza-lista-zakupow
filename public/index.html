@@ -8,137 +8,204 @@
     <title>e-Laboratorium</title>
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./styles.css?v=16">
-    <script type="module" src="./app.js?v=16"></script>
+    <link rel="stylesheet" href="./styles.css?v=17">
+    <script type="module" src="./app.js?v=17"></script>
 </head>
-<body class="bg-gray-100 min-h-screen p-1 md:p-8 flex items-center justify-center">
+<body>
+  <a class="lab-skip" href="#mainContent">Przejdź do treści</a>
+  <section id="loginSection" class="lab-login" aria-labelledby="loginTitle">
+    <form class="lab-login-card lab-stack" data-submit-action="login">
+      <div class="lab-brand-large"><span data-icon="flask" class="lab-icon-slot" aria-hidden="true"></span></div>
+      <div><h1 id="loginTitle">e-Laboratorium</h1><p class="lab-muted">Zaloguj się do swojego laboratorium.</p></div>
+      <label class="lab-field"><span>Adres e-mail</span><input type="email" id="loginEmail" placeholder="Adres e-mail" autocomplete="username"></label>
+      <label class="lab-field"><span>Hasło</span><input type="password" id="loginPassword" placeholder="Hasło" autocomplete="current-password"></label>
+      <p id="loginError" class="lab-notice lab-notice-danger hidden" role="alert"></p>
+      <button type="submit" class="lab-button lab-button-primary">Zaloguj się</button>
+    </form>
+  </section>
 
-    <div id="loginSection" class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">🧪 e-Lab</h2>
-        <input type="email" id="loginEmail" placeholder="E-mail" class="w-full border p-3 rounded mb-4 outline-none focus:ring-2 focus:ring-blue-500">
-        <input type="password" id="loginPassword" placeholder="Hasło" class="w-full border p-3 rounded mb-6 outline-none focus:ring-2 focus:ring-blue-500">
-        <p id="loginError" class="hidden mb-4 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700" role="alert"></p>
-        <button type="button" data-action="login" class="w-full bg-blue-600 text-white font-bold py-3 rounded shadow-lg">Zaloguj</button>
+  <div id="appSection" class="lab-app hidden">
+    <aside class="lab-sidebar">
+      <div class="lab-brand"><span class="lab-brand-mark"><span data-icon="flask" class="lab-icon-slot" aria-hidden="true"></span></span><strong>e-Laboratorium</strong></div>
+      <nav id="labSidebar" aria-label="Nawigacja laboratorium"></nav>
+      <button type="button" data-action="logout" class="lab-button lab-button-quiet lab-sidebar-logout"><span data-icon="logout" class="lab-icon-slot" aria-hidden="true"></span><span>Wyloguj</span></button>
+    </aside>
+
+    <div class="lab-main">
+      <header class="lab-mobile-bar">
+        <button type="button" class="lab-brand" data-route="home" aria-label="Pulpit e-Laboratorium"><span class="lab-brand-mark"><span data-icon="flask" class="lab-icon-slot" aria-hidden="true"></span></span><strong>e-Laboratorium</strong></button>
+        <button type="button" data-action="logout" class="lab-button lab-button-quiet"><span data-icon="logout" class="lab-icon-slot" aria-hidden="true"></span><span>Wyloguj</span></button>
+      </header>
+      <main id="mainContent" class="lab-workspace" tabindex="-1">
+        <p id="offlineNotice" class="lab-notice lab-notice-warning" role="status" hidden><span data-icon="wifi" class="lab-icon-slot" aria-hidden="true"></span> Brak połączenia. Niektóre zapisy wymagają internetu.</p>
+        <header id="workspaceHeader" class="lab-page-header" hidden>
+          <div class="lab-page-top">
+            <button type="button" data-action="go-back" class="lab-button lab-button-quiet lab-back"><span data-icon="back" class="lab-icon-slot" aria-hidden="true"></span><span>Cofnij</span></button>
+            <span id="routeContext" class="lab-breadcrumb"></span>
+          </div>
+          <div class="lab-page-title"><h1 id="viewTitle" tabindex="-1"></h1><div id="workspaceActions" class="lab-actions">
+            <button type="button" id="addChemical" data-action="open-chemical-form" hidden class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj</span></button>
+            <button type="button" id="addEquipment" data-action="open-equipment-form" hidden class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj sprzęt</span></button>
+          </div></div>
+        </header>
+
+        <section data-app-screen="home" id="homeScreen">
+          <header class="lab-home-heading"><div><h1 id="homeTitle" tabindex="-1">e-Laboratorium</h1><p class="lab-muted">Wybierz moduł, aby rozpocząć pracę.</p></div><span class="lab-version">Wersja 3.0</span></header>
+          <button type="button" class="lab-home-alert" data-route="inventory" data-warning-count hidden><span data-icon="bell" class="lab-icon-slot" aria-hidden="true"></span> <span>Centrum ostrzeżeń</span> <span class="lab-count" data-warning-number></span><span data-icon="chevron" class="lab-icon-slot" aria-hidden="true"></span></button>
+          <div id="homeTiles" class="lab-tile-grid lab-tile-grid-home"></div>
+        </section>
+
+        <section id="tabContentOdczynniki" data-app-screen="Odczynniki" hidden>
+          <div id="inventoryMenu" class="lab-stack">
+            <details class="lab-accordion lab-alert-center" id="warningCenter">
+              <summary><span data-icon="bell" class="lab-icon-slot" aria-hidden="true"></span> <span>Centrum ostrzeżeń</span><span class="lab-count" data-warning-number>0</span></summary>
+              <div id="alertBox" class="lab-alert-items"><p class="lab-empty">Trwa wczytywanie ostrzeżeń…</p></div>
+            </details>
+            <nav id="inventoryNav" class="lab-tile-grid lab-tile-grid-sub" aria-label="Funkcje odczynników i wzorców"></nav>
+          </div>
+          <div id="inventorySection" class="lab-stock-screen lab-stack hidden"></div>
+          <section id="inventoryRegistry" class="lab-stack hidden">
+            <div class="lab-registry-tools">
+              <label class="lab-search"><span data-icon="search" class="lab-icon-slot" aria-hidden="true"></span><span class="sr-only">Szukaj w rejestrze</span><input type="search" id="chemicalSearch" placeholder="Szukaj nazwy, LP lub partii" maxlength="200" autocomplete="off"></label>
+              <button type="button" id="toggleFilters" data-action="toggle-filters" aria-controls="chemicalFilters" aria-expanded="false" class="lab-button "><span data-icon="filters" class="lab-icon-slot" aria-hidden="true"></span><span>Filtry</span></button>
+            </div>
+            <div id="chemicalFilters" class="lab-panel lab-filter-panel" hidden>
+              <label class="lab-field"><span>Status</span><select id="chemicalStatusFilter">
+                <option value="all">Wszystkie</option><option value="attention">Wymaga uwagi</option><option value="ordered">Zamówione</option><option value="expired">Po terminie</option>
+              </select></label>
+              <label class="lab-field"><span>Sortuj według</span><select id="chemicalSort">
+                <option value="group">Numeru LP</option><option value="name">Nazwy</option><option value="expiry">Terminu ważności</option>
+              </select></label>
+            </div>
+            <div class="lab-results"><p id="chemicalResultSummary" class="lab-muted" aria-live="polite">Wczytywanie rejestru…</p>
+            <span id="filterSummary" class="lab-chip" hidden></span><button type="button" id="clearFilters" data-action="clear-filters" hidden class="lab-button lab-button-quiet"><span>Wyczyść</span></button></div>
+            <div id="chemicalListGrouped" class="lab-list"></div>
+          </section>
+        </section>
+        <section id="tabContentWoda" data-app-screen="Woda" hidden>
+  <div id="waterMenu" class="lab-tile-grid lab-tile-grid-sub" aria-label="Kategorie harmonogramu"></div>
+  <section id="subContentWodaArchiwalna" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusWodaArchiwalna"></p><p id="yStatusWodaArchiwalna"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Archiwalna">
+      <label class="lab-field"><span>Oznaczenie</span><input id="taskInputWodaArchiwalna" placeholder="Oznaczenie" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="woda" data-category="Archiwalna" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListWodaArchiwalna" class="lab-list"></div>
+  </section>
+  <section id="subContentWodaSlepa" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusWodaSlepa"></p><p id="yStatusWodaSlepa"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Slepa">
+      <label class="lab-field"><span>Oznaczenie</span><input id="taskInputWodaSlepa" placeholder="Oznaczenie" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="woda" data-category="Slepa" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListWodaSlepa" class="lab-list"></div>
+  </section>
+  <section id="subContentWodaProbkobranie" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusWodaProbkobranie"></p><p id="yStatusWodaProbkobranie"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Probkobranie">
+      <label class="lab-field"><span>Miejsce</span><input id="taskInputWodaProbkobranie" placeholder="Miejsce" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="woda" data-category="Probkobranie" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListWodaProbkobranie" class="lab-list"></div>
+  </section>
+  <section id="subContentWodaPorownania" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusWodaPorownania"></p><p id="yStatusWodaPorownania"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Porownania">
+      <label class="lab-field"><span>Parametr porównania wewnątrzlaboratoryjnego</span><input id="taskInputWodaPorownania" placeholder="Parametr porównania wewnątrzlaboratoryjnego" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="woda" data-category="Porownania" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListWodaPorownania" class="lab-list"></div>
+  </section>
+</section>
+        <section id="tabContentScieki" data-app-screen="Scieki" hidden>
+  <div id="wasteMenu" class="lab-tile-grid lab-tile-grid-sub" aria-label="Kategorie harmonogramu"></div>
+  <section id="subContentSciekiArchiwalna" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusSciekiArchiwalna"></p><p id="yStatusSciekiArchiwalna"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="scieki" data-category="Archiwalna">
+      <label class="lab-field"><span>Oznaczenie</span><input id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="scieki" data-category="Archiwalna" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListSciekiArchiwalna" class="lab-list"></div>
+  </section>
+  <section id="subContentSciekiSlepa" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusSciekiSlepa"></p><p id="yStatusSciekiSlepa"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="scieki" data-category="Slepa">
+      <label class="lab-field"><span>Oznaczenie</span><input id="taskInputSciekiSlepa" placeholder="Oznaczenie" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="scieki" data-category="Slepa" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListSciekiSlepa" class="lab-list"></div>
+  </section>
+  <section id="subContentSciekiProbkobranie" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusSciekiProbkobranie"></p><p id="yStatusSciekiProbkobranie"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="scieki" data-category="Probkobranie">
+      <label class="lab-field"><span>Miejsce</span><input id="taskInputSciekiProbkobranie" placeholder="Miejsce" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="scieki" data-category="Probkobranie" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListSciekiProbkobranie" class="lab-list"></div>
+  </section>
+  <section id="subContentSciekiPorownania" class="lab-stack hidden">
+    <div class="lab-status-row"><p id="mStatusSciekiPorownania"></p><p id="yStatusSciekiPorownania"></p></div>
+    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="scieki" data-category="Porownania">
+      <label class="lab-field"><span>Parametr porównania wewnątrzlaboratoryjnego</span><input id="taskInputSciekiPorownania" placeholder="Parametr porównania wewnątrzlaboratoryjnego" maxlength="200"></label>
+      <button type="button" data-action="add-task" data-lab="scieki" data-category="Porownania" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+    </form>
+    <div id="taskListSciekiPorownania" class="lab-list"></div>
+  </section>
+</section>
+
+        <section id="tabContentWzorcowanie" data-app-screen="Wzorcowanie" class="lab-stack" hidden>
+          <p id="upcomingWzorcowanieAlert" class="lab-notice lab-notice-warning hidden"></p>
+          <div class="lab-panel lab-stack">
+            <label class="lab-field lab-month-picker"><span>Miesiąc</span><select id="equipmentMonthView"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></label>
+            <p id="monthlyWzorcowanieCounter" class="lab-muted" role="status">Wczytywanie sprzętu…</p>
+          </div>
+          <div id="equipmentList" class="lab-list"></div>
+        </section>
+
+        <section id="tabContentKalendarz" data-app-screen="Kalendarz" class="lab-calendar-layout" hidden>
+          <div class="lab-panel lab-calendar">
+            <div class="lab-calendar-header"><button type="button" data-action="change-month" data-offset="-1" aria-label="Poprzedni miesiąc" class="lab-button lab-button-icon"><span data-icon="back" class="lab-icon-slot" aria-hidden="true"></span><span>Poprzedni</span></button><h2 id="calendarMonthYear"></h2><button type="button" data-action="change-month" data-offset="1" aria-label="Następny miesiąc" class="lab-button lab-button-icon"><span data-icon="next" class="lab-icon-slot" aria-hidden="true"></span><span>Następny</span></button></div>
+            <div class="calendar-grid lab-weekdays" aria-hidden="true"><span>Pn</span><span>Wt</span><span>Śr</span><span>Cz</span><span>Pt</span><span>So</span><span>Nd</span></div>
+            <div id="calendarDays" class="calendar-grid"></div>
+          </div>
+          <div class="lab-stack">
+            <div class="lab-panel lab-stack"><div class="lab-inline-header"><h2 id="selectedDateLabel">Plan dnia</h2><button type="button" data-action="open-event-form" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj</span></button></div><div id="dayEventsList" class="lab-list"></div></div>
+            <div class="lab-panel lab-stack"><h2>Wydarzenia w miesiącu</h2><div id="monthEventsList" class="lab-list"></div></div>
+          </div>
+        </section>
+      </main>
     </div>
+  </div>
 
-    <div id="appSection" class="hidden max-w-6xl w-full bg-white rounded-xl shadow-lg p-2 md:p-6 self-start text-black">
-        <div class="flex justify-between items-center mb-4 px-2">
-            <h1 class="text-lg font-bold text-gray-800">⚗️ e-Lab</h1>
-            <button type="button" data-action="logout" class="text-[10px] text-red-500 font-bold uppercase">Wyloguj</button>
-        </div>
-
-        <div class="flex border-b mb-4 bg-gray-50 rounded-t-lg overflow-x-auto no-scrollbar">
-            <button type="button" id="btnOdczynniki" data-action="switch-tab" data-tab="odczynniki" class="flex-1 px-3 py-3 text-[10px] uppercase active-tab">🧪 Odczynniki</button>
-            <button type="button" id="btnWoda" data-action="switch-tab" data-tab="woda" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">💧 Woda</button>
-            <button type="button" id="btnScieki" data-action="switch-tab" data-tab="scieki" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">☣️ Ścieki</button>
-            <button type="button" id="btnWzorcowanie" data-action="switch-tab" data-tab="wzorcowanie" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📏 Sprzęt</button>
-            <button type="button" id="btnKalendarz" data-action="switch-tab" data-tab="kalendarz" class="flex-1 px-3 py-3 text-[10px] uppercase text-gray-400">📅 Kalendarz</button>
-        </div>
-
-        <div id="tabContentOdczynniki" class="block">
-            <nav id="inventoryNav" aria-label="Odczynniki i gospodarka magazynowa" class="mb-4 flex flex-wrap gap-2"></nav>
-            <div id="inventoryAction" class="mb-4 text-left"></div>
-            <div id="inventorySection" class="hidden space-y-4 text-left"></div>
-            <div id="inventoryRegistry">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-4 border-b">
-                <button type="button" data-action="switch-chemical-tab" data-tab="Wzorce" id="subBtnOdczynnikiWzorce" class="px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-odczynniki">🎯 Wzorce</button>
-                <button type="button" data-action="switch-chemical-tab" data-tab="Odczynniki" id="subBtnOdczynnikiOdczynniki" class="px-4 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">📦 Odczynniki</button>
-            </div>
-            <div class="grid grid-cols-1 gap-2 mb-4 rounded-lg border bg-gray-50 p-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
-                <label class="flex flex-col gap-1 text-left">
-                    <span class="text-[9px] font-bold uppercase text-gray-500">Szukaj</span>
-                    <input type="search" id="chemicalSearch" placeholder="Nazwa, LP, partia, producent lub metoda" maxlength="200" autocomplete="off" class="w-full rounded border bg-white p-2 text-sm text-black outline-none focus:ring-2 focus:ring-blue-500">
-                </label>
-                <label class="flex flex-col gap-1 text-left">
-                    <span class="text-[9px] font-bold uppercase text-gray-500">Status</span>
-                    <select id="chemicalStatusFilter" class="rounded border bg-white p-2 text-sm text-black">
-                        <option value="all">Wszystkie</option>
-                        <option value="attention">Wymagają uwagi</option>
-                        <option value="ordered">Zamówione</option>
-                        <option value="expired">Przeterminowane</option>
-                    </select>
-                </label>
-                <label class="flex flex-col gap-1 text-left">
-                    <span class="text-[9px] font-bold uppercase text-gray-500">Sortowanie</span>
-                    <select id="chemicalSort" class="rounded border bg-white p-2 text-sm text-black">
-                        <option value="group">Numer grupy</option>
-                        <option value="name">Nazwa</option>
-                        <option value="expiry">Najbliższy termin</option>
-                    </select>
-                </label>
-            </div>
-            <p id="chemicalResultSummary" class="mb-3 text-left text-[10px] font-bold uppercase text-gray-500"></p>
-            <div id="alertBox" class="hidden mb-4 text-[10px] text-left space-y-1"></div>
-            <div id="formContainer" class="bg-blue-50 p-4 rounded-lg mb-6 shadow-inner border border-blue-100 text-sm text-left">
-                <input type="hidden" id="editId" value="">
-                <div id="dynamicItemsContainer" class="space-y-4"></div>
-                <div class="flex flex-col gap-3 mt-6 pt-4 border-t border-blue-200">
-                    <button type="button" data-action="add-form-row" class="w-full py-2 border-2 border-dashed border-blue-400 text-blue-600 font-bold rounded-lg text-[10px] uppercase">+ Dodaj kolejną pozycję</button>
-                    <div class="flex gap-2">
-                        <button type="button" id="submitBtn" data-action="save-items" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-lg text-sm uppercase shadow-md">Zapisz wszystko</button>
-                        <button type="button" id="cancelEditBtn" data-action="cancel-edit" class="hidden bg-gray-400 text-white font-bold py-3 px-6 rounded-lg uppercase">Anuluj</button>
-                    </div>
-                </div>
-            </div>
-            <div id="chemicalListGrouped" class="space-y-4"></div>
-            </div>
-        </div>
-
-        <div id="tabContentWoda" class="hidden space-y-4 text-left">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Archiwalna" id="subBtnWodaArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-woda">📦 Archiwalna</button>
-                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Slepa" id="subBtnWodaSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Probkobranie" id="subBtnWodaProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button type="button" data-action="switch-task-tab" data-lab="woda" data-category="Porownania" id="subBtnWodaPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap text-center min-w-[120px]">🤝 Porównanie wewnątrzlaboratoryjne</button>
-            </div>
-            <div id="subContentWodaArchiwalna" class="space-y-4">
-                <div id="mStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div>
-                <div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Archiwalna" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaArchiwalna" class="space-y-2"></div>
-            </div>
-            <div id="subContentWodaSlepa" class="hidden space-y-4"><div id="mStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Slepa" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaSlepa" class="space-y-2"></div></div>
-            <div id="subContentWodaProbkobranie" class="hidden space-y-4"><div id="mStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Probkobranie" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentWodaPorownania" class="hidden space-y-4"><div id="mStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusWodaPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputWodaPorownania" placeholder="Parametr porów. wewnątrzlaboratoryjnego" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="woda" data-category="Porownania" class="bg-blue-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListWodaPorownania" class="space-y-2"></div></div>
-        </div>
-
-        <div id="tabContentScieki" class="hidden space-y-4 text-left">
-            <div class="flex gap-1 overflow-x-auto no-scrollbar pb-2 mb-2 border-b">
-                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Archiwalna" id="subBtnSciekiArchiwalna" class="px-2 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap active-sub-tab-scieki">📦 Archiwalna</button>
-                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Slepa" id="subBtnSciekiSlepa" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">⚪ Ślepa</button>
-                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Probkobranie" id="subBtnSciekiProbkobranie" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap">🧺 Próbkobranie</button>
-                <button type="button" data-action="switch-task-tab" data-lab="scieki" data-category="Porownania" id="subBtnSciekiPorownania" class="px-2 py-2 border rounded text-[9px] font-bold uppercase bg-white text-gray-500 whitespace-nowrap text-center min-w-[120px]">🤝 Porównanie wewnątrzlaboratoryjne</button>
-            </div>
-            <div id="subContentSciekiArchiwalna" class="space-y-4"><div id="mStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiArchiwalna" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiArchiwalna" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Archiwalna" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiArchiwalna" class="space-y-2"></div></div>
-            <div id="subContentSciekiSlepa" class="hidden space-y-4"><div id="mStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiSlepa" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiSlepa" placeholder="Oznaczenie" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Slepa" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiSlepa" class="space-y-2"></div></div>
-            <div id="subContentSciekiProbkobranie" class="hidden space-y-4"><div id="mStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiProbkobranie" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiProbkobranie" placeholder="Miejsce" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Probkobranie" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiProbkobranie" class="space-y-2"></div></div>
-            <div id="subContentSciekiPorownania" class="hidden space-y-4"><div id="mStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center"></div><div id="yStatusSciekiPorownania" class="p-2 rounded-lg text-[9px] font-bold border text-center bg-white uppercase"></div><div class="flex gap-2 mb-3"><input type="text" id="taskInputSciekiPorownania" placeholder="Parametr porów. wewnątrzlaboratoryjnego" class="flex-1 border p-2 rounded text-sm"><button type="button" data-action="add-task" data-lab="scieki" data-category="Porownania" class="bg-green-600 text-white px-4 py-2 rounded font-bold">+</button></div><div id="taskListSciekiPorownania" class="space-y-2"></div></div>
-        </div>
-
-        <div id="tabContentWzorcowanie" class="hidden space-y-4 text-left">
-            <div id="upcomingWzorcowanieAlert" class="hidden p-3 rounded-lg border bg-orange-100 border-orange-300 text-orange-900 text-[10px] font-extrabold mb-2"></div>
-            <div class="flex overflow-x-auto gap-1 pb-2 no-scrollbar" id="monthsNav"></div>
-            <div id="monthlyWzorcowanieCounter" class="p-3 rounded-lg text-[11px] font-bold text-center border uppercase"></div>
-            <div id="formWzorcowanie" class="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                <input type="hidden" id="editIdEquip"><div class="grid grid-cols-1 gap-2"><input type="text" id="equipName" placeholder="Nazwa sprzętu" class="border p-2 rounded text-sm text-black"><div class="grid grid-cols-2 gap-2"><select id="equipType" class="border p-2 rounded text-sm bg-white text-black"><option value="Wzorcowanie">Wzorcowanie</option><option value="Sprawdzenie">Sprawdzenie</option><option value="Kalibracja">Kalibracja</option></select><select id="equipMonth" class="border p-2 rounded text-sm bg-white text-black"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></div><div class="flex gap-2"><button type="button" data-action="add-equipment" class="flex-1 bg-purple-600 text-white py-2 rounded font-bold text-sm">Zapisz / Dodaj</button><button type="button" data-action="cancel-equipment-edit" id="cancelEquipBtn" class="hidden bg-gray-400 text-white px-4 py-2 rounded">✕</button></div></div>
-            </div>
-            <div id="equipmentList" class="space-y-2"></div>
-        </div>
-
-        <div id="tabContentKalendarz" class="hidden space-y-4 text-left">
-            <div class="bg-white border rounded-xl shadow-sm p-4 text-black">
-                <div class="flex justify-between items-center mb-4"><button type="button" data-action="change-month" data-offset="-1" class="p-2 text-blue-600 font-bold text-lg">←</button><h2 id="calendarMonthYear" class="font-bold text-gray-800 uppercase tracking-widest text-sm text-center"></h2><button type="button" data-action="change-month" data-offset="1" class="p-2 text-blue-600 font-bold text-lg">→</button></div>
-                <div class="calendar-grid text-center font-bold text-[9px] text-gray-400 mb-2"><div>PON</div><div>WT</div><div>ŚR</div><div>CZW</div><div>PT</div><div class="text-red-300">SOB</div><div class="text-red-300">NDZ</div></div>
-                <div id="calendarDays" class="calendar-grid"></div>
-            </div>
-            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100 text-black">
-                <div class="flex justify-between items-center mb-3"><h3 id="selectedDateLabel" class="text-[10px] font-bold text-blue-800 uppercase italic">Plan dnia</h3><button type="button" data-action="add-event" class="bg-blue-600 text-white px-3 py-1 rounded text-[10px] font-bold">+ DODAJ</button></div>
-                <div id="dayEventsList" class="space-y-2"></div>
-            </div>
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 text-black">
-                <h3 class="text-[10px] font-bold text-gray-600 uppercase mb-3 border-b pb-1">Wydarzenia w miesiącu</h3>
-                <div id="monthEventsList" class="space-y-2"></div>
-            </div>
-        </div>
+  <div id="formParking" hidden>
+    <div id="formContainer" class="lab-stack">
+      <input type="hidden" id="editId">
+      <div id="dynamicItemsContainer" class="lab-list"></div>
+      <button type="button" id="addFormRowBtn" data-action="add-form-row" class="lab-button "><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj kolejną pozycję</span></button>
+      <div class="lab-dialog-actions">
+        <button type="button" id="cancelEditBtn" data-action="cancel-edit" class="lab-button lab-button-cancel"><span>Anuluj</span></button>
+        <button type="button" id="submitBtn" data-action="save-items" class="lab-button lab-button-primary">Zapisz wszystko</button>
+      </div>
     </div>
-
+    <form id="formWzorcowanie" class="lab-stack" data-submit-action="add-equipment">
+      <input type="hidden" id="editIdEquip">
+      <label class="lab-field"><span>Nazwa sprzętu</span><input id="equipName" maxlength="200" data-form-focus></label>
+      <div class="lab-fields"><label class="lab-field"><span>Rodzaj obsługi</span><select id="equipType"><option>Wzorcowanie</option><option>Sprawdzenie</option><option>Kalibracja</option></select></label>
+      <label class="lab-field"><span>Miesiąc</span><select id="equipMonth"><option value="01">Styczeń</option><option value="02">Luty</option><option value="03">Marzec</option><option value="04">Kwiecień</option><option value="05">Maj</option><option value="06">Czerwiec</option><option value="07">Lipiec</option><option value="08">Sierpień</option><option value="09">Wrzesień</option><option value="10">Październik</option><option value="11">Listopad</option><option value="12">Grudzień</option></select></label></div>
+      <div class="lab-dialog-actions"><button type="button" id="cancelEquipBtn" data-action="cancel-equipment-edit" class="lab-button lab-button-cancel"><span>Anuluj</span></button><button type="submit" class="lab-button lab-button-primary">Zapisz sprzęt</button></div>
+    </form>
+    <form id="eventForm" class="lab-stack" data-submit-action="add-event">
+      <p id="eventFormDate" class="lab-muted"></p>
+      <label class="lab-field"><span>Nazwa wydarzenia</span><input id="eventTitle" maxlength="200" data-form-focus></label>
+      <div class="lab-dialog-actions"><button type="button" data-action="close-dialog" class="lab-button lab-button-cancel"><span>Anuluj</span></button><button type="submit" class="lab-button lab-button-primary">Zapisz wydarzenie</button></div>
+    </form>
+    <div id="inventoryAction" class="lab-stack"></div>
+  </div>
+  <dialog id="labDialog" class="lab-dialog" aria-labelledby="dialogTitle">
+    <header class="lab-dialog-header"><h2 id="dialogTitle" tabindex="-1"></h2><button type="button" id="dialogClose" aria-label="Zamknij formularz lub kartę" class="lab-button lab-button-icon"><span data-icon="close" class="lab-icon-slot" aria-hidden="true"></span><span>Zamknij</span></button></header>
+    <p id="dialogFeedback" class="lab-notice lab-notice-danger" role="alert" hidden></p>
+    <div id="dialogContents" class="lab-dialog-contents"></div>
+  </dialog>
+  <p id="labToast" class="lab-toast" role="status" hidden></p>
 </body>
 </html>

@@ -1,9 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=16";
-import { createElement } from "./ui.js?v=16";
-import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=16";
-import { button, details, field, input, panel, saveButton, unitSelect } from "./inventory-ui.js?v=16";
-import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=16";
-import { requireInventoryConnection } from "./inventory-store.js?v=16";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=17";
+import { createElement } from "./ui.js?v=17";
+import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=17";
+import { button, details, field, input, panel, saveButton, unitSelect } from "./inventory-ui.js?v=17";
+import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=17";
+import { requireInventoryConnection } from "./inventory-store.js?v=17";
 
 function download(rows, date) {
   const blob = createOrderDocx(rows, formatPolishDate(date));
@@ -22,16 +22,20 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
   const values = new Map();
   let pending = false;
   inventory.mount("orders", (container) => {
-    const title = createElement("h2", "text-lg font-bold", "Zamówienia");
-    const note = createElement("p", "text-sm", "Pobierz osobny plik Word i skopiuj zweryfikowane wiersze do oficjalnego rejestru.");
+    const note = createElement("p", "lab-notice", "Pobierz osobny plik Word i skopiuj zweryfikowane wiersze do oficjalnego rejestru.");
     const search = input("Szukaj pozycji poza ostrzeżeniami", "", "search");
-    const candidates = createElement("div", "max-h-56 space-y-1 overflow-y-auto");
+    const candidates = createElement("div", "lab-list max-h-56 overflow-y-auto");
     const draft = panel();
     const history = details("Historia wygenerowanych zamówień");
     const status = createElement("p", "text-sm text-red-700");
     status.setAttribute("role", "status");
     const products = new Map(inventory.products());
-    container.replaceChildren(title, note, field("Dodaj pozycję", search), candidates, draft, history);
+    const selection = panel();
+    const warnings = createElement("button", "lab-button lab-button-warning", "Przejdź do ostrzeżeń");
+    warnings.type = "button";
+    warnings.dataset.route = "inventory";
+    selection.append(field("Dodaj pozycję", search), warnings, candidates);
+    container.replaceChildren(note, selection, draft, history);
 
     function ensureRow(id) {
       if (values.has(id)) return values.get(id);
@@ -70,7 +74,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
       for (const id of selections) {
         const product = products.get(id);
         const current = ensureRow(id);
-        const row = createElement("div", "grid gap-2 border-t pt-2 sm:grid-cols-2");
+        const row = createElement("div", "lab-panel lab-fields");
         const size = input("Wielkość opakowania", current.size);
         const unit = unitSelect(current.unit);
         const count = input("Sztuki opakowań", current.count, "number");
@@ -81,7 +85,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
         count.addEventListener("input", () => { current.count = count.value; });
         notes.addEventListener("input", () => { current.notes = notes.value; });
         const alreadyOrdered = inventory.lotsFor(id).some((lot) => lot.ordered);
-        draft.append(createElement("p", "font-bold", `${product.name}${product.producer ? ` · ${product.producer}` : ""}${alreadyOrdered ? " · już oznaczona jako zamówiona" : ""}`));
+        row.append(createElement("h4", "lab-field-wide lab-section-title", `${product.name}${product.producer ? ` · ${product.producer}` : ""}${alreadyOrdered ? " · już oznaczona jako zamówiona" : ""}`));
         row.append(field("Wielkość opakowania", size), field("Jednostka", unit), field("Liczba opakowań", count),
           field("Uwagi", notes), button("Usuń pozycję z zamówienia", () => {
             inventory.orderSelections.delete(id);

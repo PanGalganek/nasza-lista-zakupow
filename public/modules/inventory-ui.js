@@ -1,10 +1,8 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=16";
-import { byId, createButton, createElement, createInput } from "./ui.js?v=16";
-import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=16";
-import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=16";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=17";
+import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=17";
+import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=17";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=17";
 
-const fieldClass = "w-full rounded border bg-white p-2 text-sm text-black";
-const actionClass = "rounded border border-blue-200 bg-white px-3 py-2 text-xs font-bold text-blue-800";
 const textValue = (value) => typeof value === "string";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
 const material = (row) => row && textValue(row.name) && Object.hasOwn(units, row.unit) && integer(row.quantity);
@@ -19,24 +17,18 @@ const inventoryRecords = {
   calculations: (row) => textValue(row.date) && materials(row.commercial)
     && row.commercial.every((item) => textValue(item.productId)),
 };
-export const sections = [
-  ["registry", "Rejestr odczynników i wzorców"], ["preparation", "Przygotowanie odczynników"],
-  ["recipes", "Baza receptur"], ["theory", "Zużycie teoretyczne"],
-  ["history", "Przychody i rozchody"], ["archive", "Archiwum"], ["statistics", "Statystyki"], ["orders", "Zamówienia"],
-];
-
 export function field(labelText, input) {
-  const label = createElement("label", "grid gap-1 text-xs font-bold text-gray-700");
+  const label = createElement("label", "lab-field");
   label.append(createElement("span", "", labelText), input);
   return label;
 }
 
 export function input(label, value = "", type = "text") {
-  return createInput(fieldClass, label, value, type);
+  return createInput("", label, value, type);
 }
 
 export function select(options, value = "") {
-  const element = createElement("select", fieldClass);
+  const element = createElement("select");
   for (const [key, label] of options) {
     const option = createElement("option", "", label);
     option.value = key;
@@ -47,26 +39,28 @@ export function select(options, value = "") {
 }
 
 export const unitSelect = (value) => select([["", "—"], ...Object.keys(units).map((unit) => [unit, unit])], value);
-export const button = (label, action) => createButton(label, label, action, actionClass);
-export const panel = () => createElement("div", "space-y-3 rounded-lg border border-blue-100 bg-blue-50 p-3 text-left");
+export const button = (label, action, variant = "") => createButton(label, label, action, `lab-button ${variant}`);
+export const panel = () => createElement("div", "lab-panel lab-stack");
 
 export function details(label) {
-  const box = createElement("details", "rounded-lg border border-gray-200 bg-white p-3 text-left");
-  box.append(createElement("summary", "cursor-pointer font-bold text-blue-900", label));
+  const box = createElement("details", "lab-accordion");
+  box.append(createElement("summary", "", label));
   return box;
 }
 
-export function saveButton(label, action, message, { online = true } = {}) {
+export function saveButton(label, action, message, { online = true, danger = false } = {}) {
+  message.setAttribute("aria-live", "polite");
   const control = button(label, async () => {
     if (control.disabled) return;
     control.disabled = true;
+    control.setAttribute("aria-busy", "true");
     message.textContent = "";
     try {
       if (online) requireInventoryConnection();
       await action();
     } catch (error) { message.textContent = error.message; }
-    finally { control.disabled = false; }
-  });
+    finally { control.disabled = false; control.removeAttribute("aria-busy"); }
+  }, danger ? "lab-button-danger" : "lab-button-primary");
   return control;
 }
 
@@ -74,9 +68,9 @@ export function batchLabel(lot) {
   return [lot.name, lot.lotNumber || lot.group, lot.producer].filter(Boolean).join(" · ");
 }
 
-export function showStock(lot) {
+export function showStock(lot, { compact = false } = {}) {
   const stock = lot.stock;
-  const box = createElement("div", "min-w-0 space-y-1 text-xs");
+  const box = createElement(compact ? "span" : "div", "lab-stock");
   if (!stock || stock.initial === null) {
     box.textContent = "Stan nieustalony";
     return box;
@@ -93,7 +87,7 @@ export function showStock(lot) {
   return box;
 }
 
-export function createInventoryModule({ db, firestore, registerSnapshot, reportListenerError }) {
+export function createInventoryModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
   const { collection, onSnapshot } = firestore;
   const store = createInventoryStore(db, firestore);
   const collections = {};
@@ -108,7 +102,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
   let visibleCard = "";
   let pendingAction = false;
   let lots = [];
-  let section = "registry";
+  let section = "menu";
   let refreshRegistry = () => {};
 
   const withStock = (lot) => ({ ...lot, stock: stockById.get(lot.id) });
@@ -121,7 +115,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
 
   function refresh() {
     changes.clear();
-    if (section !== "registry") panels.get(section)?.(byId("inventorySection"));
+    if (panels.has(section)) panels.get(section)(byId("inventorySection"));
   }
 
   function switchSection(key) {
@@ -129,11 +123,10 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     if (["history", "archive", "statistics"].includes(key)) subscribe("events");
     if (key === "statistics") subscribe("calculations");
     if (key === "orders") subscribe("orders");
+    byId("inventoryMenu").hidden = key !== "menu";
     byId("inventoryRegistry").classList.toggle("hidden", key !== "registry");
-    byId("inventorySection").classList.toggle("hidden", key === "registry");
-    for (const child of byId("inventoryNav").children) child.setAttribute("aria-pressed", String(child.dataset.section === key));
+    byId("inventorySection").classList.toggle("hidden", !panels.has(key));
     refresh();
-    if (key === "registry") refreshRegistry();
   }
 
   function start() {
@@ -145,7 +138,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     byId("inventoryAction").replaceChildren();
     for (const key of Object.keys(inventoryCollections)) delete collections[key];
     for (const key of ["stock", "recipes", "methods"]) subscribe(key);
-    switchSection("registry");
+    switchSection("menu");
   }
 
   function subscribe(key) {
@@ -169,16 +162,10 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
 
   function bind(rerender) {
     refreshRegistry = rerender;
-    for (const [key, label] of sections) {
-      const control = button(label, () => switchSection(key));
-      control.dataset.section = key;
-      byId("inventoryNav").append(control);
-    }
-    switchSection("registry");
   }
 
   function fields(lot = {}, editing = false) {
-    const fieldGroup = createElement("div", "grid gap-2 sm:grid-cols-2 lg:grid-cols-4");
+    const fieldGroup = createElement("div", "lab-stack");
     const size = input("Wielkość opakowania", lot.packageAmount ? formatQuantity(lot.packageAmount, lot.packageUnit).split(/\s+(?=[^\s]+$)/)[0].replace(/\s/g, "") : "");
     const unit = unitSelect(lot.packageUnit);
     const count = input("Domyślna liczba opakowań", lot.orderPackages || 1, "number");
@@ -202,15 +189,21 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     producer.maxLength = 200;
     formula.maxLength = 100;
     cas.maxLength = 40;
-    const inputs = [["Wielkość opakowania", size], ["Jednostka opakowania", unit], ["Domyślna liczba opakowań", count], ["Numer partii", number],
-      ["Producent", producer], ["Wzór chemiczny (opcjonalnie)", formula], ["CAS (opcjonalnie)", cas]];
-    for (const [label, control] of inputs) fieldGroup.append(field(label, control));
-    if (!editing) fieldGroup.append(field("Ilość początkowa (domyślnie pełne opakowanie)", initial));
+    const packageFields = createElement("div", "lab-fields");
+    packageFields.append(field("Numer partii", number), field("Wielkość opakowania", size), field("Jednostka opakowania", unit));
+    fieldGroup.append(createElement("h4", "lab-section-title", "Partia i opakowanie"), packageFields);
+    if (!editing) packageFields.append(field("Ilość początkowa (domyślnie pełne opakowanie)", initial));
     else if (withStock(lot).stock) {
-      fieldGroup.append(createElement("p", "text-xs text-gray-600 sm:col-span-2 lg:col-span-4",
+      fieldGroup.append(createElement("p", "lab-muted",
         "Stan magazynowy i jego historię znajdziesz w karcie partii."));
     }
-    if (link) fieldGroup.append(field("Powiąż tylko z identycznym wariantem handlowym", link));
+    const extra = details("Dane dodatkowe");
+    const extraFields = createElement("div", "lab-fields");
+    extraFields.append(field("Domyślna liczba opakowań", count), field("Producent", producer),
+      field("Wzór chemiczny", formula), field("CAS", cas));
+    if (link) extraFields.append(field("Powiąż tylko z identycznym wariantem handlowym", link));
+    extra.append(extraFields);
+    fieldGroup.append(extra);
     return {
       node: fieldGroup,
       initial(packaging) {
@@ -244,22 +237,35 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     return [
       ...(!lot.stock ? [button("Ustal stan", () => showAction(lot, "opening"))] : []),
       ...(active ? [button("Zużycie", () => showAction(lot, "withdrawal"))] : []),
-      ...(!lot.expiry || lot.expiry >= formatLocalDate() ? [button("Oznacz jako zużyty", () => showAction(lot, "used"))] : []),
-      button("Wycofaj", () => showAction(lot, "withdrawn")),
-      button("Karta", () => showCard(productId(lot))),
+      button("Historia", () => showCard(productId(lot))),
     ];
+  }
+
+  function archiveActions(item) {
+    const lot = withStock(item);
+    if (!ready() || (lot.stock && lot.stock.status !== "active")) return [];
+    return [
+      ...(!lot.expiry || lot.expiry >= formatLocalDate()
+        ? [button("Oznacz jako zużyty", () => showAction(lot, "used"), "lab-button-danger")] : []),
+      button("Wycofaj", () => showAction(lot, "withdrawn"), "lab-button-danger"),
+    ];
+  }
+
+  function dismissAction() {
+    visibleCard = "";
+    byId("inventoryAction").replaceChildren();
   }
 
   function showAction(lot, kind) {
     if (pendingAction) return;
     visibleCard = "";
     const destination = byId("inventoryAction");
-    const box = panel();
+    const box = createElement("div", "lab-stack");
     const message = createElement("p", "text-xs text-red-700");
     message.setAttribute("role", "status");
     const labels = { opening: "Ustal stan początkowy", opening_correction: "Skoryguj ilość początkową",
       withdrawal: "Zużycie", used: "Oznacz jako zużyty", withdrawn: "Wycofaj partię" };
-    box.append(createElement("h3", "font-bold", `${labels[kind]} — ${batchLabel(lot)}`));
+    box.append(createElement("p", "lab-muted", batchLabel(lot)));
     const choices = kind === "withdrawal" ? validLots(lotsFor(productId(lot)), lot.stock.unit, formatLocalDate()) : [lot];
     const selected = select(choices.map((batch) => [batch.id, `${batchLabel(batch)} · ${formatPolishDate(batch.expiry)}`]));
     const unit = unitSelect(lot.stock?.unit || lot.packageUnit);
@@ -287,7 +293,9 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     }
     if (["used", "withdrawn"].includes(kind)) box.append(createElement("p", "text-sm", "Partia zostanie zamknięta. Pozostały stan zostanie wyksięgowany, a historia zachowana."));
     const id = store.operationId();
-    box.append(saveButton("Zatwierdź", async () => {
+    const footer = createElement("div", "lab-dialog-actions");
+    const danger = ["used", "withdrawn"].includes(kind);
+    footer.append(button("Anuluj", () => navigation.close(), "lab-button-cancel"), saveButton(danger ? labels[kind] : "Zatwierdź", async () => {
       if (pendingAction) return;
       pendingAction = true;
       try {
@@ -298,11 +306,13 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
           const batch = chosen();
           await store.withdraw([{ lotId: batch.id, productId: productId(batch), quantity: quantity(amount.value, batch.stock.unit), unit: batch.stock.unit }], { id });
         } else await store.close(lot.id, kind, id);
-        destination.replaceChildren();
+        navigation.close(true);
+        notify("Zapisano operację magazynową.");
       } finally { pendingAction = false; }
-    }, message), button("Anuluj", () => { if (!pendingAction) destination.replaceChildren(); }), message);
+    }, message, { danger }));
+    box.append(message, footer);
     destination.replaceChildren(box);
-    box.scrollIntoView({ block: "nearest" });
+    navigation.show(destination, labels[kind], { busy: () => pendingAction, onDismiss: dismissAction });
   }
 
   function showCard(id, focus = true) {
@@ -310,8 +320,8 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     visibleCard = id;
     subscribe("events");
     const destination = byId("inventoryAction");
-    const box = panel();
-    box.append(createElement("h3", "font-bold", `Karta magazynowa — ${products().find(([key]) => key === id)?.[1]?.name || ""}`));
+    const box = createElement("div", "lab-stack");
+    const name = products().find(([key]) => key === id)?.[1]?.name || "Karta magazynowa";
     const events = new Map(rows("events").map((event) => [event.id, event]));
     for (const lot of lotsFor(id)) {
       const stock = lot.stock;
@@ -323,13 +333,12 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
       }
     }
     panels.get("history")?.(box, id);
-    box.append(button("Zamknij kartę", () => { visibleCard = ""; destination.replaceChildren(); }));
     destination.replaceChildren(box);
-    if (focus) box.scrollIntoView({ block: "nearest" });
+    if (focus) navigation.show(destination, name, { wide: true, watch: false, onDismiss: dismissAction });
   }
 
   return {
-    store, fields, start, bind, actions, withStock, allLots, lotsFor, products, productOptions, rows, ready, refresh, orderSelections,
+    store, fields, start, bind, actions, archiveActions, withStock, allLots, lotsFor, products, productOptions, rows, ready, refresh, orderSelections,
     searchContext(lot) {
       const methods = new Map(rows("methods").map((method) => [method.id, method.name]));
       return rows("recipes").filter((recipe) => recipe.ingredients.some((ingredient) => ingredient.productId === productId(lot)))
@@ -347,6 +356,6 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     },
     mount(key, render) { panels.set(key, render); },
     onChange(key, callback) { changes.set(key, callback); },
-    open: switchSection,
+    switchSection,
   };
 }

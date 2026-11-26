@@ -1,16 +1,18 @@
-import { monthNames } from "./constants.js?v=16";
-import { byId, createButton, createElement } from "./ui.js?v=16";
-import { formatLocalDate, formatPolishDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=16";
+import { monthNames } from "./constants.js?v=17";
+import { byId, createElement, iconButton, notify } from "./ui.js?v=17";
+import { formatLocalDate, formatPolishDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=17";
 
-export function createEquipmentModule({ db, firestore, registerSnapshot, reportListenerError }) {
+export function createEquipmentModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;
   let items = [];
   let selectedMonth = String(new Date().getMonth() + 1).padStart(2, "0");
+  let pending = false;
 
   function cancelEdit() {
     byId("editIdEquip").value = "";
     byId("equipName").value = "";
-    byId("cancelEquipBtn").classList.add("hidden");
+    byId("equipType").selectedIndex = 0;
+    byId("equipMonth").value = selectedMonth;
   }
 
   function startEdit(equipment) {
@@ -18,32 +20,34 @@ export function createEquipmentModule({ db, firestore, registerSnapshot, reportL
     byId("equipName").value = equipment.name || "";
     byId("equipMonth").value = equipment.month || selectedMonth;
     byId("equipType").value = equipment.type || "Wzorcowanie";
-    byId("cancelEquipBtn").classList.remove("hidden");
-    byId("equipName").focus();
+    navigation.show(byId("formWzorcowanie"), "Edytuj sprzęt", { busy: () => pending, onDismiss: cancelEdit });
+  }
+
+  function openForm() {
+    cancelEdit();
+    navigation.show(byId("formWzorcowanie"), "Dodaj sprzęt", { busy: () => pending, onDismiss: cancelEdit });
   }
 
   async function save() {
     const name = byId("equipName").value.trim();
-    if (!name) return;
+    if (!name || pending) return;
     const data = { name, month: byId("equipMonth").value, type: byId("equipType").value };
     const editId = byId("editIdEquip").value;
-    if (editId) await updateDoc(doc(db, "wzorcowanie", editId), data);
-    else await addDoc(collection(db, "wzorcowanie"), { ...data, doneDate: null, timestamp: Date.now() });
-    cancelEdit();
+    const submit = byId("formWzorcowanie").querySelector("[type=submit]");
+    pending = true;
+    submit.disabled = true;
+    try {
+      if (editId) await updateDoc(doc(db, "wzorcowanie", editId), data);
+      else await addDoc(collection(db, "wzorcowanie"), { ...data, doneDate: null, timestamp: Date.now() });
+      navigation.close(true);
+      notify("Zapisano sprzęt.");
+    } finally { pending = false; submit.disabled = false; }
   }
 
   function render() {
     const list = byId("equipmentList");
     if (!list) return;
-    const nav = byId("monthsNav");
-    nav.replaceChildren();
-    for (let index = 1; index <= 12; index += 1) {
-      const id = String(index).padStart(2, "0");
-      nav.append(createButton(monthNames[id].slice(0, 3), `Pokaż ${monthNames[id]}`, () => {
-        selectedMonth = id;
-        render();
-      }, `px-3 py-2 border rounded text-[9px] font-bold uppercase ${selectedMonth === id ? "active-month" : "bg-white text-gray-500"}`));
-    }
+    byId("equipmentMonthView").value = selectedMonth;
 
     list.replaceChildren();
     let total = 0;
@@ -60,32 +64,33 @@ export function createEquipmentModule({ db, firestore, registerSnapshot, reportL
       total += 1;
       if (doneThisYear) done += 1;
       const type = equipment.type || "Wzorcowanie";
-      const colorClass = type === "Kalibracja" ? "bg-blue-100 text-blue-700" : type === "Sprawdzenie" ? "bg-green-100 text-green-700" : "bg-purple-100 text-purple-700";
-      const row = createElement("div", `flex justify-between items-center p-3 border rounded-lg ${doneThisYear ? "task-done" : "bg-white shadow-sm"} mb-2 text-[11px] text-black`);
-      const info = createElement("div", "flex flex-col");
-      const heading = createElement("div");
-      heading.append(createElement("span", `${colorClass} px-1 rounded text-[8px] uppercase mr-2 font-bold`, type), createElement("span", "font-bold text-black", equipment.name || "Bez nazwy"));
+      const row = createElement("div", `lab-data-row ${doneThisYear ? "task-done" : ""}`);
+      const info = createElement("div", "lab-lot-info");
+      const heading = createElement("div", "lab-actions");
+      heading.append(createElement("strong", "", equipment.name || "Bez nazwy"), createElement("span", "lab-chip", type));
       info.append(heading);
-      if (doneThisYear) info.append(createElement("span", "mt-1 text-[9px] font-bold uppercase text-green-600", `Wykonano: ${formatPolishDate(equipment.doneDate)}`));
-      const actions = createElement("div", "flex gap-3");
+      if (doneThisYear) info.append(createElement("span", "text-sm text-green-800", `Wykonano: ${formatPolishDate(equipment.doneDate)}`));
+      const actions = createElement("div", "lab-actions");
       actions.append(
-        createButton(doneThisYear ? "✅" : "⬜", doneThisYear ? "Oznacz jako niewykonane" : "Oznacz jako wykonane", () => updateDoc(doc(db, "wzorcowanie", equipment.id), { doneDate: doneThisYear ? null : formatLocalDate() }), "text-xl"),
-        createButton("✏️", "Edytuj sprzęt", () => startEdit(equipment)),
-        createButton("✕", "Usuń sprzęt", async () => {
+        iconButton(doneThisYear ? "check" : "square", doneThisYear ? "Oznacz jako niewykonane" : "Oznacz jako wykonane", () => updateDoc(doc(db, "wzorcowanie", equipment.id), { doneDate: doneThisYear ? null : formatLocalDate() })),
+        iconButton("edit", "Edytuj sprzęt", () => startEdit(equipment)),
+        iconButton("trash", "Usuń sprzęt", async () => {
           if (confirm(`Usunąć „${equipment.name}”?`)) await deleteDoc(doc(db, "wzorcowanie", equipment.id));
-        }, "text-red-600"),
+        }, "lab-button-danger"),
       );
       row.append(info, actions);
       list.append(row);
     });
 
-    byId("monthlyWzorcowanieCounter").textContent = `${monthNames[selectedMonth]}: ${done} z ${total} zrobione`;
+    if (!total) list.append(createElement("p", "lab-empty", "Brak sprzętu do obsługi w tym miesiącu."));
+    byId("monthlyWzorcowanieCounter").textContent = `${monthNames[selectedMonth]}: wykonano ${done} z ${total}`;
     const alertBox = byId("upcomingWzorcowanieAlert");
-    alertBox.textContent = upcoming.length ? `📢 Planowane wzorcowania na ${monthNames[nextMonth]}: ${upcoming.join(", ")}` : "";
+    alertBox.textContent = upcoming.length ? `Planowane wzorcowania · ${monthNames[nextMonth]}: ${upcoming.join(", ")}` : "";
     alertBox.classList.toggle("hidden", upcoming.length === 0);
   }
 
   function start() {
+    byId("equipmentMonthView").onchange = (event) => { selectedMonth = event.target.value; render(); };
     registerSnapshot(onSnapshot(
       query(collection(db, "wzorcowanie"), orderBy("timestamp", "asc")),
       (snapshot) => {
@@ -96,5 +101,5 @@ export function createEquipmentModule({ db, firestore, registerSnapshot, reportL
     ));
   }
 
-  return { cancelEdit, render, save, start };
+  return { openForm, render, save, start };
 }

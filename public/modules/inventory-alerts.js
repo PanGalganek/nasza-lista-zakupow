@@ -1,14 +1,14 @@
-import { calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=16";
-import { createButton, createElement } from "./ui.js?v=16";
-import { stockLevel } from "./inventory-quantity.js?v=16";
-import { productId } from "./inventory-store.js?v=16";
-import { batchLabel, button, details } from "./inventory-ui.js?v=16";
+import { calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=17";
+import { createButton, createElement } from "./ui.js?v=17";
+import { stockLevel } from "./inventory-quantity.js?v=17";
+import { productId } from "./inventory-store.js?v=17";
+import { batchLabel, button, details } from "./inventory-ui.js?v=17";
 
 const categories = [
-  ["expired", "Przekroczony termin ważności", "border-red-300 text-red-900"],
-  ["expiring", "Kończący się termin ważności", "border-orange-300 text-orange-900"],
-  ["low", "Niski stan magazynowy", "border-red-300 text-red-900"],
-  ["warning", "Ostrzegawczy stan magazynowy", "border-yellow-400 text-yellow-900"],
+  ["expired", "Przekroczony termin ważności"],
+  ["expiring", "Kończący się termin ważności"],
+  ["low", "Niski stan magazynowy"],
+  ["warning", "Ostrzegawczy stan magazynowy"],
 ];
 
 export function warningGroups(lots, threshold, today = new Date()) {
@@ -50,23 +50,28 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
   const open = new Set([...container.children].filter((element) => element.open).map((element) => element.dataset.warning));
   const result = warningGroups(lots, threshold);
   container.replaceChildren();
+  const total = Object.values(result).reduce((sum, items) => sum + items.length, 0);
+  for (const number of document.querySelectorAll("[data-warning-number]")) number.textContent = String(total);
+  document.querySelector("[data-warning-count]").hidden = total === 0;
+  if (!total) container.append(createElement("p", "lab-empty", "Brak ostrzeżeń."));
   const checked = new Map();
   const sync = () => {
     for (const [id, inputs] of checked) for (const input of inputs) input.checked = inventory.orderSelections.has(id);
   };
-  for (const [key, label, color] of categories) {
+  for (const [key, label] of categories) {
     const items = result[key];
+    if (!items.length) continue;
     const section = details(`${label} (${items.length})`);
-    section.className += ` ${color}`;
+    section.classList.add("lab-alert-category");
     section.dataset.warning = key;
     section.open = open.has(key);
-    if (items.length) section.append(button("Zaznacz wszystkie", () => {
+    section.append(button("Zaznacz wszystkie", () => {
       items.forEach(({ lot }) => inventory.orderSelections.add(productId(lot)));
       sync();
     }));
     for (const { lot, backup, possibleBackup, retire } of items) {
       const id = productId(lot);
-      const row = createElement("div", "mt-2 flex flex-wrap items-start gap-2 border-t p-2 text-xs");
+      const row = createElement("div", "lab-alert-row");
       const checkbox = createElement("input");
       checkbox.type = "checkbox";
       checkbox.checked = inventory.orderSelections.has(id);
@@ -82,10 +87,16 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
         ? `Partia zapasowa ${backup.lotNumber || backup.group || ""} · ${backup.expiry ? `ważna do ${formatPolishDate(backup.expiry)}` : "brak terminu ważności"}`
         : possibleBackup ? "Możliwa partia zapasowa. Ustal jej stan i sprawdź potrzebę zakupu." : "Sprawdź potrzebę zakupu";
       row.append(checkbox, createElement("span", "flex-1", `${batchLabel(lot)} · ${retire ? "Zamknij lub wycofaj partię · " : ""}${purchase}`),
-        createButton("✏️ Edytuj", `Edytuj pozycję ${lot.group || lot.name}`, () => edit(lot), "rounded border px-2 py-1 font-bold"));
+        createButton("Edytuj", `Edytuj pozycję ${lot.group || lot.name}`, () => edit(lot), "lab-button"));
       section.append(row);
     }
     container.append(section);
+  }
+  if (total) {
+    const orders = createElement("button", "lab-button", "Przejdź do zamówień");
+    orders.type = "button";
+    orders.dataset.route = "inventory/orders";
+    container.append(orders);
   }
   container.classList.remove("hidden");
 }

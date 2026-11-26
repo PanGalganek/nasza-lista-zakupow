@@ -23,17 +23,19 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=16";
-import { createCalendarModule } from "./modules/calendar.js?v=16";
-import { createChemicalsModule } from "./modules/chemicals.js?v=16";
-import { createEquipmentModule } from "./modules/equipment.js?v=16";
-import { createInventoryModule } from "./modules/inventory-ui.js?v=16";
-import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=16";
-import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=16";
-import { mountInventoryTheory } from "./modules/inventory-theory.js?v=16";
-import { mountInventoryOrders } from "./modules/inventory-orders.js?v=16";
-import { createScheduleModule } from "./modules/schedule.js?v=16";
-import { byId, runSafely } from "./modules/ui.js?v=16";
+import { createAuthModule } from "./modules/auth.js?v=17";
+import { createCalendarModule } from "./modules/calendar.js?v=17";
+import { createChemicalsModule } from "./modules/chemicals.js?v=17";
+import { createEquipmentModule } from "./modules/equipment.js?v=17";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=17";
+import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=17";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=17";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=17";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=17";
+import { createScheduleModule } from "./modules/schedule.js?v=17";
+import { byId, notify, runSafely } from "./modules/ui.js?v=17";
+import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=17";
+import { createNavigation } from "./modules/navigation.js?v=17";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -66,11 +68,13 @@ function reportListenerError(area, error) {
   console.error(`Błąd synchronizacji: ${area}`, error);
   if (!reportedListenerErrors.has(area)) {
     reportedListenerErrors.add(area);
-    alert(`Nie udało się zsynchronizować sekcji „${area}”. Odśwież stronę lub zaloguj się ponownie.`);
+    notify(`Nie udało się zsynchronizować sekcji „${area}”. Odśwież stronę lub zaloguj się ponownie.`, true);
   }
 }
 
-const moduleDependencies = { db, firestore, registerSnapshot, reportListenerError };
+buildShell();
+const navigation = createNavigation((route) => renderShell(route, { inventory, chemicals, schedule, equipment, calendar }));
+const moduleDependencies = { db, firestore, registerSnapshot, reportListenerError, navigation };
 const inventory = createInventoryModule(moduleDependencies);
 mountInventoryHistory(inventory);
 mountInventoryStatistics(inventory);
@@ -91,54 +95,70 @@ function startDataListeners() {
   calendar.start();
 }
 
-function switchTab(target) {
-  ["odczynniki", "woda", "scieki", "wzorcowanie", "kalendarz"].forEach((tab) => {
-    const capitalized = tab.charAt(0).toUpperCase() + tab.slice(1);
-    const isActive = tab === target;
-    byId(`tabContent${capitalized}`)?.classList.toggle("hidden", !isActive);
-    byId(`btn${capitalized}`)?.classList.toggle("active-tab", isActive);
-    byId(`btn${capitalized}`)?.classList.toggle("text-gray-400", !isActive);
-  });
-  if (target === "kalendarz") calendar.render();
-  if (target === "wzorcowanie") equipment.render();
-}
-
 const login = createAuthModule({
   auth,
   db,
   authApi,
   firestore,
   runSafely,
-  onSignedOut: clearSnapshots,
+  onSignedOut: () => { clearSnapshots(); navigation.stop(); },
   onAuthorized: () => {
     chemicals.initializeForm();
     startDataListeners();
+    navigation.start();
   },
 });
 
 const delegatedActions = {
   login: () => login.login(),
   logout: () => login.logout(),
-  "switch-tab": (button) => switchTab(button.dataset.tab),
-  "switch-chemical-tab": (button) => chemicals.actions.switchSubTab(button.dataset.tab),
-  "switch-task-tab": (button) => schedule.switchSubTab(button.dataset.lab, button.dataset.category),
+  "go-back": () => navigation.back(),
+  "close-dialog": () => navigation.close(),
+  "open-chemical-form": () => chemicals.actions.openForm(),
+  "open-equipment-form": () => equipment.openForm(),
+  "open-event-form": () => calendar.openForm(),
+  "toggle-filters": (button) => {
+    const filter = byId("chemicalFilters");
+    filter.hidden = !filter.hidden;
+    button.setAttribute("aria-expanded", String(!filter.hidden));
+  },
+  "clear-filters": () => {
+    byId("chemicalStatusFilter").selectedIndex = 0;
+    byId("chemicalSort").selectedIndex = 0;
+    byId("chemicalStatusFilter").dispatchEvent(new Event("change"));
+    syncFilters();
+  },
   "add-form-row": () => chemicals.actions.addFormRow(),
   "save-items": () => chemicals.actions.saveItems(),
-  "cancel-edit": () => chemicals.actions.cancelEdit(),
+  "cancel-edit": () => navigation.close(),
   "add-task": (button) => schedule.addTask(button.dataset.lab, button.dataset.category),
   "add-equipment": () => equipment.save(),
-  "cancel-equipment-edit": () => equipment.cancelEdit(),
+  "cancel-equipment-edit": () => navigation.close(),
   "change-month": (button) => calendar.changeMonth(Number(button.dataset.offset)),
   "add-event": () => calendar.addEvent(),
 };
 
 document.addEventListener("click", (event) => {
+  if (event.target.closest(".lab-skip") && !byId("appSection").classList.contains("hidden")) {
+    event.preventDefault();
+    byId("mainContent").focus();
+    return;
+  }
+  const route = event.target.closest("[data-route]")?.dataset.route;
+  if (route) navigation.go(route);
   const button = event.target.closest("[data-action]");
   const action = button && delegatedActions[button.dataset.action];
   if (action) runSafely(() => action(button), "Nie udało się wykonać operacji.");
 });
+document.addEventListener("submit", (event) => {
+  const action = delegatedActions[event.target.dataset.submitAction];
+  if (!action) return;
+  event.preventDefault();
+  runSafely(() => action(event.target), "Nie udało się wykonać operacji.");
+});
 
 chemicals.bind();
+bindShell();
 login.bind();
 
 if ("serviceWorker" in navigator) {

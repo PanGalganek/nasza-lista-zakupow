@@ -1,8 +1,8 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=16";
-import { createElement } from "./ui.js?v=16";
-import { formatQuantity, units, validLots } from "./inventory-quantity.js?v=16";
-import { productId } from "./inventory-store.js?v=16";
-import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=16";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=17";
+import { createElement } from "./ui.js?v=17";
+import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=17";
+import { productId } from "./inventory-store.js?v=17";
+import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=17";
 
 const operationNames = {
   receipt: "Przychód", opening: "Ustalenie stanu", opening_correction: "Korekta ilości początkowej", withdrawal: "Rozchód", preparation: "Przygotowanie",
@@ -39,11 +39,13 @@ function materialRows(events, id = "") {
 }
 
 function addTable(container, rows) {
-  const area = createElement("div", "overflow-x-auto");
-  const table = createElement("table", "w-full min-w-max border-collapse text-sm");
+  const table = createElement("table", "lab-history-table");
+  const labels = ["Data i godzina", "Odczynnik / nr partii", "Rodzaj", "Ilość", "Stan po operacji", "Receptura"];
   const header = createElement("tr");
-  for (const label of ["Data i godzina", "Odczynnik / nr partii", "Rodzaj", "Ilość", "Stan po operacji", "Receptura"]) {
-    header.append(createElement("th", "border p-2 text-left", label));
+  for (const label of labels) {
+    const cell = createElement("th", "", label);
+    cell.scope = "col";
+    header.append(cell);
   }
   const head = createElement("thead");
   head.append(header);
@@ -58,23 +60,37 @@ function addTable(container, rows) {
       `${row.name} · ${row.number || "bez numeru"} (${lotId})`, operationNames[event.kind],
       quantityText,
       row.after === null ? "Stan nieustalony" : formatQuantity(row.after, row.unit), event.details.recipeName || ""];
-    for (const value of values) tr.append(createElement("td", "border p-2", value));
+    values.forEach((value, index) => {
+      const cell = createElement("td", "", value || "—");
+      cell.dataset.label = labels[index];
+      tr.append(cell);
+    });
     body.append(tr);
   }
   table.append(body);
-  area.append(table);
-  container.append(area);
+  container.append(table);
+}
+
+function metrics(values) {
+  const list = createElement("dl", "lab-metrics");
+  for (const [label, value] of values) {
+    const item = createElement("div", "lab-panel lab-metric");
+    item.append(createElement("dt", "", label), createElement("dd", "", value));
+    list.append(item);
+  }
+  return list;
 }
 
 export function mountInventoryHistory(inventory) {
   let historyProduct = "";
+  let archiveQuery = "";
   inventory.mount("history", (container, fixedProduct) => {
     const box = panel();
     const events = inventory.rows("events");
     const selected = fixedProduct || historyProduct;
     const results = materialRows(events, selected);
     if (!fixedProduct) {
-      container.replaceChildren(createElement("h2", "text-lg font-bold", "Przychody i rozchody"));
+      container.replaceChildren();
       const product = select([["", "Wszystkie pozycje"], ...inventory.productOptions()], selected);
       product.addEventListener("change", () => { historyProduct = product.value; inventory.refresh(); });
       box.append(field("Karta pozycji", product));
@@ -86,17 +102,18 @@ export function mountInventoryHistory(inventory) {
       if (["used", "withdrawn"].includes(kind)) addTotal(totals.retired, row.unit, amountOf(row));
       if (["withdrawal", "preparation", "reversal"].includes(kind)) addTotal(totals.withdrawal, row.unit, kind === "reversal" ? -amountOf(row) : amountOf(row));
     }
-    text(box, `Przychód ${totalsText(totals.receipt)} · Rozchód netto ${totalsText(totals.withdrawal)} · Wyksięgowano ${totalsText(totals.retired)}`);
-    if (selected) {
-      const lots = inventory.lotsFor(selected);
-      text(box, `Dostępny zapas ${availability(lots)}`);
-      for (const lot of lots) {
-        text(box, batchLabel(lot));
-        box.append(showStock(lot));
-      }
+    const lots = selected ? inventory.lotsFor(selected) : [];
+    const values = [["Przychód netto", totalsText(totals.receipt)], ["Rozchód netto", totalsText(totals.withdrawal)], ["Wyksięgowano", totalsText(totals.retired)]];
+    if (selected) values.push(["Dostępny zapas", availability(lots)]);
+    box.append(metrics(values));
+    for (const lot of lots) {
+      const row = createElement("div", "lab-data-row");
+      row.append(createElement("p", "", batchLabel(lot)), showStock(lot));
+      box.append(row);
     }
+    box.append(createElement("h3", "", "Historia operacji"));
     if (results.length) addTable(box, results);
-    else text(box, "Brak operacji magazynowych.");
+    else box.append(createElement("p", "lab-empty", "Brak operacji magazynowych."));
     const reversals = new Set(events.filter((event) => event.kind === "reversal").map((event) => event.details.originalId));
     const candidates = sorted(events).filter((event) => ["preparation", "withdrawal"].includes(event.kind) && !reversals.has(event.id)
       && (!selected || Object.values(event.changes).some((row) => row.productId === selected)));
@@ -127,24 +144,35 @@ export function mountInventoryHistory(inventory) {
   });
 
   inventory.mount("archive", (container) => {
-    container.replaceChildren(createElement("h2", "text-lg font-bold", "Archiwum partii"));
+    const search = input("Nazwa, oznaczenie lub partia", archiveQuery, "search");
+    const list = createElement("div", "lab-list");
+    container.replaceChildren(field("Szukaj w archiwum", search), list);
     const archive = inventory.allLots().filter((lot) => lot.stock && lot.stock.status !== "active");
-    if (!archive.length) text(container, "Brak zamkniętych partii.");
-    for (const lot of archive) {
-      const item = details(`${batchLabel(lot)} · ${lot.stock.status === "used" ? "Zużyta" : "Wycofana"}`);
-      text(item, `Termin ważności ${formatPolishDate(lot.expiry)}`);
-      item.append(showStock(lot));
-      addTable(item, materialRows(inventory.rows("events"), productId(lot)).filter((entry) => entry.lotId === lot.id));
-      container.append(item);
-    }
+    const opened = new Set();
+    const draw = () => {
+      list.replaceChildren();
+      for (const lot of archive) {
+        if (!matchesInventorySearch(archiveQuery, lot.name, lot.group, lot.lotNumber, lot.producer)) continue;
+        const item = details(`${batchLabel(lot)} · ${lot.stock.status === "used" ? "Zużyta" : "Wycofana"}`);
+        item.open = opened.has(lot.id);
+        item.addEventListener("toggle", () => item.open ? opened.add(lot.id) : opened.delete(lot.id));
+        text(item, `Termin ważności ${formatPolishDate(lot.expiry)}`);
+        item.append(showStock(lot));
+        addTable(item, materialRows(inventory.rows("events"), productId(lot)).filter((entry) => entry.lotId === lot.id));
+        list.append(item);
+      }
+      if (!list.childElementCount) list.append(createElement("p", "lab-empty", "Brak zamkniętych partii spełniających kryteria."));
+    };
+    search.addEventListener("input", () => { archiveQuery = search.value; draw(); });
+    draw();
   });
 }
 
 export function mountInventoryStatistics(inventory) {
   inventory.mount("statistics", (container) => {
-    container.replaceChildren(createElement("h2", "text-lg font-bold", "Statystyki"));
+    container.replaceChildren();
     const box = panel();
-    const result = createElement("div", "space-y-2");
+    const result = createElement("div", "lab-list");
     const product = select([["", "Wszystkie pozycje"], ...inventory.productOptions()]);
     const category = select([["", "Odczynniki i wzorce"], ["Odczynniki", "Odczynniki"], ["Wzorce", "Wzorce"]]);
     const method = select([["", "Wszystkie metody"], ...inventory.rows("methods").map((row) => [row.id, row.name])]);
@@ -190,9 +218,13 @@ export function mountInventoryStatistics(inventory) {
           addTotal(differences, row.unit, -row.quantity);
         }
       }
-      for (const [period, entry] of [...periods].sort()) text(result, `${period} · Przychód ${totalsText(entry.in)} · Rozchód ${totalsText(entry.out)} · Wycofano ${totalsText(entry.retired)}`);
-      if (!periods.size) text(result, "Brak operacji w wybranym okresie.");
-      text(result, `Zużycie teoretyczne ${totalsText(theoretical)} · Rzeczywisty rozchód ${totalsText(actual)} · Różnica ${totalsText(differences)}`);
+      result.append(metrics([["Zużycie teoretyczne", totalsText(theoretical)], ["Rzeczywisty rozchód", totalsText(actual)], ["Różnica", totalsText(differences)]]));
+      for (const [period, entry] of [...periods].sort()) {
+        const row = createElement("div", "lab-data-row");
+        row.append(createElement("strong", "", period), createElement("span", "", `Przychód ${totalsText(entry.in)} · Rozchód ${totalsText(entry.out)} · Wycofano ${totalsText(entry.retired)}`));
+        result.append(row);
+      }
+      if (!periods.size) result.append(createElement("p", "lab-empty", "Brak operacji w wybranym okresie."));
       const divisor = BigInt(days);
       const months = BigInt(Math.floor(Math.max(1, Math.min(24, Number(forecast.value) || 1))));
       const extrapolate = (factor) => new Map([...actual].map(([key, entry]) => [key, {
@@ -200,11 +232,12 @@ export function mountInventoryStatistics(inventory) {
       }]));
       const monthly = extrapolate(1n);
       const projected = extrapolate(months);
-      text(result, `Średnio na 30 dni ${totalsText(monthly)} · Orientacyjna prognoza ${totalsText(projected)}`);
+      result.append(metrics([["Średnio na 30 dni", totalsText(monthly)], ["Orientacyjna prognoza", totalsText(projected)]]));
     };
+    box.classList.add("lab-fields");
     box.append(field("Pozycja", product), field("Typ pozycji", category), field("Metoda", method), field("Od", from), field("Do", to),
-      field("Zestawienie", interval), field("Miesiące prognozy (1–24)", forecast), button("Przelicz", display), result);
-    container.append(box);
+      field("Zestawienie", interval), field("Miesiące prognozy (1–24)", forecast), button("Przelicz", display, "lab-button-primary"));
+    container.append(box, result);
     display();
     inventory.onChange("events", display);
     inventory.onChange("calculations", display);
