@@ -1,8 +1,8 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=17";
-import { createElement } from "./ui.js?v=17";
-import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=17";
-import { productId } from "./inventory-store.js?v=17";
-import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=17";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=18";
+import { createElement } from "./ui.js?v=18";
+import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=18";
+import { productId } from "./inventory-store.js?v=18";
+import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=18";
 
 const operationNames = {
   receipt: "Przychód", opening: "Ustalenie stanu", opening_correction: "Korekta ilości początkowej", withdrawal: "Rozchód", preparation: "Przygotowanie",
