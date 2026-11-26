@@ -290,7 +290,9 @@ service cloud.firestore {
     match /magazyn_zamowienia/{documentId} {
       allow read: if activeUser();
       allow create: if activeUser()
-        && request.resource.data.keys().hasOnly(['lines', 'date', 'status', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['lines', 'date', 'status', 'createdAt', 'requester'])
+        && (!('requester' in request.resource.data)
+          || request.resource.data.requester in ['B. Joachim', 'A. Cieniewski', 'K. Łoboda', 'J. Gosławska', 'M. Piasecka'])
         && request.resource.data.lines is list && request.resource.data.lines.size() > 0
         && validDate(request.resource.data.date) && request.resource.data.date != ''
         && request.resource.data.status == 'generated' && request.resource.data.createdAt == request.time;

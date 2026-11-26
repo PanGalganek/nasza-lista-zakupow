@@ -5,7 +5,8 @@ import { allocateIngredients, groupRecipesByMethod, recipeIngredients } from "..
 import { calculateTheory } from "../public/modules/inventory-theory.js";
 import { expiryDaysLabel, warningGroups, warsawDate } from "../public/modules/inventory-alerts.js";
 import { createOrderDocx, orderColumns } from "../public/modules/inventory-docx.js";
-import { orderDefaults } from "../public/modules/inventory-orders.js";
+import { legacyCatalogKey, lotOptions, orderItemKey, standardKind } from "../public/modules/inventory-items.js";
+import { orderDefaults, orderItems, orderRequesters, suggestedOrderLot } from "../public/modules/inventory-orders.js";
 
 test("quantities convert exactly and colours use the unrounded ratio", () => {
   assert.equal(quantity("0,5", "kg"), quantity("500", "g"));
@@ -103,11 +104,60 @@ test("expiry alerts use Warsaw midnight and rank deadlines by urgency", () => {
 test("orders use the product purchasing profile and fall back to available legacy data", () => {
   const legacy = { name: "Wzorzec żelaza", producer: "Przykładowy producent" };
   const lots = [{ timestamp: 2, packageAmount: quantity("500", "g"), packageUnit: "g", orderPackages: 2 }];
-  assert.deepEqual(orderDefaults(legacy, []), { description: "Wzorzec żelaza Przykładowy producent", size: "", unit: "", count: 1, notes: "" });
-  assert.deepEqual(orderDefaults(legacy, lots), { description: "Wzorzec żelaza Przykładowy producent", size: "500", unit: "g", count: 2, notes: "" });
+  assert.deepEqual(orderDefaults(legacy, []), { description: "Wzorzec żelaza Przykładowy producent", size: "", unit: "", count: 1 });
+  assert.deepEqual(orderDefaults(legacy, lots), { description: "Wzorzec żelaza Przykładowy producent", size: "500", unit: "g", count: 2 });
   const description = "Wzorzec SO₄²⁻\nCertyfikat jakości";
   const profile = { ...legacy, orderDescription: description, orderPackaging: { amount: quantity("125", "ml"), unit: "ml" }, orderPackages: 4 };
-  assert.deepEqual(orderDefaults(profile, lots), { description, size: "125", unit: "ml", count: 4, notes: "" });
+  assert.deepEqual(orderDefaults(profile, lots), { description, size: "125", unit: "ml", count: 4 });
+});
+
+test("orders group matching lots and retain separate O and B variants", () => {
+  const base = { name: "Wzorzec z certyfikatem", orderDescription: "Wzorzec Mn²⁺", category: "Wzorce", group: "II-4/1", usage: "Oznaczenia okresowe" };
+  const a = { ...base, id: "a", expiry: "2027-01-05" };
+  const b = { ...base, id: "b", group: "II-4/2", expiry: "2027-01-01" };
+  const c = { ...base, id: "c", usage: "Kontrole bieżące", expiry: "2027-02-05" };
+  const unknown = { ...base, id: "d", usage: "Oznaczenia okresowe i bieżące" };
+  assert.equal(standardKind(unknown), "");
+  assert.equal(standardKind({ ...c, category: "Odczynniki" }), "");
+  assert.notEqual(legacyCatalogKey(a), legacyCatalogKey({ ...a, orderDescription: "Wzorzec Mn²⁺ 10 µg/L" }));
+  assert.equal(orderItemKey(a), orderItemKey(b));
+  assert.notEqual(orderItemKey(a), orderItemKey(c));
+  const groups = orderItems([a, b, c, unknown], new Map());
+  assert.deepEqual([...groups.values()].map(({ kind, lots }) => [kind, lots.map(({ id }) => id)]),
+    [["O", ["a", "b"]], ["B", ["c"]], ["", ["d"]]]);
+  assert.equal(suggestedOrderLot([a, b]).id, "b");
+  assert.equal(suggestedOrderLot([a, { ...b, stock: { status: "used" } }]).id, "a");
+});
+
+test("batch choices identify duplicate or unnamed lots and distinguish O from B", () => {
+  const lot = { lotNumber: "", group: "II-4", expiry: "2027-01-05", category: "Wzorce", usage: "Wzorzec okresowy" };
+  const entries = lotOptions([{ ...lot, id: "duplicate-a" }, { ...lot, id: "duplicate-b" }, { ...lot, id: "regular", usage: "Wzorzec bieżący" }]);
+  assert.match(entries[0][1], /bez numeru.*\(O\).*05\.01\.2027.*ID duplicate-a/);
+  assert.match(entries[1][1], /ID duplicate-b$/);
+  assert.match(entries[2][1], /\(B\)/);
+});
+
+test("Word columns contain the requester, date, and only the known expiry and standard type", async () => {
+  const separate = [
+    { name: "Odczynnik", expiry: "2027-01-01", standardKind: "" },
+    { name: "Wzorzec", expiry: "2027-01-05", standardKind: "O" },
+    { name: "Wzorzec", expiry: "2027-02-05", standardKind: "B" },
+    { name: "Wzorzec bez terminu", expiry: "", standardKind: "B" },
+    { name: "Wzorzec bez informacji", expiry: "", standardKind: "" },
+  ];
+  const date = "26.11.2026";
+  for (const requester of orderRequesters) {
+    const columns = separate.map((line) => orderColumns(line, date, requester));
+    assert.ok(columns.every((cells) => cells.length === 11 && cells[1] === `${requester}\n${date}`
+      && cells[0] === "" && cells.slice(4, 10).every((text) => text === "")));
+    assert.deepEqual(columns.map((cells) => cells[10]),
+      ["Do\n01.01.2027", "Do\n05.01.2027\n(O)", "Do\n05.02.2027\n(B)", "(B)", ""]);
+    const xml = new TextDecoder().decode(await createOrderDocx(separate, date, requester).arrayBuffer());
+    assert.ok(xml.includes(`${requester}</w:t><w:br/><w:t xml:space="preserve">${date}`));
+    assert.match(xml, /05\.01\.2027<\/w:t><w:br\/><w:t xml:space="preserve">\(O\)/);
+    assert.match(xml, /05\.02\.2027<\/w:t><w:br\/><w:t xml:space="preserve">\(B\)/);
+  }
+  assert.equal(orderColumns({ name: "Archiwum", notes: "zapisane uwagi" }, date)[10], "zapisane uwagi");
 });
 
 test("Word order is an editable table with eleven cells and blank supplier and order number", async () => {
