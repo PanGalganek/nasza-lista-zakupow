@@ -1,5 +1,5 @@
-import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=18";
-import { formatLocalDate } from "../utils.js?v=18";
+import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=21";
+import { formatLocalDate } from "../utils.js?v=21";
 
 export const inventoryCollections = {
   stock: "magazyn_partie",

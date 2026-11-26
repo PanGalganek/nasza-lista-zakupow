@@ -1,7 +1,7 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=18";
-import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=18";
-import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=18";
-import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=18";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=21";
+import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=21";
+import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=21";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=21";
 
 const textValue = (value) => typeof value === "string";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -353,6 +353,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
         if (!byProduct.has(key)) byProduct.set(key, []);
         byProduct.get(key).push(lot);
       }
+      if (section === "history") refresh();
     },
     mount(key, render) { panels.set(key, render); },
     onChange(key, callback) { changes.set(key, callback); },

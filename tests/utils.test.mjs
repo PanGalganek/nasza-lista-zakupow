@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildChemicalAlerts,
   calculateCalendarDays,
+  chemicalRegistryNumbers,
   formatLocalDate,
   formatPolishDate,
   isDoneInYear,
@@ -32,6 +33,17 @@ test("calculateCalendarDays counts calendar-day distance", () => {
   assert.equal(calculateCalendarDays(new Date(2026, 6, 6), new Date(2026, 6, 6)), 0);
   assert.equal(calculateCalendarDays(new Date(2026, 6, 7), new Date(2026, 6, 6)), -1);
   assert.equal(calculateCalendarDays(new Date(2026, 6, 7), null), null);
+});
+
+test("registry LP follows numeric group order within a category and is shared across lots", () => {
+  const items = [
+    { id: "later", group: "VI-10", name: "Odczynnik B", category: "Odczynniki" },
+    { id: "first", group: "VI-2/1", name: "Odczynnik A", category: "Odczynniki" },
+    { id: "reserve", group: "VI-2/2", name: "Odczynnik A", category: "Odczynniki" },
+    { id: "standard", group: "WZ-3", name: "Wzorzec", category: "Standardowe" },
+  ];
+  const lp = chemicalRegistryNumbers(items);
+  assert.deepEqual(items.map(({ id }) => lp.get(id)), [2, 1, 1, 1]);
 });
 
 test("chemical alerts follow expiry, ordered state, backup, and quick-edit changes", () => {
