@@ -1,7 +1,7 @@
-import { formatLocalDate } from "../utils.js?v=16";
-import { createElement } from "./ui.js?v=16";
-import { compatibleUnits, formatQuantity, maxQuantity, quantity, units } from "./inventory-quantity.js?v=16";
-import { button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=16";
+import { formatLocalDate } from "../utils.js?v=17";
+import { createElement, notify } from "./ui.js?v=17";
+import { compatibleUnits, formatQuantity, maxQuantity, quantity, units } from "./inventory-quantity.js?v=17";
+import { button, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=17";
 
 function theoreticalAmount(amount, multiplier, divisor = 1n) {
   const numerator = BigInt(amount) * multiplier;
@@ -32,23 +32,28 @@ export function calculateTheory(usage, recipes, count) {
   return { solutions, commercial };
 }
 
-export function mountInventoryTheory(inventory, { db, firestore }) {
+export function mountInventoryTheory(inventory, { db, firestore, navigation }) {
   const { collection, doc, setDoc, updateDoc, serverTimestamp } = firestore;
+  const drafts = new Map();
+  let selectedMethod = "";
   inventory.mount("theory", (container) => {
     const methods = inventory.rows("methods");
-    container.replaceChildren(createElement("h2", "text-lg font-bold", "Zużycie teoretyczne"));
+    const note = createElement("p", "lab-notice", "Obliczenia i zapis wyniku nie zmieniają stanu magazynowego.");
+    container.replaceChildren(note);
+    inventory.onChange("methods", () => inventory.refresh());
     if (!methods.length) {
-      container.append(createElement("p", "text-sm", "Dodaj metody badawcze w bazie receptur."));
+      container.append(createElement("p", "lab-empty", "Dodaj metody badawcze w bazie receptur."));
       return;
     }
     const filter = select(methods.map(({ id, name }) => [id, name]));
-    const content = createElement("div", "space-y-3");
+    if (methods.some(({ id }) => id === selectedMethod)) filter.value = selectedMethod;
+    const content = createElement("div", "lab-stack");
     container.append(field("Metoda badawcza", filter), content);
     const render = () => {
       const method = methods.find(({ id }) => id === filter.value);
       const box = panel();
-      const config = details("Zużycie na jedno oznaczenie");
-      const form = createElement("div", "space-y-2");
+      const config = createElement("div", "lab-stack");
+      const form = createElement("div", "lab-list");
       const configStatus = createElement("p", "text-sm text-red-700");
       const recipes = new Map(inventory.rows("recipes").map((recipe) => [recipe.id, recipe]));
       const products = new Map(inventory.products());
@@ -77,27 +82,35 @@ export function mountInventoryTheory(inventory, { db, firestore }) {
       };
       method.usage.forEach(add);
       let current = method.usage;
-      config.append(form, button("Dodaj składnik zużycia", () => add()), saveButton("Zapisz konfigurację", async () => {
+      const actions = createElement("div", "lab-dialog-actions");
+      actions.append(button("Anuluj", () => navigation.close()), saveButton("Zapisz konfigurację", async () => {
         const usage = [...entries.values()].map((read) => read());
         if (new Set(usage.map((row) => `${row.target}:${row.key}`)).size !== usage.length) throw new Error("Połącz powtórzone pozycje konfiguracji.");
         await updateDoc(inventory.store.ref("methods", method.id), { usage });
         current = usage;
-        configStatus.textContent = "Zapisano konfigurację.";
-      }, configStatus), configStatus);
+        navigation.close(true);
+        notify("Zapisano konfigurację.");
+      }, configStatus));
+      config.append(form, button("Dodaj składnik zużycia", () => add()), configStatus, actions);
       const counts = ["Wykonane oznaczenia", "Próby ślepe", "Wzorce", "Odzyski", "Dodatkowe powtórzenia"];
-      const amounts = counts.map((label, index) => input(label, index ? 0 : "", "number"));
+      const prior = drafts.get(method.id);
+      const amounts = counts.map((label, index) => input(label, prior?.amounts[index] ?? (index ? 0 : ""), "number"));
+      const amountFields = createElement("div", "lab-fields");
       amounts.forEach((value, index) => {
         value.min = "0";
         value.step = "1";
-        box.append(field(counts[index], value));
+        amountFields.append(field(counts[index], value));
       });
-      box.append(createElement("p", "text-xs text-gray-600", "Doliczaj tylko pozycje, których nie uwzględniono w liczbie wykonanych oznaczeń."));
-      const date = input("Data oznaczeń", formatLocalDate(), "date");
+      box.append(amountFields, createElement("p", "lab-muted", "Doliczaj tylko pozycje, których nie uwzględniono w liczbie wykonanych oznaczeń."));
+      const date = input("Data oznaczeń", prior?.date || formatLocalDate(), "date");
       const result = createElement("div", "space-y-1");
       const status = createElement("p", "text-sm text-red-700");
       let calculation;
       const invalidate = () => { calculation = null; result.replaceChildren(); };
-      for (const field of [...amounts, date]) field.addEventListener("input", invalidate);
+      for (const field of [...amounts, date]) field.addEventListener("input", () => {
+        drafts.set(method.id, { amounts: amounts.map((input) => input.value), date: date.value });
+        invalidate();
+      });
       box.append(field("Data oznaczeń", date), saveButton("Oblicz", () => {
         invalidate();
         if (!current.length) throw new Error("Najpierw zapisz recepturę zużycia metody.");
@@ -117,9 +130,16 @@ export function mountInventoryTheory(inventory, { db, firestore }) {
           status.textContent = "Zapisano wynik teoretyczny.";
         }, status));
       }, status, { online: false }), result, status);
-      content.replaceChildren(config, box);
+      content.replaceChildren(button("Zużycie na jedno oznaczenie", () => {
+        navigation.show(config, "Zużycie na jedno oznaczenie", { onDismiss: () => {
+          // Odtwórz pola po zamknięciu, także po odrzuceniu szkicu.
+          entries.clear();
+          form.replaceChildren();
+          current.forEach(add);
+        } });
+      }), box);
     };
-    filter.addEventListener("change", render);
+    filter.addEventListener("change", () => { selectedMethod = filter.value; render(); });
     render();
   });
 }

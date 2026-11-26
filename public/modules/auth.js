@@ -1,8 +1,9 @@
-import { byId } from "./ui.js?v=16";
+import { byId } from "./ui.js?v=17";
 
 export function createAuthModule({ auth, db, authApi, firestore, onAuthorized, onSignedOut, runSafely }) {
   const { browserLocalPersistence, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut } = authApi;
   const { doc, getDoc } = firestore;
+  let pending = false;
 
   function setLoginError(message = "") {
     const errorBox = byId("loginError");
@@ -11,6 +12,7 @@ export function createAuthModule({ auth, db, authApi, firestore, onAuthorized, o
   }
 
   async function login() {
+    if (pending) return;
     setLoginError();
     const email = byId("loginEmail").value.trim();
     const password = byId("loginPassword").value;
@@ -18,13 +20,21 @@ export function createAuthModule({ auth, db, authApi, firestore, onAuthorized, o
       setLoginError("Podaj adres e-mail i hasło.");
       return;
     }
+    const submit = byId("loginSection").querySelector("button[type=submit]");
     try {
+      pending = true;
+      submit.disabled = true;
+      submit.textContent = "Logowanie…";
       await setPersistence(auth, browserLocalPersistence);
       await signInWithEmailAndPassword(auth, email, password);
       byId("loginPassword").value = "";
     } catch (error) {
       console.error(error);
       setLoginError("Logowanie nie powiodło się. Sprawdź e-mail i hasło.");
+    } finally {
+      pending = false;
+      submit.disabled = false;
+      submit.textContent = "Zaloguj się";
     }
   }
 
@@ -58,9 +68,6 @@ export function createAuthModule({ auth, db, authApi, firestore, onAuthorized, o
   }
 
   function bind() {
-    byId("loginPassword").addEventListener("keydown", (event) => {
-      if (event.key === "Enter") runSafely(login, "Logowanie nie powiodło się.");
-    });
     onAuthStateChanged(auth, (user) => runSafely(() => handleChange(user), "Nie udało się uruchomić aplikacji."));
   }
 

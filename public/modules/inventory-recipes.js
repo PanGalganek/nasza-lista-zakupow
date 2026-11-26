@@ -1,7 +1,7 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=16";
-import { createElement } from "./ui.js?v=16";
-import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=16";
-import { batchLabel, button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=16";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=17";
+import { createElement, iconButton, notify } from "./ui.js?v=17";
+import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=17";
+import { batchLabel, button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=17";
 
 const say = (target, value) => target.append(createElement("p", "text-sm", value));
 const methodOptions = (inventory) => inventory.rows("methods").map((method) => [method.id, method.name]);
@@ -58,7 +58,7 @@ function readLocal(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 }
 
-export function mountInventoryRecipes(inventory, { db, firestore }) {
+export function mountInventoryRecipes(inventory, { db, firestore, navigation }) {
   const { collection, doc, setDoc } = firestore;
   const createRef = (name) => doc(collection(db, name));
   let preparationPending = false;
@@ -66,26 +66,35 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
     ...recipe.ingredients.flatMap((row) => [row.name, ...inventory.lotsFor(row.productId).flatMap((lot) => [lot.name, lot.group, lot.lotNumber, lot.formula, lot.cas, lot.producer])])];
 
   inventory.mount("recipes", (container) => {
-    const editor = createElement("div", "space-y-3");
-    const list = createElement("div", "space-y-2");
+    const list = createElement("div", "lab-list");
     const search = input("Szukaj receptury, składnika lub metody", "", "search");
     const methods = details("Metody badawcze");
-    const methodName = input("Nazwa nowej metody");
-    const methodStatus = createElement("p", "text-xs text-red-700");
-    for (const [, name] of methodOptions(inventory)) say(methods, name);
-    methods.append(field("Dodaj metodę", methodName), saveButton("Zapisz metodę", async () => {
-      const name = required(methodName.value, "Nazwa metody");
-      if (methodOptions(inventory).some(([, value]) => matchesInventorySearch(value, name) && matchesInventorySearch(name, value))) {
-        throw new Error("Metoda o tej nazwie już istnieje.");
-      }
-      await setDoc(createRef("magazyn_metody"), { name, usage: [] });
-      if (editor.parentNode === container) inventory.refresh();
-    }, methodStatus), methodStatus);
-    container.replaceChildren(createElement("h2", "text-lg font-bold", "Baza receptur"), methods,
-      button("Nowa receptura", () => showEditor({})), field("Szukaj receptury", search), editor, list);
+    const methodList = createElement("div", "lab-list");
+    methods.append(methodList, button("Dodaj metodę", showMethodEditor));
+    const toolbar = createElement("div", "lab-registry-tools");
+    toolbar.append(field("Szukaj receptury", search), button("Nowa receptura", () => showEditor({}), "lab-button-primary"));
+    container.replaceChildren(toolbar, methods, list);
+
+    function showMethodEditor() {
+      const form = createElement("div", "lab-stack");
+      const methodName = input("Nazwa nowej metody");
+      const status = createElement("p", "text-sm text-red-700");
+      const actions = createElement("div", "lab-dialog-actions");
+      actions.append(button("Anuluj", () => navigation.close()), saveButton("Zapisz metodę", async () => {
+        const name = required(methodName.value, "Nazwa metody");
+        if (methodOptions(inventory).some(([, value]) => matchesInventorySearch(value, name) && matchesInventorySearch(name, value))) {
+          throw new Error("Metoda o tej nazwie już istnieje.");
+        }
+        await setDoc(createRef("magazyn_metody"), { name, usage: [] });
+        navigation.close(true);
+        notify("Zapisano metodę.");
+      }, status));
+      form.append(field("Nazwa metody", methodName), status, actions);
+      navigation.show(form, "Dodaj metodę badawczą");
+    }
 
     function showEditor(recipe) {
-      const box = panel();
+      const box = createElement("div", "lab-stack");
       const name = input("Nazwa roztworu", recipe.name);
       const base = input("Objętość podstawowa (ml)", recipe.baseVolume || 100, "number");
       const preferred = select(flaskVolumes.map((value) => [value, `${value} ml`]), recipe.defaultVolume || 100);
@@ -95,7 +104,7 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
       const instruction = createElement("textarea", "w-full rounded border p-2 text-sm");
       instruction.value = recipe.instruction || "";
       instruction.maxLength = 4000;
-      const methods = createElement("div", "grid gap-1 sm:grid-cols-2");
+      const methods = createElement("div", "lab-fields");
       const choices = methodOptions(inventory).map(([id, label]) => {
         const checkbox = createElement("input");
         checkbox.type = "checkbox";
@@ -103,16 +112,16 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
         methods.append(field(label, checkbox));
         return [id, checkbox];
       });
-      const ingredients = createElement("div", "space-y-2");
+      const ingredients = createElement("div", "lab-list");
       const entries = new Map();
       const add = (item = {}) => {
-        const row = panel();
+        const row = createElement("div", "lab-panel lab-fields");
         const product = select([["", "Poza ewidencją magazynową"], ...inventory.productOptions()], item.productId);
         const label = input("Nazwa składnika poza magazynem", item.productId ? "" : item.name);
         const amount = input("Ilość", item.quantity ? formatQuantity(item.quantity, item.unit).replace(/\s+[^\s]+$/, "").replace(/\s/g, "") : "");
         const unit = unitSelect(item.unit);
         row.append(field("Składnik", product), field("Nazwa składnika poza magazynem", label), field("Ilość podstawowa", amount),
-          field("Jednostka", unit), button("Usuń składnik", () => { entries.delete(row); row.remove(); }));
+          field("Jednostka", unit), button("Usuń składnik", () => { entries.delete(row); row.remove(); }, "lab-button-danger"));
         entries.set(row, () => {
           const productId = product.value;
           const source = inventory.products().find(([id]) => id === productId)?.[1];
@@ -124,10 +133,10 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
       };
       (recipe.ingredients || [{}]).forEach(add);
       const status = createElement("p", "text-xs text-red-700");
-      box.append(field("Nazwa roztworu", name), field("Podstawowa objętość końcowa (ml)", base),
-        field("Dopuszczalne skalowanie proporcjonalne", proportional), field("Domyślna objętość", preferred), methods,
-        field("Instrukcja przygotowania (opcjonalnie)", instruction), ingredients, button("Dodaj składnik", () => add()),
-        saveButton("Zapisz recepturę", async () => {
+      const volumes = createElement("div", "lab-fields");
+      volumes.append(field("Podstawowa objętość końcowa (ml)", base), field("Domyślna objętość", preferred));
+      const actions = createElement("div", "lab-dialog-actions");
+      actions.append(button("Anuluj", () => navigation.close()), saveButton("Zapisz recepturę", async () => {
           const baseVolume = Number(base.value);
           const defaultVolume = Number(preferred.value);
           if (!Number.isInteger(baseVolume) || baseVolume < 1 || baseVolume > 1_000_000
@@ -141,17 +150,19 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
             methods: assigned, ingredients: [...entries.values()].map((read) => read()), instruction: instruction.value.trim(),
             version: (recipe.version || 0) + 1,
           });
-          if (editor.parentNode === container) {
-            editor.replaceChildren();
-            render();
-          }
-        }, status), button("Anuluj", () => editor.replaceChildren()), status);
-      editor.replaceChildren(box);
-      box.scrollIntoView({ block: "nearest" });
+          navigation.close(true);
+          notify("Zapisano recepturę.");
+        }, status));
+      box.append(field("Nazwa roztworu", name), volumes, field("Dopuszczalne skalowanie proporcjonalne", proportional),
+        createElement("h3", "", "Metody badawcze"), methods, createElement("h3", "", "Składniki"), ingredients,
+        button("Dodaj składnik", () => add()), field("Instrukcja przygotowania (opcjonalnie)", instruction), status, actions);
+      navigation.show(box, recipe.id ? "Edytuj recepturę" : "Nowa receptura");
     }
     const render = () => {
       list.replaceChildren();
       const methodsById = new Map(methodOptions(inventory));
+      methodList.replaceChildren(...[...methodsById.values()].map((name) => createElement("p", "", name)));
+      if (!methodList.childElementCount) methodList.append(createElement("p", "lab-empty", "Brak metod badawczych."));
       for (const recipe of inventory.rows("recipes")) {
         if (!matchesInventorySearch(search.value, ...recipeSearchContext(recipe, recipe.methods.map((id) => methodsById.get(id)).join(" ")))) continue;
         const card = details(recipe.name);
@@ -161,7 +172,7 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
         card.append(button("Edytuj recepturę", () => showEditor(recipe)));
         list.append(card);
       }
-      if (!list.children.length) say(list, "Brak receptur.");
+      if (!list.children.length) list.append(createElement("p", "lab-empty", "Brak receptur spełniających kryteria."));
     };
     search.addEventListener("input", render);
     inventory.onChange("recipes", render);
@@ -174,16 +185,16 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
     const favoritesOnly = createElement("input");
     favoritesOnly.type = "checkbox";
     const favorites = new Set(readLocal("e-lab-favorite-recipes", []));
-    const list = createElement("div", "space-y-2");
-    const editor = createElement("div", "space-y-2");
-    container.replaceChildren(createElement("h2", "text-lg font-bold", "Przygotowanie odczynników"),
-      field("Szukaj", search), field("Tylko ulubione", favoritesOnly), editor, list);
+    const list = createElement("div", "lab-list");
+    const toolbar = panel();
+    toolbar.append(field("Szukaj metody, receptury lub składnika", search), field("Tylko ulubione", favoritesOnly));
+    container.replaceChildren(toolbar, list);
 
     function prepare(recipe, methodId, methodName) {
       if (preparationPending) return;
-      const box = panel();
-      const choices = createElement("div", "flex flex-wrap gap-2");
-      const preview = createElement("div", "space-y-2");
+      const box = createElement("div", "lab-stack");
+      const choices = createElement("div", "lab-volume-grid");
+      const preview = createElement("div", "lab-stack");
       const status = createElement("p", "text-sm text-red-700");
       status.setAttribute("role", "status");
       const savedVolumes = readLocal("e-lab-recipe-volumes", {});
@@ -196,7 +207,7 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
         for (const control of choices.children) control.setAttribute("aria-pressed", String(Number(control.dataset.volume) === volume));
         try {
           const ingredients = recipeIngredients(recipe, volume);
-          const selectors = createElement("div", "space-y-2");
+          const selectors = createElement("div", "lab-panel lab-list");
           preview.append(selectors);
           ingredients.forEach((item, index) => {
             say(selectors, `${item.name} · ${formatQuantity(item.quantity, item.unit)}${item.productId ? "" : " · poza magazynem"}`);
@@ -218,25 +229,24 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
                 baseVolume: recipe.baseVolume, ingredients, instruction: recipe.instruction,
               } });
               writeLocal("e-lab-recipe-volumes", { ...savedVolumes, [recipe.id]: volume });
-              editor.replaceChildren(createElement("p", "text-sm font-bold text-green-800", "Przygotowanie zapisane."));
+              navigation.close(true);
+              notify("Zapisano przygotowanie roztworu.");
             } finally { preparationPending = false; }
           }, status);
           preview.append(confirm);
         } catch (error) { status.textContent = error.message; }
       };
       for (const value of flaskVolumes) {
-        const control = button(`${value} ml`, () => { if (!preparationPending) { volume = value; show(); } });
-        control.className += " min-h-12 min-w-20";
+        const control = button(value === 1000 ? "1 l" : `${value} ml`, () => { if (!preparationPending) { volume = value; show(); } });
         control.dataset.volume = String(value);
         control.disabled = !recipe.scalable && value !== recipe.baseVolume;
         choices.append(control);
       }
-      box.append(createElement("h3", "font-bold", recipe.name), choices);
+      box.append(createElement("p", "lab-muted", methodName), createElement("h3", "", "Objętość roztworu"), choices);
       if (recipe.instruction) say(box, recipe.instruction);
-      box.append(preview, status, button("Anuluj", () => { if (!preparationPending) editor.replaceChildren(); }));
-      editor.replaceChildren(box);
+      box.append(preview, status, button("Anuluj", () => navigation.close(), "lab-button-cancel"));
       show();
-      box.scrollIntoView({ block: "nearest" });
+      navigation.show(box, recipe.name, { busy: () => preparationPending });
     }
     const render = () => {
       const opened = new Set([...list.children].filter((element) => element.open).map((element) => element.dataset.method));
@@ -249,23 +259,39 @@ export function mountInventoryRecipes(inventory, { db, firestore }) {
         section.dataset.method = id;
         section.open = opened.has(id) || Boolean(search.value);
         for (const recipe of recipes) {
-          const row = createElement("div", "mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-sm");
-          row.append(createElement("span", "flex-1 font-semibold", recipe.name),
-            button(favorites.has(recipe.id) ? "Usuń z ulubionych" : "Dodaj do ulubionych", () => {
+          const row = createElement("div", "lab-data-row");
+          const summary = createElement("div", "lab-lot-info");
+          summary.append(createElement("h3", "", recipe.name),
+            createElement("p", "lab-muted", `${recipe.baseVolume} ml · ${recipe.ingredients.length} skł.`),
+            createElement("p", "lab-muted", recipe.ingredients.map((item) => `${item.name} ${formatQuantity(item.quantity, item.unit)}`).join(" · ")));
+          let availability = "Wczytywanie stanu składników…";
+          if (inventory.ready()) {
+            try {
+              allocateIngredients(recipeIngredients(recipe, recipe.defaultVolume), inventory.lotsFor);
+              availability = "Składniki dostępne dla objętości domyślnej";
+            } catch { availability = "Sprawdź dostępność składników"; }
+          }
+          summary.append(createElement("p", "lab-muted", availability));
+          const actions = createElement("div", "lab-actions");
+          const favorite = iconButton("star", favorites.has(recipe.id) ? "Usuń z ulubionych" : "Dodaj do ulubionych", () => {
               if (favorites.has(recipe.id)) favorites.delete(recipe.id); else favorites.add(recipe.id);
               writeLocal("e-lab-favorite-recipes", [...favorites]);
               render();
-            }), button("Przygotowałem roztwór", () => prepare(recipe, id, name)));
+            });
+          favorite.setAttribute("aria-pressed", String(favorites.has(recipe.id)));
+          actions.append(favorite, button("Przygotuj", () => prepare(recipe, id, name), "lab-button-primary"));
+          row.append(summary, actions);
           section.append(row);
         }
         list.append(section);
       }
-      if (!list.children.length) say(list, "Brak przypisanych receptur spełniających kryteria.");
+      if (!list.children.length) list.append(createElement("p", "lab-empty", "Brak przypisanych receptur spełniających kryteria."));
     };
     search.addEventListener("input", render);
     favoritesOnly.addEventListener("change", render);
     inventory.onChange("recipes", render);
     inventory.onChange("methods", render);
+    inventory.onChange("stock", render);
     render();
   });
 }

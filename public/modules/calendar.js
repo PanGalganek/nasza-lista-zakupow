@@ -1,12 +1,14 @@
-import { monthNames } from "./constants.js?v=16";
-import { byId, createButton, createElement } from "./ui.js?v=16";
-import { formatLocalDate, formatPolishDate, shiftCalendarMonth } from "../utils.js?v=16";
+import { monthNames } from "./constants.js?v=17";
+import { byId, createElement, iconButton, notify } from "./ui.js?v=17";
+import { formatLocalDate, formatPolishDate, shiftCalendarMonth } from "../utils.js?v=17";
 
-export function createCalendarModule({ db, firestore, registerSnapshot, reportListenerError }) {
+export function createCalendarModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query } = firestore;
   let events = [];
   let calendarDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let selectedDay = formatLocalDate();
+  let eventDate;
+  let pending = false;
 
   function selectDay(date) {
     selectedDay = date;
@@ -19,26 +21,39 @@ export function createCalendarModule({ db, firestore, registerSnapshot, reportLi
     render();
   }
 
+  function openForm() {
+    eventDate = selectedDay;
+    byId("eventFormDate").textContent = formatPolishDate(eventDate);
+    byId("eventTitle").value = "";
+    navigation.show(byId("eventForm"), "Dodaj wydarzenie", { busy: () => pending });
+  }
+
   async function addEvent() {
-    const title = prompt("Nazwa wydarzenia:")?.trim();
-    if (!title) return;
-    await addDoc(collection(db, "wydarzenia"), { title, date: selectedDay, timestamp: Date.now() });
+    const title = byId("eventTitle").value.trim();
+    if (!title || pending || !eventDate) return;
+    const submit = byId("eventForm").querySelector("[type=submit]");
+    submit.disabled = pending = true;
+    try {
+      await addDoc(collection(db, "wydarzenia"), { title, date: eventDate, timestamp: Date.now() });
+      navigation.close(true);
+      notify("Zapisano wydarzenie.");
+    } finally { submit.disabled = pending = false; }
   }
 
   function renderEventList(container, selectedEvents, emptyText, showDay = false) {
     container.replaceChildren();
     if (selectedEvents.length === 0) {
-      container.append(createElement("p", "text-[10px] text-gray-400 italic", emptyText));
+      container.append(createElement("p", "lab-empty", emptyText));
       return;
     }
     selectedEvents.forEach((event) => {
-      const row = createElement("div", showDay ? "flex justify-between items-center bg-white p-2 rounded border-l-4 border-blue-400 shadow-sm text-[10px] mb-1 text-black font-bold" : "flex justify-between bg-white p-2 rounded shadow-sm text-[11px] font-semibold text-black");
+      const row = createElement("div", "lab-data-row");
       const label = showDay ? `${formatPolishDate(event.date)} — ${event.title || "Bez nazwy"}` : event.title || "Bez nazwy";
       row.append(
         createElement("span", "", label),
-        createButton("✕", "Usuń wydarzenie", async () => {
+        iconButton("trash", "Usuń wydarzenie", async () => {
           if (confirm(`Usunąć „${event.title}”?`)) await deleteDoc(doc(db, "wydarzenia", event.id));
-        }, "text-red-600"),
+        }, "lab-button-danger"),
       );
       container.append(row);
     });
@@ -52,7 +67,7 @@ export function createCalendarModule({ db, firestore, registerSnapshot, reportLi
     const firstWeekday = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1).getDay();
     const daysInMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate();
     const offset = firstWeekday === 0 ? 6 : firstWeekday - 1;
-    for (let index = 0; index < offset; index += 1) grid.append(createElement("div", "calendar-day opacity-0"));
+    for (let index = 0; index < offset; index += 1) grid.append(createElement("div"));
 
     const today = formatLocalDate();
     for (let day = 1; day <= daysInMonth; day += 1) {
@@ -60,7 +75,9 @@ export function createCalendarModule({ db, firestore, registerSnapshot, reportLi
       const hasEvent = events.some((event) => event.date === date);
       const cell = createElement("button", `calendar-day ${date === today ? "today" : ""} ${date === selectedDay ? "selected" : ""} ${hasEvent ? "has-event" : ""}`, day);
       cell.type = "button";
-      cell.setAttribute("aria-label", `Wybierz ${formatPolishDate(date)}`);
+      cell.setAttribute("aria-label", `Wybierz ${formatPolishDate(date)}${hasEvent ? ", zaplanowane wydarzenia" : ""}`);
+      cell.setAttribute("aria-pressed", String(date === selectedDay));
+      if (date === today) cell.setAttribute("aria-current", "date");
       cell.addEventListener("click", () => selectDay(date));
       grid.append(cell);
     }
@@ -83,5 +100,5 @@ export function createCalendarModule({ db, firestore, registerSnapshot, reportLi
     ));
   }
 
-  return { addEvent, changeMonth, render, start };
+  return { addEvent, changeMonth, openForm, render, start };
 }

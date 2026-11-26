@@ -1,55 +1,51 @@
-import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=16";
-import { byId, createButton, createElement, createInput, runSafely } from "./ui.js?v=16";
-import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=16";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=16";
-import { availability } from "./inventory-history.js?v=16";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=16";
-import { renderInventoryAlerts } from "./inventory-alerts.js?v=16";
+import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=17";
+import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=17";
+import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=17";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=17";
+import { availability } from "./inventory-history.js?v=17";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=17";
+import { renderInventoryAlerts } from "./inventory-alerts.js?v=17";
 
-export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory }) {
+export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory, navigation }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
   let items = [];
   let category = "Wzorce";
   let editCategory = null;
   let formRowCount = 0;
-  let openInlineGroupKey = null;
   const packageFields = new WeakMap();
+  const expanded = new Set();
   let receiptDraft;
-  let inlineForm;
   let inlinePending = false;
 
   function createInlineField(labelText, input, className = "") {
-    const label = createElement("label", className || "flex flex-col gap-1");
-    label.append(createElement("span", "text-[9px] font-bold uppercase text-gray-500", labelText), input);
+    const label = createElement("label", className || "lab-field");
+    label.append(createElement("span", "", labelText), input);
     return label;
   }
 
   function addFormRow(data = null) {
     formRowCount += 1;
     const container = byId("dynamicItemsContainer");
-    const row = createElement("div", "p-4 bg-white rounded-lg border border-blue-200 shadow-sm space-y-3 relative animate-fadeIn text-black");
+    const row = createElement("div", "lab-panel lab-registration");
     row.dataset.rowId = String(formRowCount);
-    const header = createElement("div", "flex justify-between items-center border-b pb-1 text-black");
-    header.append(createElement("span", "text-[9px] font-bold text-blue-400 uppercase", `Pozycja #${formRowCount}`));
-    if (container.children.length > 0) header.append(createButton("USUŃ", "Usuń pozycję z formularza", () => row.remove(), "text-red-500 text-[9px] font-bold"));
+    const header = createElement("div", "lab-inline-header");
+    header.append(createElement("h3", "", `Pozycja ${formRowCount}`));
+    if (container.children.length > 0) header.append(createButton("Usuń", "Usuń pozycję z formularza", () => row.remove(), "lab-button lab-button-danger"));
 
-    const name = createInput("chem-name w-full border p-2 rounded text-sm outline-none text-black", "Nazwa", data?.name);
+    const name = createInput("chem-name", "Nazwa", data?.name);
+    name.setAttribute("data-form-focus", "");
     name.maxLength = 200;
-    const groupRow = createElement("div", "grid grid-cols-2 gap-2 text-black");
-    const group = createInput("chem-group border p-2 rounded text-sm text-black", "Grupa (np. II-4/31)", data?.group);
+    const groupRow = createElement("div", "lab-fields");
+    const group = createInput("chem-group", "Grupa (np. II-4/31)", data?.group);
     group.maxLength = 100;
-    const usage = createInput("chem-usage border p-2 rounded text-sm text-black", "Zastosowanie", data?.usage);
+    const usage = createInput("chem-usage", "Zastosowanie", data?.usage);
     usage.maxLength = 500;
-    groupRow.append(group, usage);
-    const dateRow = createElement("div", "grid grid-cols-2 gap-2 text-black");
-    const receivedWrapper = createElement("div");
-    receivedWrapper.append(createElement("label", "text-[8px] font-bold text-gray-400 uppercase", "Przyjęcie:"));
-    receivedWrapper.append(createInput("chem-received border p-2 rounded text-sm w-full text-black", "", data?.received ?? formatLocalDate(), "date"));
-    const expiryWrapper = createElement("div");
-    expiryWrapper.append(createElement("label", "text-[8px] font-bold text-red-400 uppercase", "Ważność:"));
-    expiryWrapper.append(createInput("chem-expiry border p-2 rounded text-sm w-full text-black", "", data?.expiry, "date"));
-    dateRow.append(receivedWrapper, expiryWrapper);
-    row.append(header, name, groupRow, dateRow);
+    groupRow.append(createInlineField("Grupa / oznaczenie", group), createInlineField("Zastosowanie", usage));
+    const dateRow = createElement("div", "lab-fields");
+    dateRow.append(createInlineField("Data przyjęcia", createInput("chem-received", "", data?.received ?? formatLocalDate(), "date")),
+      createInlineField("Termin ważności", createInput("chem-expiry", "", data?.expiry, "date")));
+    row.append(header, createElement("h4", "lab-section-title", "Dane podstawowe"), createInlineField("Nazwa", name), groupRow,
+      createElement("h4", "lab-section-title", "Daty partii"), dateRow);
     if (inventory) {
       const packaging = inventory.fields(data || {}, Boolean(data));
       packageFields.set(row, packaging);
@@ -75,7 +71,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const filled = [...byId("dynamicItemsContainer").children].map((row) => [row, payloadFromRow(row)]).filter(([, item]) => item.name);
     const selectedItems = filled.map(([, item]) => item);
     if (selectedItems.length === 0) {
-      alert("Podaj nazwę co najmniej jednej pozycji.");
+      notify("Podaj nazwę co najmniej jednej pozycji.", true);
       return;
     }
     const editId = byId("editId").value;
@@ -98,7 +94,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         selectedItems.forEach((item, index) => batch.set(doc(collection(db, "odczynniki")), { ...item, timestamp: Date.now() + index, ordered: false }));
         await batch.commit();
       }
-      cancelEdit();
+      if (navigation) { navigation.close(true); notify("Zapisano pozycję."); }
+      else cancelEdit();
     } finally {
       submitButton.disabled = false;
     }
@@ -110,21 +107,25 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     byId("dynamicItemsContainer").replaceChildren();
     formRowCount = 0;
     addFormRow(item);
-    byId("formContainer").classList.add("editing-mode");
-    byId("cancelEditBtn").classList.remove("hidden");
-    byId("submitBtn").textContent = "Zaktualizuj wybraną butelkę";
-    queueMicrotask(() => {
-      byId("formContainer").scrollIntoView({ behavior: "smooth", block: "start" });
-      byId("formContainer").querySelector(".chem-name")?.focus({ preventScroll: true });
-    });
+    byId("addFormRowBtn").classList.add("hidden");
+    byId("submitBtn").textContent = "Zapisz zmiany";
+    presentForm("Edytuj partię");
+  }
+
+  function presentForm(title) {
+    navigation?.show(byId("formContainer"), title, { onDismiss: cancelEdit, busy: () => byId("submitBtn").disabled });
+  }
+
+  function openForm() {
+    cancelEdit();
+    presentForm(category === "Odczynniki" ? "Dodaj odczynnik" : "Dodaj wzorzec");
   }
 
   function cancelEdit() {
     receiptDraft = null;
     editCategory = null;
     byId("editId").value = "";
-    byId("formContainer").classList.remove("editing-mode");
-    byId("cancelEditBtn").classList.add("hidden");
+    byId("addFormRowBtn").classList.remove("hidden");
     byId("submitBtn").textContent = "Zapisz wszystko";
     byId("dynamicItemsContainer").replaceChildren();
     formRowCount = 0;
@@ -149,7 +150,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       "✏️ Edytuj",
       `Edytuj pozycję ${alertData.item.group || alertData.name}`,
       () => startEdit(alertData.item),
-      "ml-auto shrink-0 rounded border border-current bg-white px-2 py-1 text-[9px] font-black uppercase shadow-sm",
+      "lab-button",
     );
     row.append(
       createElement("span", "text-[14px]", icons[alertData.type]),
@@ -160,12 +161,13 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   }
 
   function createInlineForm(group) {
-    const form = createElement("form", "border-b border-blue-100 bg-blue-50 p-3 text-left");
+    const form = createElement("form", "lab-stack");
     form.dataset.inlineChemicalForm = group.key;
-    const title = createElement("p", "mb-3 text-[10px] font-black uppercase text-blue-800", `Dodaj nową pozycję do: ${group.name}`);
-    const fields = createElement("div", "grid grid-cols-1 gap-2 md:grid-cols-2");
+    const title = createElement("p", "lab-muted", group.name);
+    const fields = createElement("div", "lab-fields");
     const groupInput = createInput("inline-group w-full rounded border p-2 text-sm text-black", "Grupa / numer", suggestNextGroupValue(group.items, group.prefix));
     groupInput.maxLength = 100;
+    groupInput.setAttribute("data-form-focus", "");
     const usageInput = createInput("inline-usage w-full rounded border p-2 text-sm text-black", "Zastosowanie", group.items.find((item) => item.usage)?.usage || "");
     usageInput.maxLength = 500;
     const receivedInput = createInput("inline-received w-full rounded border p-2 text-sm text-black", "", formatLocalDate(), "date");
@@ -177,7 +179,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     if (inventory) {
       const representatives = [...new Map(group.items.slice().sort((a, b) => a.timestamp - b.timestamp).map((item) => [productId(item), item])).entries()];
       source = select(representatives.map(([id, item]) => [id, batchLabel(item)]));
-      const box = createElement("div");
+      const box = createElement("div", "lab-field-wide");
       const suggest = () => {
         packaging = inventory.fields(representatives.find(([key]) => key === source.value)?.[1] || {});
         box.replaceChildren(packaging.node);
@@ -186,11 +188,11 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       suggest();
       fields.append(field("Pozycja handlowa", source), box);
     }
-    const actions = createElement("div", "mt-3 flex justify-end gap-2");
-    const cancelButton = createElement("button", "rounded bg-gray-200 px-4 py-2 text-[10px] font-bold uppercase text-gray-700", "Anuluj");
+    const actions = createElement("div", "lab-dialog-actions");
+    const cancelButton = createElement("button", "lab-button lab-button-cancel", "Anuluj");
     cancelButton.type = "button";
-    cancelButton.addEventListener("click", () => { if (!inlinePending) { openInlineGroupKey = null; inlineForm = null; render(); } });
-    const submitButton = createElement("button", "rounded bg-blue-600 px-4 py-2 text-[10px] font-bold uppercase text-white", "Zapisz pozycję");
+    cancelButton.addEventListener("click", () => navigation?.close());
+    const submitButton = createElement("button", "lab-button lab-button-primary", "Zapisz partię");
     submitButton.type = "submit";
     actions.append(cancelButton, submitButton);
     form.addEventListener("submit", (event) => {
@@ -211,9 +213,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
             if (receipt?.fingerprint !== fingerprint) receipt = { fingerprint, id: inventory.store.operationId() };
             await inventory.store.receive([{ fields: { ...data, ...values, productId: source.value }, initial }], receipt.id);
           } else await addDoc(collection(db, "odczynniki"), data);
-          openInlineGroupKey = null;
-          inlineForm = null;
-          render();
+          navigation?.close(true);
+          notify("Zapisano nową partię.");
         } finally { submitButton.disabled = false; inlinePending = false; }
       }, "Nie udało się dodać nowej pozycji.");
     });
@@ -270,63 +271,78 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
 
     sortedGroups.forEach((group) => {
       group.items.sort((a, b) => sortMode === "expiry" ? String(a.expiry || "9999-12-31").localeCompare(String(b.expiry || "9999-12-31")) : String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
-      const card = createElement("section", "bg-white rounded-xl border shadow-sm mb-3 overflow-hidden text-black");
-      const header = createElement("div", "bg-gray-100 px-4 py-2 border-b flex items-center gap-3");
-      header.append(createElement("span", "bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold", `LP ${lpByItem.get(group.items[0].id)}`));
-      const headingText = createElement("div", "flex flex-1 items-center gap-2 overflow-hidden text-black");
-      headingText.append(createElement("span", "font-black uppercase text-xs truncate", group.name), createElement("span", "font-bold text-gray-500 text-[10px] uppercase border-l pl-2 leading-none border-gray-300", group.prefix));
-      const isOpen = openInlineGroupKey === group.key;
-      const addButton = createButton(isOpen ? "−" : "+", isOpen ? `Zamknij formularz dla ${group.name}` : `Dodaj nową pozycję do ${group.name}`, () => {
-        if (inlinePending) return;
-        openInlineGroupKey = isOpen ? null : group.key;
-        inlineForm = null;
-        render();
-        if (!isOpen) queueMicrotask(() => document.querySelector("[data-inline-chemical-form] .inline-group")?.focus());
-      }, "ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-black text-white shadow-sm hover:bg-blue-700");
-      header.append(headingText, addButton);
-      card.append(header);
+      const card = createElement("details", "lab-accordion lab-product");
+      const wasOpen = expanded.has(group.key);
+      card.open = wasOpen;
+      card.addEventListener("toggle", () => {
+        if (card.open) expanded.add(group.key);
+        else expanded.delete(group.key);
+      });
+      const primary = group.items[0];
+      const summary = createElement("summary", "lab-product-summary");
+      const name = createElement("span", "lab-product-name");
+      name.append(createElement("span", "lab-chip", `LP ${lpByItem.get(primary.id)}`), createElement("span", "", group.name));
+      const sub = createElement("span", "lab-product-summary-info");
+      const expiry = earliestExpiry(group);
+      const identifiers = [group.items.length === 1 ? primary.group : group.prefix, expiry === "9999-12-31" ? "Brak terminu" : `Ważność: ${formatPolishDate(expiry)}`];
+      if (group.items.length > 1) identifiers.push(`${group.items.length} partie`);
+      if (searchQuery) identifiers.push(group.category);
+      sub.append(createElement("span", "", identifiers.filter(Boolean).join(" · ")));
+      if (expiry < formatLocalDate()) sub.append(createElement("span", "text-red-700 font-semibold", "Po terminie"));
+      const productIds = [...new Set(group.items.map(productId))];
       if (inventory) {
-        for (const id of new Set(group.items.map(productId))) {
-          const related = inventory.lotsFor(id);
-          const total = availability(related);
-          if (total !== "—") card.append(createElement("p", "px-3 pt-2 text-xs text-gray-600",
-            `Dostępny zapas ${related.length > 1 ? `(${related.length} partii) ` : ""}${total}`));
+        if (!inventory.ready()) sub.append(createElement("span", "", "Wczytywanie stanu…"));
+        else if (group.items.length === 1) sub.append(showStock(inventory.withStock(primary), { compact: true }));
+        else if (productIds.length === 1) {
+          const total = availability(inventory.lotsFor(productIds[0]));
+          sub.append(createElement("span", "", total === "—" ? "Zapas w szczegółach partii" : `Dostępny zapas ${total}`));
         }
       }
-      if (isOpen) {
-        inlineForm ??= createInlineForm(group);
-        card.append(inlineForm);
-      }
+      summary.append(name, sub);
+      card.append(summary);
+      const controls = createElement("div", "lab-actions");
+      controls.append(createButton("Nowa partia", `Dodaj nową pozycję do ${group.name}`, () => {
+        if (inlinePending) return;
+        const form = createInlineForm(group);
+        navigation?.show(form, "Nowa partia", { busy: () => inlinePending });
+      }, "lab-button lab-button-primary"));
+      card.append(controls);
 
       group.items.forEach((item) => {
         const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
         const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
-        const color = days !== null && days < 0 ? "text-red-600 font-bold" : days !== null && days <= (categoryOf(item) === "Odczynniki" ? 70 : 40) ? "text-orange-500 font-bold" : "text-black font-semibold";
-        const suffix = String(item.group || "").includes("/") ? `/${String(item.group).split("/")[1]}` : "•";
-        const row = createElement("div", `${item.ordered ? "ordered-row " : ""}flex flex-wrap items-center justify-between gap-2 p-3 border-t text-[11px] text-black`);
-        const info = createElement("div", "flex min-w-0 items-center gap-3");
-        info.append(createElement("span", "font-black text-blue-400 w-8", suffix));
-        const details = createElement("div", "flex min-w-0 flex-col text-black [overflow-wrap:anywhere]");
-        const expiryLine = createElement("span", "uppercase");
-        expiryLine.append(document.createTextNode("Ważność: "), createElement("span", color, formatPolishDate(item.expiry)));
-        const dayText = days !== null && days < 0 ? "PO TERMINIE" : days === null ? "brak daty" : `${days} dni`;
-        expiryLine.append(document.createTextNode(" "), createElement("span", "text-[8px] text-gray-400", `(${dayText})`));
-        details.append(expiryLine, createElement("span", "text-[8px] italic text-gray-500", item.usage || ""));
-        if (inventory) {
-          if (item.lotNumber) details.append(createElement("span", "", `Partia ${item.lotNumber}`));
-          details.append(inventory.ready() ? showStock(inventory.withStock(item)) : createElement("span", "", "Odczyt stanu…"));
-        }
-        info.append(details);
-        const actions = createElement("div", "flex flex-wrap justify-end gap-2");
-        actions.append(
-          createButton(item.ordered ? "✅" : "🛒", item.ordered ? "Cofnij oznaczenie zamówienia" : "Oznacz jako zamówione", () => {
-            if (inventory) requireInventoryConnection();
-            return updateDoc(doc(db, "odczynniki", item.id), { ordered: !item.ordered });
-          }),
-          createButton("✏️", "Edytuj pozycję", () => startEdit(item)),
-          ...(inventory?.actions(item) || []),
-        );
+        const color = days !== null && days < 0 ? "text-red-700 font-semibold"
+          : days !== null && days <= (categoryOf(item) === "Odczynniki" ? 70 : 40) ? "text-amber-800 font-semibold" : "lab-muted";
+        const row = createElement("div", `${item.ordered ? "ordered-row " : ""}lab-lot`);
+        const info = createElement("div", "lab-lot-info");
+        info.append(createElement("strong", "", item.lotNumber ? `Partia ${item.lotNumber}` : item.group || "Partia bez numeru"));
+        const expiryLine = createElement("span", color);
+        expiryLine.append(document.createTextNode("Ważność: "), createElement("span", "", formatPolishDate(item.expiry)));
+        if (days !== null) expiryLine.append(document.createTextNode(days < 0 ? " · po terminie" : ` · ${days} dni`));
+        info.append(expiryLine);
+        if (item.usage) info.append(createElement("span", "lab-muted", item.usage));
+        if (inventory) info.append(inventory.ready() ? showStock(inventory.withStock(item)) : createElement("span", "", "Wczytywanie stanu…"));
+        const actions = createElement("div", "lab-lot-actions");
+        const orderLabel = item.ordered ? "Cofnij oznaczenie zamówienia" : "Oznacz jako zamówione";
+        const order = async () => {
+          if (inventory) requireInventoryConnection();
+          await updateDoc(doc(db, "odczynniki", item.id), { ordered: !item.ordered });
+          notify(item.ordered ? "Cofnięto oznaczenie zamówienia." : "Oznaczono jako zamówione.");
+        };
+        const edit = () => startEdit(item);
+        actions.append(...(inventory?.actions(item) || []),
+          createButton("Edytuj", "Edytuj pozycję", edit, "lab-button"),
+          navigation ? iconButton(item.ordered ? "check" : "cart", orderLabel, order) : createButton("Zamówienie", orderLabel, order));
         row.append(info, actions);
+        const archive = inventory?.archiveActions(item) || [];
+        if (archive.length) {
+          const advanced = createElement("details", "lab-lot-danger");
+          advanced.append(createElement("summary", "", "Zamknięcie partii"));
+          const buttons = createElement("div", "lab-actions");
+          buttons.append(...archive);
+          advanced.append(buttons);
+          row.append(advanced);
+        }
         card.append(row);
       });
       container.append(card);
@@ -352,12 +368,6 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
 
   function switchSubTab(target) {
     category = target;
-    openInlineGroupKey = null;
-    inlineForm = null;
-    ["Wzorce", "Odczynniki"].forEach((tab) => {
-      const button = byId(`subBtnOdczynniki${tab}`);
-      button.className = `px-4 py-2 border rounded text-[9px] font-bold uppercase whitespace-nowrap ${target === tab ? "active-sub-tab-odczynniki" : "bg-white text-gray-500"}`;
-    });
     render();
   }
 
@@ -382,7 +392,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
 
   return {
     actions: {
-      addFormRow, cancelEdit, saveItems, switchSubTab,
+      addFormRow, cancelEdit, openForm, saveItems, switchSubTab,
     },
     bind, initializeForm: cancelEdit, start,
   };

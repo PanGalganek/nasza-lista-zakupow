@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const moduleUrls = ["auth", "calendar", "chemicals", "constants", "equipment", "schedule", "ui",
+const moduleUrls = ["auth", "calendar", "chemicals", "constants", "equipment", "schedule", "ui", "icons", "navigation", "shell",
   "inventory-quantity", "inventory-store", "inventory-ui", "inventory-alerts", "inventory-history",
   "inventory-recipes", "inventory-theory", "inventory-docx", "inventory-orders"]
   .map((name) => new URL(`../public/modules/${name}.js`, import.meta.url));
@@ -29,8 +29,8 @@ test("dynamic application data is not rendered with innerHTML", () => {
 });
 
 test("every chemical LP can render its own add-position form", () => {
-  assert.match(modules, /Dodaj nową pozycję do:/);
-  assert.match(modules, /data-inline-chemical-form/);
+  assert.match(modules, /createInlineForm\(group\)/);
+  assert.match(modules, /dataset\.inlineChemicalForm/);
   assert.match(modules, /suggestNextGroupValue\(group\.items, group\.prefix\)/);
 });
 
@@ -44,13 +44,23 @@ test("chemical inventory provides search, status filters, and sorting", () => {
   assert.match(modules, /Brak pozycji spełniających kryteria\./);
 });
 
+test("routed screens share unique form targets and an accessible dialog", () => {
+  const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
+  assert.equal(new Set(ids).size, ids.length);
+  for (const id of ["homeScreen", "inventoryNav", "inventoryRegistry", "chemicalFilters", "formContainer",
+    "formWzorcowanie", "eventForm", "inventoryAction", "dialogTitle", "dialogClose"]) assert.ok(ids.includes(id));
+  assert.match(html, /<dialog id="labDialog"[^>]+aria-labelledby="dialogTitle"/);
+  assert.match(html, /aria-controls="chemicalFilters" aria-expanded="false"/);
+  assert.match(app, /"go-back": \(\) => navigation\.back\(\)/);
+});
+
 test("chemical alerts provide direct editing of the affected record", () => {
   assert.match(modules, /✏️ Edytuj/);
   assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
-  assert.match(modules, /formContainer"\)\.scrollIntoView/);
+  assert.match(modules, /presentForm\("Edytuj partię"\)/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=16/);
-  assert.match(html, /\.\/app\.js\?v=16/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=17/);
+  assert.match(html, /\.\/app\.js\?v=17/);
 });
 
 test("all visible full dates use the Polish day-month-year format", () => {
@@ -85,17 +95,18 @@ test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=16")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=17")));
 });
 
 test("PWA assets use the correctly cased service worker and local icon", () => {
   assert.match(app, /register\("\.\/sw\.js", \{ updateViaCache: "none" \}\)/);
   assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v16"/);
-  assert.match(html, /styles\.css\?v=16/);
-  assert.match(serviceWorker, /styles\.css\?v=16/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v17"/);
+  assert.match(html, /styles\.css\?v=17/);
+  assert.match(serviceWorker, /styles\.css\?v=17/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
+  for (const name of ["icons", "navigation", "shell"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=17`));
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {
