@@ -1,4 +1,4 @@
-import { formatPolishDate } from "../utils.js?v=23";
+import { formatPolishDate } from "../utils.js?v=25";
 
 const widths = [454, 1417, 3855, 1247, 1106, 1389, 1247, 1049, 1219, 1162, 1191];
 const encoder = new TextEncoder();

@@ -1,16 +1,15 @@
-import { chemicalCategory, formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=23";
-import { createElement } from "./ui.js?v=23";
-import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=23";
-import { lotOptions, orderItemKey, standardKind } from "./inventory-items.js?v=23";
-import { button, details, field, input, orderDescriptionLimit, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=23";
-import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=23";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=23";
+import { chemicalCategory, formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=25";
+import { createElement } from "./ui.js?v=25";
+import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=25";
+import { lotOptions, orderItemKey, orderLineProgress, orderPackageCount, standardKind } from "./inventory-items.js?v=25";
+import { button, details, field, input, orderDescriptionLimit, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=25";
+import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=25";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=25";
 
 export const orderRequesters = ["B. Joachim", "A. Cieniewski", "K. Łoboda", "J. Gosławska", "M. Piasecka"];
 const requesterStorage = "e-lab-order-requester";
 
-function download(rows, date, requester) {
-  const blob = createOrderDocx(rows, formatPolishDate(date), requester);
+function download(rows, date, requester, blob = createOrderDocx(rows, formatPolishDate(date), requester)) {
   const url = URL.createObjectURL(blob);
   const link = createElement("a");
   link.href = url;
@@ -57,13 +56,13 @@ export function suggestedOrderLot(lots) {
 function orderLine(product, lot, current) {
   const size = String(current.size).trim();
   const count = Number(current.count || 1);
-  if (size && current.unit && (!Number.isInteger(count) || count < 1 || count > 10000)) throw new Error("Podaj liczbę opakowań od 1 do 10 000.");
+  if (!Number.isInteger(count) || count < 1 || count > 10000) throw new Error("Podaj liczbę opakowań od 1 do 10 000.");
   const amount = size && current.unit
     ? `${count > 1 ? `${count} × ` : ""}${formatQuantity(quantity(size, current.unit), current.unit)}` : "";
   const name = current.description.trim() || registerOrderName(product);
   if (name.length > orderDescriptionLimit) throw new Error("Opis zamówieniowy jest zbyt długi.");
   if (current.expiry && !parseLocalDate(current.expiry)) throw new Error("Podaj poprawny termin ważności partii.");
-  const line = { productId: productId(lot), lotId: lot.id, name, amount, expiry: current.expiry, standardKind: current.standardKind };
+  const line = { productId: productId(lot), lotId: lot.id, name, amount, packages: count, expiry: current.expiry, standardKind: current.standardKind };
   return { ...line, notes: orderColumns(line, "")[10] };
 }
 
@@ -89,7 +88,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
     const selection = panel();
     const warnings = createElement("button", "lab-button lab-button-warning", "Przejdź do ostrzeżeń");
     warnings.type = "button";
-    warnings.dataset.route = "inventory";
+    warnings.dataset.route = "alerts";
     selection.append(field("Dodaj pozycję", search), warnings, candidates);
     container.replaceChildren(note, selection, draft, history);
 
@@ -122,7 +121,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
           renderDraft();
         });
         const label = [product.name, kind ? `(${kind})` : "", product.producer, product.group,
-          lots.length > 1 ? `Partie (${lots.length})` : "", lots.every((lot) => lot.ordered) ? "zamówiono" : ""].filter(Boolean).join(" · ");
+          lots.length > 1 ? `Partie (${lots.length})` : "", lots.every((lot) => inventory.orderStatus(lot).state === "ordered") ? "zamówiono" : ""].filter(Boolean).join(" · ");
         candidates.append(field(label, checkbox));
       }
     };
@@ -198,7 +197,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
           renderDraft();
         });
         const title = [product.name, kind ? `(${kind})` : "", product.producer,
-          lot.ordered ? "partia już oznaczona jako zamówiona" : ""].filter(Boolean).join(" · ");
+          inventory.orderStatus(lot).state === "ordered" ? "partia już oznaczona jako zamówiona" : ""].filter(Boolean).join(" · ");
         row.append(createElement("h4", "lab-field-wide lab-section-title", title));
         row.append(descriptionField);
         if (!product.orderDescription?.trim()) row.append(createElement("p", "lab-muted lab-field-wide",
@@ -226,10 +225,11 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
         if (!orderRequesters.includes(buyer.value)) throw new Error("Wybierz osobę zamawiającą.");
         if (!parseLocalDate(dateInput.value)) throw new Error("Podaj poprawną datę zamówienia.");
         const selected = selections.map(ensureRow);
-        if (selected.some(({ lot }) => lot.ordered)
+        if (selected.some(({ lot }) => inventory.orderStatus(lot).state === "ordered")
           && !confirm("Zamówienie zawiera pozycje, które już oznaczono jako zamówione. Czy kontynuować?")) return;
         const lines = selected.map((current) => orderLine(current.product, current.lot, current));
         const order = { lines, date: dateInput.value, requester: buyer.value };
+        const blob = createOrderDocx(lines, formatPolishDate(order.date), order.requester);
         pending = true;
         try {
           const current = await runTransaction(db, async (transaction) => {
@@ -238,7 +238,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
             transaction.set(orderRef, { ...order, status: "generated", createdAt: serverTimestamp() });
             return order;
           });
-          download(current.lines, current.date, current.requester);
+          download(current.lines, current.date, current.requester, current === order ? blob : undefined);
           for (const key of selections) {
             inventory.orderSelections.delete(key);
             values.delete(key);
@@ -256,10 +256,16 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
       const orders = [...inventory.rows("orders")].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
       [...history.children].slice(1).forEach((child) => child.remove());
       for (const order of orders) {
-        const card = details(`${formatPolishDate(order.date)} · ${order.status === "ordered" ? "Zamówiono" : "Wygenerowano"} · ${order.lines.length} poz.`);
-        order.lines.forEach((line) => {
+        const delivered = order.lines.every((_, index) => orderLineProgress(order, index).complete);
+        const stage = order.status === "ordered" ? delivered ? "Dostarczono" : "Zamówiono" : "Wygenerowano";
+        const card = details(`${formatPolishDate(order.date)} · ${stage} · ${order.lines.length} poz.`);
+        if (order.requester) card.append(createElement("p", "lab-muted", order.requester));
+        order.lines.forEach((line, index) => {
           const [, , name, amount] = orderColumns(line, "");
-          card.append(createElement("p", "text-sm", [name, amount].filter(Boolean).join(" · ")));
+          const { complete, received } = orderLineProgress(order, index);
+          const count = orderPackageCount(line);
+          const progress = complete ? "Dostarczono" : received ? `Przyjęto ${received}${count ? ` z ${count}` : ""} op.` : "";
+          card.append(createElement("p", "text-sm", [name, amount, progress].filter(Boolean).join(" · ")));
         });
         card.append(button("Pobierz ponownie", () => download(order.lines, order.date, order.requester)));
         if (order.status === "generated") {
@@ -268,15 +274,9 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
             choice.disabled = true;
             try {
               requireInventoryConnection();
-              const lots = [...new Map(order.lines.flatMap((line) => {
-                const registered = inventory.lotsFor(line.productId);
-                return line.lotId ? registered.filter(({ id }) => id === line.lotId) : registered;
-              }).map((lot) => [lot.id, lot])).values()];
-              if (lots.length > 499) throw new Error("Zamówienie obejmuje zbyt wiele partii do jednoczesnego oznaczenia.");
               const orderRef = inventory.store.ref("orders", order.id);
               await runTransaction(db, async (transaction) => {
                 if ((await transaction.get(orderRef)).data()?.status === "ordered") return;
-                for (const lot of lots) if (!lot.ordered) transaction.update(doc(db, "odczynniki", lot.id), { ordered: true });
                 transaction.update(orderRef, { status: "ordered", orderedAt: serverTimestamp() });
               });
               choice.remove();

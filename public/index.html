@@ -9,8 +9,8 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./favicon-v18.png" type="image/png" sizes="32x32">
     <link rel="apple-touch-icon" href="./apple-touch-icon-v18.png" sizes="180x180">
-    <link rel="stylesheet" href="./styles.css?v=23">
-    <script type="module" src="./app.js?v=23"></script>
+    <link rel="stylesheet" href="./styles.css?v=25">
+    <script type="module" src="./app.js?v=25"></script>
 </head>
 <body>
   <a class="lab-skip" href="#mainContent">Przejdź do treści</a>
@@ -52,10 +52,11 @@
 
         <section data-app-screen="home" id="homeScreen">
           <header class="lab-home-heading"><div><h1 id="homeTitle" tabindex="-1">e-Laboratorium</h1><p class="lab-muted">Wybierz moduł, aby rozpocząć pracę.</p></div><span class="lab-version">Wersja 3.0</span></header>
-          <button type="button" class="lab-home-alert" data-route="inventory" data-warning-count hidden><span data-icon="bell" class="lab-icon-slot" aria-hidden="true"></span> <span>Centrum ostrzeżeń</span> <span class="lab-count" data-warning-number></span><span data-icon="chevron" class="lab-icon-slot" aria-hidden="true"></span></button>
+          <button type="button" class="lab-home-alert" data-route="alerts" data-warning-count hidden><span data-icon="bell" class="lab-icon-slot" aria-hidden="true"></span> <span>Centrum ostrzeżeń</span> <span class="lab-count" data-warning-number></span><span data-icon="chevron" class="lab-icon-slot" aria-hidden="true"></span></button>
           <div id="homeTiles" class="lab-tile-grid lab-tile-grid-home"></div>
         </section>
 
+        <section id="warningScreen" data-app-screen="alerts" hidden></section>
         <section id="tabContentOdczynniki" data-app-screen="Odczynniki" hidden>
           <div id="inventoryMenu" class="lab-stack">
             <details class="lab-accordion lab-alert-center" id="warningCenter">

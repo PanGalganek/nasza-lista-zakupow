@@ -372,6 +372,77 @@ test("order history accepts an approved requester alongside earlier history reco
   assert.equal((await getDoc(current)).data().requester, "K. Łoboda");
 });
 
+test("linked receipts advance only one order line and cannot be counted twice", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const root = { name: "Odczynnik", group: "VI-1", usage: "", received: "", expiry: "", timestamp: 1, ordered: true,
+    category: "Odczynniki", packageUnit: "g", packageAmount: quantity("25", "g") };
+  const rootRef = doc(db, "odczynniki", "root");
+  await setDoc(rootRef, root);
+  const order = store.ref("orders", "linked");
+  const other = store.ref("orders", "other");
+  const original = { name: root.name, productId: "root", lotId: "root", amount: "2 × 25 g", packages: 2 };
+  for (const target of [order, other]) {
+    await setDoc(target, { lines: [original], date: "2026-11-26", status: "generated", requester: "B. Joachim", createdAt: serverTimestamp() });
+    await updateDoc(target, { status: "ordered", orderedAt: serverTimestamp() });
+  }
+  await assertFails(updateDoc(order, { deliveries: { 0: { received: 1, complete: false } }, lastReceipt: "invented" }));
+  const receive = (id, orderId = "linked") => store.receive([{ fields: { ...root, ordered: false, lotNumber: id,
+    productId: "root" }, initial: root.packageAmount }], id, { orderId, lineIndex: 0, kind: "", complete: false });
+  await assertSucceeds(receive("partial"));
+  await assertSucceeds(receive("partial"));
+  assert.deepEqual((await getDoc(order)).data().deliveries[0], { received: 1, complete: false });
+  assert.equal((await getDoc(other)).data().deliveries, undefined);
+  await assertSucceeds(receive("final"));
+  assert.deepEqual((await getDoc(order)).data().deliveries[0], { received: 2, complete: true });
+  assert.deepEqual((await getDoc(order)).data().lines, [original]);
+  assert.deepEqual((await getDoc(store.ref("events", "final"))).data().details.delivery, { orderId: "linked", lineIndex: 0, complete: true });
+  assert.equal((await getDoc(rootRef)).data().ordered, true);
+  await assert.rejects(receive("extra"), /już rozliczona/);
+  assert.equal((await getDoc(store.ref("events", "extra"))).exists(), false);
+});
+
+test("legacy order progress can be linked to the same register product without changing the source bottle ID", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const product = { name: "Odczynnik", group: "VI-2", usage: "", received: "", expiry: "", timestamp: 1, ordered: false,
+    category: "Odczynniki", packageUnit: "g", packageAmount: quantity("25", "g") };
+  for (const id of ["catalog", "old"]) await setDoc(doc(db, "odczynniki", id), product);
+  const order = store.ref("orders", "legacy");
+  await setDoc(order, { date: "2026-11-26", createdAt: serverTimestamp(), status: "generated",
+    lines: [{ name: product.name, productId: "old", lotId: "old", amount: "2 × 25 g" }] });
+  await updateDoc(order, { status: "ordered", orderedAt: serverTimestamp() });
+  await assertSucceeds(store.receive([{ fields: { ...product, productId: "catalog", lotNumber: "Lot" }, initial: product.packageAmount }],
+    "old-receipt", { orderId: "legacy", lineIndex: 0, kind: "", complete: true }));
+  assert.deepEqual((await getDoc(order)).data().deliveries[0], { received: 1, complete: false });
+  assert.deepEqual((await getDoc(doc(db, "odczynniki", "old"))).data(), product);
+});
+
+test("two clients competing for the final delivery create only one receipt and one lot", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const secondDb = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const firestore = { collection, doc, runTransaction, serverTimestamp };
+  const first = createInventoryStore(db, firestore);
+  const second = createInventoryStore(secondDb, firestore);
+  const root = { name: "Odczynnik", group: "VI-3", usage: "", received: "", expiry: "", timestamp: 1, ordered: false,
+    category: "Odczynniki", productId: "root", packageUnit: "g", packageAmount: quantity("25", "g") };
+  await setDoc(doc(db, "odczynniki", "root"), root);
+  const order = first.ref("orders", "delivery");
+  await setDoc(order, { date: "2026-11-26", createdAt: serverTimestamp(), status: "generated",
+    lines: [{ name: root.name, productId: "root", lotId: "root", amount: "25 g", packages: 1 }] });
+  await updateDoc(order, { status: "ordered", orderedAt: serverTimestamp() });
+  const receive = (store, id) => store.receive([{ fields: { ...root, lotNumber: id, timestamp: 2 }, initial: root.packageAmount }],
+    id, { orderId: "delivery", lineIndex: 0, kind: "", complete: false });
+  const results = await Promise.allSettled([receive(first, "client-a"), receive(second, "client-b")]);
+  assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+  const failure = results.find(({ status }) => status === "rejected").reason;
+  assert.ok(["permission-denied", "aborted"].includes(failure.code) || /już rozliczona/.test(failure.message));
+  assert.deepEqual((await getDoc(order)).data().deliveries[0], { received: 1, complete: true });
+  assert.equal((await getDocs(collection(db, "odczynniki"))).size, 2);
+  assert.equal((await getDocs(collection(db, "magazyn_partie"))).size, 1);
+  assert.equal((await getDocs(collection(db, "magazyn_operacje"))).size, 1);
+});
+
 test("unknown collections and other access records are denied", async () => {
   const database = testEnvironment.authenticatedContext(allowedUid).firestore();
   await assertFails(setDoc(doc(database, "unknown", "one"), { value: true }));
