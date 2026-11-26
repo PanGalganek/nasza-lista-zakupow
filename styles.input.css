@@ -277,6 +277,29 @@ body:has(.lab-dialog[open]) { overflow: hidden; }
 .lab-metric dt { color: var(--lab-muted); font-size: var(--lab-small); }
 .lab-metric dd { margin: 3px 0 0; color: #203f62; font-weight: 760; overflow-wrap: anywhere; }
 .lab-panel.lab-fields { align-items: end; }
+
+.lab-stat-toolbar { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); align-items: end; }
+.lab-stat-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.lab-stat-metrics dd { font-size: 1.125rem; }
+.lab-stat-bars { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,76px),1fr)); gap: 12px 8px; margin: 0; padding: 0; list-style: none; }
+.lab-stat-bars li { min-width: 0; display: grid; grid-template-rows: auto 92px auto; gap: 4px; text-align: center; font-size: var(--lab-small); overflow-wrap: anywhere; }
+.lab-stat-bar-plot { display: flex; flex-direction: column; align-items: center; }
+.lab-stat-bar-plot progress { appearance: none; writing-mode: vertical-lr; direction: rtl; width: min(55%,32px); height: 100%; border: 0; border-radius: 5px 5px 0 0; overflow: hidden; background: #eef3fa; color: var(--lab-primary); }
+.lab-stat-bar-plot progress::-webkit-progress-bar { background: #eef3fa; }
+.lab-stat-bar-plot progress::-webkit-progress-value { background: var(--lab-primary); border-radius: 4px 4px 0 0; }
+.lab-stat-bar-plot progress::-moz-progress-bar { background: var(--lab-primary); border-radius: 4px 4px 0 0; }
+.lab-stat-signed .lab-stat-bar-plot progress { height: 50%; }
+.lab-stat-bar-plot progress.lab-stat-negative { direction: ltr; border-radius: 0 0 5px 5px; border-top: 1px solid var(--lab-border); }
+.lab-stat-bar-plot .lab-stat-negative::-webkit-progress-value { background: #64748b; border-radius: 0 0 4px 4px; }
+.lab-stat-bar-plot .lab-stat-negative::-moz-progress-bar { background: #64748b; border-radius: 0 0 4px 4px; }
+.lab-stat-forecasts { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,190px),1fr)); gap: 8px; }
+.lab-stat-forecast { display: grid; justify-content: stretch; align-content: start; }
+.lab-stat-shortage { color: #9f341c; font-weight: 650; }
+.lab-stat-covered { color: #256538; font-weight: 650; }
+@media (min-width: 700px) {
+  .lab-stat-metrics { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+
 .lab-order-preview > div { min-width: 0; }
 .lab-order-preview dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .lab-registry-tools:has(.lab-field) { align-items: end; }

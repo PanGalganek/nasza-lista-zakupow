@@ -1,5 +1,5 @@
-import { byId, notify } from "./ui.js?v=30";
-import { routes } from "./shell.js?v=30";
+import { byId, notify } from "./ui.js?v=31";
+import { routes } from "./shell.js?v=31";
 
 export const routeParent = (route) => route.includes("/") ? route.split("/")[0] : "home";
 
