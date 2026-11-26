@@ -1,10 +1,10 @@
-import { buildChemicalAlerts, calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=18";
-import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=18";
-import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=18";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=18";
-import { availability } from "./inventory-history.js?v=18";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=18";
-import { renderInventoryAlerts } from "./inventory-alerts.js?v=18";
+import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=21";
+import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=21";
+import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=21";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=21";
+import { availability } from "./inventory-history.js?v=21";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=21";
+import { renderInventoryAlerts } from "./inventory-alerts.js?v=21";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory, navigation }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -237,7 +237,6 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     if (!inventory) alertBox.replaceChildren();
     const activeItems = items.filter((item) => !inventory || ["active", undefined].includes(inventory.withStock(item).stock?.status));
     const searchQuery = normalizeSearch(byId("chemicalSearch").value.trim());
-    const categoryOf = (item) => item.category === "Odczynniki" ? "Odczynniki" : "Wzorce";
     const categoryItems = activeItems.filter((item) => {
       const itemCategory = item.category || "Wzorce";
       return searchQuery || itemCategory === category || (category === "Wzorce" && itemCategory === "Standardowe");
@@ -245,19 +244,16 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const threshold = category === "Odczynniki" ? 70 : 40;
     const statusFilter = byId("chemicalStatusFilter").value;
     const sortMode = byId("chemicalSort").value;
-    const byPrefix = (a, b) => a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" }) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
-    const partition = (list, kind) => groupChemicalItems(list.filter((item) => categoryOf(item) === kind))
+    const partition = (list, kind) => groupChemicalItems(list.filter((item) => chemicalCategory(item) === kind))
       .map((group) => ({ ...group, category: kind, key: `${kind}:${group.key}` }));
     const categories = ["Wzorce", "Odczynniki"];
-    const lpByItem = new Map();
-    for (const kind of categories) partition(activeItems, kind).sort(byPrefix)
-      .forEach((group, index) => group.items.forEach((item) => lpByItem.set(item.id, index + 1)));
+    const lpByItem = chemicalRegistryNumbers(activeItems);
     const filtered = categoryItems.filter((item) => {
       if (searchQuery && !matchesInventorySearch(searchQuery, item.name, item.group, item.usage, item.lotNumber, `LP ${lpByItem.get(item.id)}`,
         item.producer, item.formula, item.cas, ...(inventory?.searchContext(item) || []))) return false;
       const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
       const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
-      if (statusFilter === "attention") return days !== null && days <= (categoryOf(item) === "Odczynniki" ? 70 : 40);
+      if (statusFilter === "attention") return days !== null && days <= (chemicalCategory(item) === "Odczynniki" ? 70 : 40);
       if (statusFilter === "ordered") return item.ordered === true;
       if (statusFilter === "expired") return days !== null && days < 0;
       return true;
@@ -266,7 +262,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     const sortedGroups = categories.flatMap((kind) => partition(filtered, kind)).sort((a, b) => {
       if (sortMode === "name") return a.name.localeCompare(b.name, "pl", { sensitivity: "base" }) || a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" });
       if (sortMode === "expiry") return earliestExpiry(a).localeCompare(earliestExpiry(b)) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
-      return byPrefix(a, b);
+      return compareChemicalGroups(a, b);
     });
 
     sortedGroups.forEach((group) => {
@@ -312,7 +308,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
         const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
         const color = days !== null && days < 0 ? "text-red-700 font-semibold"
-          : days !== null && days <= (categoryOf(item) === "Odczynniki" ? 70 : 40) ? "text-amber-800 font-semibold" : "lab-muted";
+          : days !== null && days <= (chemicalCategory(item) === "Odczynniki" ? 70 : 40) ? "text-amber-800 font-semibold" : "lab-muted";
         const row = createElement("div", `${item.ordered ? "ordered-row " : ""}lab-lot`);
         const info = createElement("div", "lab-lot-info");
         info.append(createElement("strong", "", item.lotNumber ? `Partia ${item.lotNumber}` : item.group || "Partia bez numeru"));

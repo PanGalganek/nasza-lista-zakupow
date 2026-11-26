@@ -59,8 +59,8 @@ test("chemical alerts provide direct editing of the affected record", () => {
   assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
   assert.match(modules, /presentForm\("Edytuj partię"\)/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=18/);
-  assert.match(html, /\.\/app\.js\?v=18/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=21/);
+  assert.match(html, /\.\/app\.js\?v=21/);
 });
 
 test("all visible full dates use the Polish day-month-year format", () => {
@@ -95,7 +95,7 @@ test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=18")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=21")));
 });
 
 test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", async () => {
@@ -124,11 +124,11 @@ test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", as
     assert.equal(png[25], 2, "Opaque RGB icon");
   }));
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v18"/);
-  assert.match(html, /styles\.css\?v=18/);
-  assert.match(serviceWorker, /styles\.css\?v=18/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v21"/);
+  assert.match(html, /styles\.css\?v=21/);
+  assert.match(serviceWorker, /styles\.css\?v=21/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
-  for (const name of ["icons", "navigation", "shell"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=18`));
+  for (const name of ["icons", "navigation", "shell"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=21`));
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {

@@ -1,7 +1,7 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=18";
-import { createElement, iconButton, notify } from "./ui.js?v=18";
-import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=18";
-import { batchLabel, button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=18";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=21";
+import { createElement, iconButton, notify } from "./ui.js?v=21";
+import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=21";
+import { batchLabel, button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=21";
 
 const say = (target, value) => target.append(createElement("p", "text-sm", value));
 const methodOptions = (inventory) => inventory.rows("methods").map((method) => [method.id, method.name]);
@@ -10,6 +10,17 @@ const required = (value, label, limit = 200) => {
   if (!trimmed || trimmed.length > limit) throw new Error(`Podaj poprawną wartość pola „${label}”.`);
   return trimmed;
 };
+
+export function groupRecipesByMethod(methods, recipes) {
+  const groups = new Map(methods.map(([id, name]) => [id, { id, name, recipes: [] }]));
+  const unassigned = { id: null, name: "Nieprzypisane", recipes: [] };
+  for (const recipe of recipes) {
+    const assigned = [...new Set(recipe.methods)].map((id) => groups.get(id)).filter(Boolean);
+    for (const group of assigned.length ? assigned : [unassigned]) group.recipes.push(recipe);
+  }
+  if (unassigned.recipes.length) groups.set(null, unassigned);
+  return [...groups.values()];
+}
 
 export function recipeIngredients(recipe, volume) {
   if (!flaskVolumes.includes(volume) || (!recipe.scalable && volume !== recipe.baseVolume)) {
@@ -68,12 +79,25 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
   inventory.mount("recipes", (container) => {
     const list = createElement("div", "lab-list");
     const search = input("Szukaj receptury, składnika lub metody", "", "search");
-    const methods = details("Metody badawcze");
-    const methodList = createElement("div", "lab-list");
-    methods.append(methodList, button("Dodaj metodę", showMethodEditor));
     const toolbar = createElement("div", "lab-registry-tools");
-    toolbar.append(field("Szukaj receptury", search), button("Nowa receptura", () => showEditor({}), "lab-button-primary"));
-    container.replaceChildren(toolbar, methods, list);
+    toolbar.append(field("Szukaj receptury", search), button("Metody", showMethods));
+    container.replaceChildren(toolbar, list);
+    let wasSearching = false;
+    let openMethods = new Set();
+
+    function showMethods() {
+      const box = createElement("div", "lab-stack");
+      const methods = methodOptions(inventory);
+      if (methods.length) {
+        const methodList = createElement("ul", "lab-list");
+        for (const [, name] of methods) methodList.append(createElement("li", "lab-panel", name));
+        box.append(methodList);
+      } else box.append(createElement("p", "lab-empty", "Brak metod badawczych."));
+      const actions = createElement("div", "lab-dialog-actions");
+      actions.append(button("Dodaj metodę", showMethodEditor, "lab-button-primary"));
+      box.append(actions);
+      navigation.show(box, "Metody badawcze", { watch: false });
+    }
 
     function showMethodEditor() {
       const form = createElement("div", "lab-stack");
@@ -158,22 +182,49 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
         button("Dodaj składnik", () => add()), field("Instrukcja przygotowania (opcjonalnie)", instruction), status, actions);
       navigation.show(box, recipe.id ? "Edytuj recepturę" : "Nowa receptura");
     }
-    const render = () => {
-      list.replaceChildren();
-      const methodsById = new Map(methodOptions(inventory));
-      methodList.replaceChildren(...[...methodsById.values()].map((name) => createElement("p", "", name)));
-      if (!methodList.childElementCount) methodList.append(createElement("p", "lab-empty", "Brak metod badawczych."));
-      for (const recipe of inventory.rows("recipes")) {
-        if (!matchesInventorySearch(search.value, ...recipeSearchContext(recipe, recipe.methods.map((id) => methodsById.get(id)).join(" ")))) continue;
-        const card = details(recipe.name);
-        say(card, `Objętość podstawowa ${recipe.baseVolume} ml · ${recipe.methods.map((key) => methodsById.get(key)).filter(Boolean).join(", ")}`);
-        recipe.ingredients.forEach((row) => say(card, `${row.name} · ${formatQuantity(row.quantity, row.unit)}`));
-        if (recipe.instruction) say(card, recipe.instruction);
-        card.append(button("Edytuj recepturę", () => showEditor(recipe)));
-        list.append(card);
+    function render() {
+      if (!wasSearching) {
+        openMethods = new Set([...list.children].filter((section) => section.open).map((section) => section.dataset.recipeMethod));
       }
-      if (!list.children.length) list.append(createElement("p", "lab-empty", "Brak receptur spełniających kryteria."));
-    };
+      const query = search.value.trim();
+      wasSearching = Boolean(query);
+      const recipes = inventory.rows("recipes");
+      const groups = groupRecipesByMethod(methodOptions(inventory), recipes);
+      const contexts = new Map(query ? recipes.map((recipe) => [recipe, recipeSearchContext(recipe)]) : []);
+      list.replaceChildren();
+      for (const group of groups) {
+        const methodMatches = !query || matchesInventorySearch(query, group.name);
+        const matches = methodMatches ? group.recipes
+          : group.recipes.filter((recipe) => matchesInventorySearch(query, group.name, ...contexts.get(recipe)));
+        if (!methodMatches && !matches.length) continue;
+
+        const section = details("");
+        const count = createElement("span", "lab-count", group.recipes.length);
+        count.prepend(createElement("span", "sr-only", "Liczba receptur "));
+        section.firstElementChild.append(createElement("span", "", group.name), count);
+        section.dataset.recipeMethod = group.id === null ? "unassigned" : `method:${group.id}`;
+        section.open = wasSearching || openMethods.has(section.dataset.recipeMethod);
+        for (const recipe of matches) {
+          const row = createElement("div", "lab-data-row");
+          const summary = createElement("div", "lab-lot-info");
+          summary.append(createElement("h3", "", recipe.name));
+          say(summary, `Objętość podstawowa ${recipe.baseVolume} ml`);
+          recipe.ingredients.forEach((item) => say(summary, `${item.name} · ${formatQuantity(item.quantity, item.unit)}`));
+          if (recipe.instruction) say(summary, recipe.instruction);
+          row.append(summary, button("Edytuj recepturę", () => showEditor(recipe)));
+          section.append(row);
+        }
+        if (!matches.length) section.append(createElement("p", "lab-empty", "Ta metoda nie ma jeszcze receptur."));
+        if (group.id !== null) {
+          const actions = createElement("div", "lab-actions");
+          actions.append(button("Dodaj recepturę", () => showEditor({ methods: [group.id] }), "lab-button-primary"));
+          section.append(actions);
+        }
+        list.append(section);
+      }
+      if (!list.children.length) list.append(createElement("p", "lab-empty",
+        query ? "Brak receptur lub metod spełniających kryteria." : "Dodaj metodę, aby uporządkować receptury."));
+    }
     search.addEventListener("input", render);
     inventory.onChange("recipes", render);
     inventory.onChange("methods", render);
@@ -195,14 +246,20 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
       const box = createElement("div", "lab-stack");
       const choices = createElement("div", "lab-volume-grid");
       const preview = createElement("div", "lab-stack");
+      const previewTitle = createElement("h3", "");
+      previewTitle.setAttribute("aria-live", "polite");
       const status = createElement("p", "text-sm text-red-700");
       status.setAttribute("role", "status");
       const savedVolumes = readLocal("e-lab-recipe-volumes", {});
       const preferred = {};
-      let volume = recipe.scalable && flaskVolumes.includes(savedVolumes[recipe.id]) ? savedVolumes[recipe.id] : recipe.defaultVolume;
+      const initialVolume = recipe.scalable
+        ? (flaskVolumes.includes(savedVolumes[recipe.id]) ? savedVolumes[recipe.id] : recipe.defaultVolume)
+        : recipe.baseVolume;
       const id = inventory.store.operationId();
-      const show = () => {
+      const volumeLabel = (value) => value === 1000 ? "1 l" : `${value} ml`;
+      const show = (volume) => {
         preview.replaceChildren();
+        previewTitle.textContent = `Pobranie dla ${volumeLabel(volume)}`;
         status.textContent = "";
         for (const control of choices.children) control.setAttribute("aria-pressed", String(Number(control.dataset.volume) === volume));
         try {
@@ -215,11 +272,18 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
             const candidates = validLots(inventory.lotsFor(item.productId), item.unit, formatLocalDate());
             const option = select([["", "Automatycznie według terminu ważności"],
               ...candidates.map((lot) => [lot.id, `${batchLabel(lot)} · ${formatPolishDate(lot.expiry)}`])], preferred[index]);
-            option.addEventListener("change", () => { preferred[index] = option.value; show(); });
+            option.addEventListener("change", () => {
+              if (preparationPending) { option.value = preferred[index] || ""; return; }
+              preferred[index] = option.value;
+              show(volume);
+            });
             selectors.append(field(`Pierwsza partia — ${item.name}`, option));
           });
           const plan = allocateIngredients(ingredients, inventory.lotsFor, preferred);
-          for (const row of plan.preview) say(preview, `${batchLabel(row.lot)} · przed ${formatQuantity(row.before, row.lot.stock.unit)} · po ${formatQuantity(row.after, row.lot.stock.unit)}`);
+          for (const row of plan.preview) {
+            const unit = row.lot.stock.unit;
+            say(preview, `${batchLabel(row.lot)} · pobranie ${formatQuantity(row.before - row.after, unit)} · przed ${formatQuantity(row.before, unit)} · po ${formatQuantity(row.after, unit)}`);
+          }
           const confirm = saveButton("Zatwierdź przygotowanie", async () => {
             if (preparationPending) return;
             preparationPending = true;
@@ -237,15 +301,16 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
         } catch (error) { status.textContent = error.message; }
       };
       for (const value of flaskVolumes) {
-        const control = button(value === 1000 ? "1 l" : `${value} ml`, () => { if (!preparationPending) { volume = value; show(); } });
+        const control = button(volumeLabel(value), () => { if (!preparationPending) show(value); });
         control.dataset.volume = String(value);
         control.disabled = !recipe.scalable && value !== recipe.baseVolume;
         choices.append(control);
       }
       box.append(createElement("p", "lab-muted", methodName), createElement("h3", "", "Objętość roztworu"), choices);
+      if (!recipe.scalable) box.append(createElement("p", "lab-muted", "Ta receptura ma stałą objętość. Skalowanie jest wyłączone w jej ustawieniach."));
       if (recipe.instruction) say(box, recipe.instruction);
-      box.append(preview, status, button("Anuluj", () => navigation.close(), "lab-button-cancel"));
-      show();
+      box.append(previewTitle, preview, status, button("Anuluj", () => navigation.close(), "lab-button-cancel"));
+      show(initialVolume);
       navigation.show(box, recipe.name, { busy: () => preparationPending });
     }
     const render = () => {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { compatibleUnits, matchesInventorySearch, quantity, scaledQuantity, stockLevel } from "../public/modules/inventory-quantity.js";
-import { allocateIngredients, recipeIngredients } from "../public/modules/inventory-recipes.js";
+import { allocateIngredients, groupRecipesByMethod, recipeIngredients } from "../public/modules/inventory-recipes.js";
 import { calculateTheory } from "../public/modules/inventory-theory.js";
 import { warningGroups } from "../public/modules/inventory-alerts.js";
 import { createOrderDocx, orderColumns } from "../public/modules/inventory-docx.js";
@@ -21,6 +21,22 @@ test("quantities convert exactly and colours use the unrounded ratio", () => {
 test("inventory search supports names without Polish accents and multiple fragments", () => {
   assert.equal(matchesInventorySearch("zelaz LOT", "Żelazo", "LOT001"), true);
   assert.equal(matchesInventorySearch("hydroksylo", "chlorowodorek hydroksyloaminy"), true);
+});
+
+test("recipe groups share the original records and show empty methods and unassigned recipes", () => {
+  const methods = [["a", "Metoda A"], ["b", "Metoda B"], ["empty", "Pusta metoda"]];
+  const shared = { id: "shared", methods: ["a", "b", "a"] };
+  const unassigned = { id: "unassigned", methods: [] };
+  const legacy = { id: "legacy", methods: ["missing"] };
+  const groups = groupRecipesByMethod(methods, [shared, unassigned, legacy]);
+  assert.deepEqual(groups.map(({ id, name, recipes }) => [id, name, recipes.map((recipe) => recipe.id)]), [
+    ["a", "Metoda A", ["shared"]],
+    ["b", "Metoda B", ["shared"]],
+    ["empty", "Pusta metoda", []],
+    [null, "Nieprzypisane", ["unassigned", "legacy"]],
+  ]);
+  assert.equal(groups[0].recipes[0], groups[1].recipes[0]);
+  assert.deepEqual(groupRecipesByMethod(methods, [shared]).map(({ id }) => id), ["a", "b", "empty"]);
 });
 
 test("preparation scales each ingredient and allocates the earliest usable batches", () => {

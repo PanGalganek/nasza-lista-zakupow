@@ -1,8 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=18";
-import { createElement } from "./ui.js?v=18";
-import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=18";
-import { productId } from "./inventory-store.js?v=18";
-import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=18";
+import { chemicalRegistryNumbers, formatLocalDate, formatPolishDate } from "../utils.js?v=21";
+import { icon } from "./icons.js?v=21";
+import { createElement } from "./ui.js?v=21";
+import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=21";
+import { productId } from "./inventory-store.js?v=21";
+import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=21";
 
 const operationNames = {
   receipt: "Przychód", opening: "Ustalenie stanu", opening_correction: "Korekta ilości początkowej", withdrawal: "Rozchód", preparation: "Przygotowanie",
@@ -83,18 +84,15 @@ function metrics(values) {
 
 export function mountInventoryHistory(inventory) {
   let historyProduct = "";
+  let historyQuery = "";
   let archiveQuery = "";
-  inventory.mount("history", (container, fixedProduct) => {
+
+  function renderHistory(container, selected, matchingProducts) {
     const box = panel();
     const events = inventory.rows("events");
-    const selected = fixedProduct || historyProduct;
-    const results = materialRows(events, selected);
-    if (!fixedProduct) {
-      container.replaceChildren();
-      const product = select([["", "Wszystkie pozycje"], ...inventory.productOptions()], selected);
-      product.addEventListener("change", () => { historyProduct = product.value; inventory.refresh(); });
-      box.append(field("Karta pozycji", product));
-    }
+    const matches = (id) => selected ? id === selected : !matchingProducts || matchingProducts.has(id);
+    const matchesEvent = (event) => Object.values(event.changes).some((row) => matches(row.productId));
+    const results = materialRows(events, selected).filter(({ row }) => matches(row.productId));
     const totals = { receipt: new Map(), withdrawal: new Map(), retired: new Map() };
     for (const { event, row } of results) {
       const kind = event.kind;
@@ -116,7 +114,7 @@ export function mountInventoryHistory(inventory) {
     else box.append(createElement("p", "lab-empty", "Brak operacji magazynowych."));
     const reversals = new Set(events.filter((event) => event.kind === "reversal").map((event) => event.details.originalId));
     const candidates = sorted(events).filter((event) => ["preparation", "withdrawal"].includes(event.kind) && !reversals.has(event.id)
-      && (!selected || Object.values(event.changes).some((row) => row.productId === selected)));
+      && ((!selected && !matchingProducts) || matchesEvent(event)));
     if (candidates.length) {
       const corrections = details("Cofanie zarejestrowanej operacji");
       for (const event of candidates) {
@@ -135,12 +133,64 @@ export function mountInventoryHistory(inventory) {
     }
     if (!selected) {
       const preparations = details("Historia przygotowania roztworów");
-      for (const event of sorted(events).filter((entry) => entry.kind === "preparation")) {
+      for (const event of sorted(events).filter((entry) => entry.kind === "preparation" && (!matchingProducts || matchesEvent(entry)))) {
         text(preparations, `${dateOf(event)?.toLocaleString("pl-PL") || "—"} · ${event.details.recipeName} · ${event.details.volume} ml${reversals.has(event.id) ? " · cofnięto" : ""}`);
       }
       box.append(preparations);
     }
     container.append(box);
+  }
+
+  inventory.mount("history", (container, fixedProduct) => {
+    if (fixedProduct) return renderHistory(container, fixedProduct);
+
+    const lots = inventory.allLots();
+    const numbers = chemicalRegistryNumbers(lots.filter((lot) => ["active", undefined].includes(lot.stock?.status)));
+    const entries = inventory.products().map(([id, product]) => ({
+      id,
+      label: batchLabel(product),
+      lots: inventory.lotsFor(id),
+    }));
+    const search = input("Szukaj nazwy, LP lub partii", historyQuery, "search");
+    search.maxLength = 200;
+    search.autocomplete = "off";
+    const searchLabel = createElement("label", "lab-search");
+    const searchIcon = createElement("span", "lab-icon-slot");
+    searchIcon.append(icon("search"));
+    searchLabel.append(searchIcon, createElement("span", "sr-only", "Szukaj w przychodach i rozchodach"), search);
+    const toolbar = panel();
+    const product = select([]);
+    const results = createElement("div", "lab-stack");
+    toolbar.append(searchLabel, field("Karta pozycji", product));
+    container.replaceChildren(toolbar, results);
+
+    const show = (matchingProducts) => {
+      results.replaceChildren();
+      if (matchingProducts?.size === 0) {
+        const empty = createElement("p", "lab-empty", "Brak pozycji spełniających kryteria.");
+        empty.setAttribute("role", "status");
+        results.append(empty);
+      } else renderHistory(results, historyProduct, matchingProducts);
+    };
+    let matchingProducts;
+    function filterProducts() {
+      const query = historyQuery.trim();
+      const lp = /(?:^|\s)lp\s*(\d+)(?=\s|$)/i.exec(query);
+      const searchText = lp ? query.replace(lp[0], " ") : query;
+      const matches = entries.filter((entry) => entry.lots.some((lot) =>
+        (!lp || numbers.get(lot.id) === Number(lp[1]))
+        && matchesInventorySearch(searchText, entry.label, lot.name, lot.group, lot.lotNumber, numbers.get(lot.id))));
+      matchingProducts = query ? new Set(matches.map(({ id }) => id)) : null;
+      if (matchingProducts && !matchingProducts.has(historyProduct)) historyProduct = "";
+      const options = [["", query ? "Wszystkie pasujące pozycje" : "Wszystkie pozycje"], ...matches.map(({ id, label }) => [id, label])];
+      product.replaceChildren(...select(options).children);
+      product.value = historyProduct;
+      product.disabled = matchingProducts?.size === 0;
+      show(matchingProducts);
+    }
+    search.addEventListener("input", () => { historyQuery = search.value; filterProducts(); });
+    product.addEventListener("change", () => { historyProduct = product.value; show(matchingProducts); });
+    filterProducts();
   });
 
   inventory.mount("archive", (container) => {

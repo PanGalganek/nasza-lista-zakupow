@@ -250,6 +250,7 @@ body:has(.lab-dialog[open]) { overflow: hidden; }
 .lab-stock-screen p { overflow-wrap: anywhere; }
 .lab-volume-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,72px),1fr)); gap: 8px; }
 .lab-volume-grid .lab-button { min-height: 56px; }
+.lab-volume-grid .lab-button[aria-pressed=true] { background: var(--lab-primary); border-color: var(--lab-primary); color: #fff; opacity: 1; }
 .lab-history-table { width: 100%; border-collapse: collapse; }
 .lab-history-table th, .lab-history-table td { padding: 9px; text-align: left; border-bottom: 1px solid var(--lab-border); overflow-wrap: anywhere; }
 .lab-history-table th { color: var(--lab-muted); background: #f5f7f4; font-weight: 700; font-size: var(--lab-small); }

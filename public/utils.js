@@ -59,6 +59,20 @@ export function groupChemicalItems(items) {
   return [...groups.values()];
 }
 
+export const chemicalCategory = (item) => item.category === "Odczynniki" ? "Odczynniki" : "Wzorce";
+export const compareChemicalGroups = (a, b) =>
+  a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" }) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
+
+export function chemicalRegistryNumbers(activeItems) {
+  const numbers = new Map();
+  for (const category of ["Wzorce", "Odczynniki"]) {
+    groupChemicalItems(activeItems.filter((item) => chemicalCategory(item) === category))
+      .sort(compareChemicalGroups)
+      .forEach((group, index) => group.items.forEach((item) => numbers.set(item.id, index + 1)));
+  }
+  return numbers;
+}
+
 export function buildChemicalAlerts(items, threshold, today = new Date()) {
   const alerts = [];
   groupChemicalItems(items).forEach((group) => {
