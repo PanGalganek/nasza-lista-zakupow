@@ -1,9 +1,9 @@
-import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=23";
-import { createButton, createElement } from "./ui.js?v=23";
-import { stockLevel } from "./inventory-quantity.js?v=23";
-import { productId } from "./inventory-store.js?v=23";
-import { orderItemKey } from "./inventory-items.js?v=23";
-import { batchLabel, button, details } from "./inventory-ui.js?v=23";
+import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=25";
+import { createButton, createElement } from "./ui.js?v=25";
+import { stockLevel } from "./inventory-quantity.js?v=25";
+import { productId } from "./inventory-store.js?v=25";
+import { indexCatalog, orderItemKey, standardKind } from "./inventory-items.js?v=25";
+import { batchLabel, button, details, orderBadge } from "./inventory-ui.js?v=25";
 
 const categories = [
   ["expired", "Przekroczony termin ważności"],
@@ -28,11 +28,12 @@ export function warningGroups(lots, threshold, today = new Date()) {
   const legacy = groupChemicalItems(lots.filter((lot) => !lot.productId && !lot.stock));
   const legacyById = new Map(legacy.flatMap((group) => group.items.map((lot) => [lot.id, group.items])));
   const byProduct = new Map();
+  const catalog = indexCatalog(lots);
   const daysLeft = new Map();
   const current = warsawDate(today);
   const calendarDay = parseLocalDate(current);
   for (const lot of lots) {
-    const id = productId(lot);
+    const id = catalog.aliases.get(productId(lot)) || productId(lot);
     if (!byProduct.has(id)) byProduct.set(id, []);
     byProduct.get(id).push(lot);
     daysLeft.set(lot.id, calculateCalendarDays(calendarDay, parseLocalDate(lot.expiry)));
@@ -41,10 +42,12 @@ export function warningGroups(lots, threshold, today = new Date()) {
     const cutoff = typeof threshold === "function" ? threshold(lot) : threshold;
     const days = daysLeft.get(lot.id);
     const level = stockLevel(lot.stock);
-    const candidates = lot.productId || lot.stock
-      ? byProduct.get(productId(lot))
+    const canonical = catalog.aliases.get(productId(lot));
+    const candidates = lot.productId || lot.stock || canonical
+      ? byProduct.get(canonical || productId(lot))
       : legacyById.get(lot.id) || [];
-    const validAlternatives = candidates.filter((other) => other.id !== lot.id && (other.category === "Odczynniki") === (lot.category === "Odczynniki")
+    const validAlternatives = candidates.filter((other) => other.id !== lot.id && standardKind(other) === standardKind(lot)
+      && (other.category === "Odczynniki") === (lot.category === "Odczynniki")
       && (!other.expiry || (daysLeft.get(other.id) !== null && other.expiry >= current))
       && (!other.stock || (other.stock.status === "active" && other.stock.balance > 0)));
     const later = validAlternatives.filter((other) => daysLeft.get(other.id) > cutoff);
@@ -60,8 +63,8 @@ export function warningGroups(lots, threshold, today = new Date()) {
   return result;
 }
 
-export function renderInventoryAlerts(container, lots, threshold, inventory, edit, lpByItem) {
-  const open = new Set([...container.children].filter((element) => element.open).map((element) => element.dataset.warning));
+export function renderInventoryAlerts(container, lots, threshold, inventory, newLot, lpByItem, { expanded } = {}) {
+  const open = new Map([...container.children].map((element) => [element.dataset.warning, element.open]));
   const result = warningGroups(lots, threshold);
   container.replaceChildren();
   const total = Object.values(result).reduce((sum, items) => sum + items.length, 0);
@@ -80,7 +83,7 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
     const section = details(`${label} (${items.length})`);
     section.classList.add("lab-alert-category");
     section.dataset.warning = key;
-    section.open = open.has(key);
+    section.open = expanded ?? open.get(key) ?? container.parentElement?.id === "warningScreen";
     section.append(button("Zaznacz wszystkie", () => {
       for (const { lot } of items) {
         const itemKey = orderItemKey(lot);
@@ -105,16 +108,19 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
       const availability = backup
         ? `Partia zapasowa ${backupLabel(backup)}`
         : possibleBackup ? "Możliwa partia zapasowa. Ustal jej stan i sprawdź potrzebę zakupu." : "";
-      const purchase = [lot.ordered ? "Zamówiono" : "", availability].filter(Boolean).join(" · ") || "Sprawdź potrzebę zakupu";
+      const state = inventory.orderStatus(lot);
+      const purchase = availability || (state.state === "idle" ? "Sprawdź potrzebę zakupu" : "");
       const body = createElement("span", "lab-alert-info");
       if (days !== undefined) {
         const name = createElement("strong", "", `LP ${lpByItem.get(lot.id)} · ${batchLabel(lot)}`);
         body.append(name, createElement("span", "", `Ważność do ${formatPolishDate(lot.expiry)} · ${expiryDaysLabel(days)}`));
       } else body.append(createElement("strong", "", batchLabel(lot)));
-      body.append(createElement("span", "lab-muted", `${retire ? "Zamknij lub wycofaj partię · " : ""}${purchase}`));
+      const action = [retire ? "Zamknij lub wycofaj partię" : "", purchase].filter(Boolean).join(" · ");
+      if (action) body.append(createElement("span", "lab-muted", action));
       if (otherBackup && !backup) body.append(createElement("span", "lab-muted", `Dostępna inna partia ${backupLabel(otherBackup)}`));
+      body.append(orderBadge(state, null, { showStatusText: true }));
       row.append(checkbox, body,
-        createButton("Edytuj", `Edytuj pozycję ${lot.group || lot.name}`, () => edit(lot), "lab-button"));
+        createButton("Nowa partia", `Nowa partia: ${lot.group || lot.name}`, () => newLot(lot), "lab-button"));
       section.append(row);
     }
     container.append(section);

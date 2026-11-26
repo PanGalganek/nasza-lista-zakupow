@@ -12,6 +12,7 @@ const paths = {
   arrows: "M4 8h15m-4-4 4 4-4 4m5 4H5m4-4-4 4 4 4",
   calc: "M6 3h12v18H6zM9 7h6m-6 5h1m4 0h1m-6 4h1m4 0h1",
   cart: "M3 4h2l2 11h11l2-7H6m3 11h.1m7 0h.1",
+  document: "M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6",
   chart: "M4 4v16h16M8 16v-4m4 4V8m4 8v-6",
   archive: "M4 4h16v5H4zM6 9v11h12V9m-8 4h4",
   bell: "M6 10a6 6 0 0 1 12 0v5l2 2H4l2-2Zm4 10a2 2 0 0 0 4 0",

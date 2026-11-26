@@ -1,10 +1,11 @@
-import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=23";
-import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=23";
-import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=23";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=23";
-import { availability } from "./inventory-history.js?v=23";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=23";
-import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=23";
+import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=25";
+import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=25";
+import { batchLabel, field, orderBadge, select, showStock } from "./inventory-ui.js?v=25";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=25";
+import { availability } from "./inventory-history.js?v=25";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=25";
+import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=25";
+import { orderPackageCount, orderLineProgress, orderRecordedDate, standardKind } from "./inventory-items.js?v=25";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory, navigation }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -16,6 +17,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   const expanded = new Set();
   let receiptDraft;
   let inlinePending = false;
+  let updateDeliveryForm;
 
   function createInlineField(labelText, input, className = "") {
     const label = createElement("label", className || "lab-field");
@@ -174,15 +176,24 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     return row;
   }
 
-  function createInlineForm(group) {
+  function openNewLot(group, sourceLot) {
+    if (inlinePending) return;
+    navigation?.show(createInlineForm(group, sourceLot), "Nowa partia", {
+      busy: () => inlinePending, onDismiss: () => { updateDeliveryForm = undefined; },
+    });
+  }
+
+  function createInlineForm(group, sourceLot) {
     const form = createElement("form", "lab-stack");
     form.dataset.inlineChemicalForm = group.key;
-    const title = createElement("p", "lab-muted", group.name);
+    const title = createElement("p", "lab-muted", [group.lp && `LP ${group.lp}`, group.name].filter(Boolean).join(" · "));
     const fields = createElement("div", "lab-fields");
-    const groupInput = createInput("inline-group w-full rounded border p-2 text-sm text-black", "Grupa / numer", suggestNextGroupValue(group.items, group.prefix));
+    const groupInput = createInput("inline-group w-full rounded border p-2 text-sm text-black", "Grupa / numer",
+      sourceLot?.group ?? suggestNextGroupValue(group.items, group.prefix));
     groupInput.maxLength = 100;
     groupInput.setAttribute("data-form-focus", "");
-    const usageInput = createInput("inline-usage w-full rounded border p-2 text-sm text-black", "Zastosowanie", group.items.find((item) => item.usage)?.usage || "");
+    const usageInput = createInput("inline-usage w-full rounded border p-2 text-sm text-black", "Zastosowanie",
+      sourceLot?.usage ?? group.items.find((item) => item.usage)?.usage ?? "");
     usageInput.maxLength = 500;
     const receivedInput = createInput("inline-received w-full rounded border p-2 text-sm text-black", "", formatLocalDate(), "date");
     const expiryInput = createInput("inline-expiry w-full rounded border p-2 text-sm text-black", "", "", "date");
@@ -190,28 +201,128 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     let packaging;
     let source;
     let receipt;
+    let readDelivery = () => null;
+    const submitButton = createElement("button", "lab-button lab-button-primary", "Zapisz partię");
+    submitButton.type = "submit";
     if (inventory) {
-      const representatives = [...new Map(group.items.slice().sort((a, b) => a.timestamp - b.timestamp).map((item) => [productId(item), item])).entries()];
-      source = select(representatives.map(([id, item]) => [id, batchLabel(item)]));
+      const representatives = new Map();
+      for (const part of sourceLot ? [sourceLot] : [...group.items].sort((a, b) => b.timestamp - a.timestamp)) {
+        const key = JSON.stringify([inventory.catalogId(productId(part)), standardKind(part)]);
+        if (!representatives.has(key)) representatives.set(key, part);
+      }
+      source = select([...representatives].map(([key, item]) => [key, batchLabel(item)]));
       const box = createElement("div", "lab-field-wide");
+      const deliveryBox = createElement("div", "lab-field-wide lab-stack");
+      const noOrder = "Bez powiązania z zamówieniem";
+      const orderChoice = select([["", noOrder]]);
+      const keyFor = ({ order, index }) => JSON.stringify([order.id, index]);
+      let selectedKey = "";
+      let retained;
+      let delivery;
+      let optionSignature;
+      let independent = false;
+      const complete = createInput("", "", "", "checkbox");
+      const completeField = field("To ostatnie opakowanie z tej pozycji zamówienia", complete);
+      const progress = createElement("p", "lab-muted");
+      progress.setAttribute("role", "status");
+      const connection = createElement("p", "lab-muted", "Brak połączenia. Zapis będzie dostępny po ponownym połączeniu.");
+      connection.setAttribute("role", "status");
+      const choiceField = field("Powiąż dostawę z zamówieniem", orderChoice);
+      const unlink = createButton("Potwierdź dodanie bez zamówienia", "Potwierdź dodanie bez zamówienia", () => {
+        selectedKey = "";
+        retained = undefined;
+        independent = true;
+        complete.checked = false;
+        updateChoices();
+      }, "lab-button");
+      deliveryBox.append(choiceField, progress, completeField, unlink, connection);
+
+      function updateChoices() {
+        const ready = inventory.ordersReady();
+        const online = navigator.onLine;
+        const part = representatives.get(source.value);
+        const orders = ready ? inventory.activeOrdersFor(part).sort((a, b) => (b.order.orderedAt?.seconds || 0) - (a.order.orderedAt?.seconds || 0)
+          || a.order.id.localeCompare(b.order.id) || a.index - b.index) : [];
+        delivery = orders.find((entry) => keyFor(entry) === selectedKey);
+        if (delivery) retained = delivery;
+        const blocked = Boolean(selectedKey && !delivery);
+        const latest = blocked && retained && inventory.rows("orders").find((order) => order.id === retained.order.id);
+        const fulfilled = latest && orderLineProgress(latest, retained.index).complete;
+        const options = [["", noOrder], ...orders.map((entry, i) => [keyFor(entry), [
+          orderRecordedDate(entry.order, "orderedAt"), entry.order.requester,
+          entry.line.standardKind ? `(${entry.line.standardKind})` : "",
+          `zamówienie ${i + 1}, poz. ${entry.index + 1}`,
+        ].filter(Boolean).join(" · ")])];
+        if (blocked) options.push([selectedKey, fulfilled ? "Zamówienie zrealizowane" : "Wybrane zamówienie niedostępne"]);
+        const signature = JSON.stringify(options);
+        if (signature !== optionSignature) {
+          orderChoice.replaceChildren(...select(options).children);
+          optionSignature = signature;
+        }
+        orderChoice.options[0].disabled = blocked;
+        if (blocked) orderChoice.options[orderChoice.options.length - 1].disabled = true;
+        if (orderChoice.value !== selectedKey) orderChoice.value = selectedKey;
+        const expected = delivery && orderPackageCount(delivery.line);
+        const received = delivery ? orderLineProgress(delivery.order, delivery.index).received : 0;
+        choiceField.hidden = !orders.length && !blocked;
+        completeField.hidden = !delivery || expected !== null;
+        unlink.hidden = !blocked;
+        unlink.disabled = inlinePending;
+        connection.hidden = online;
+        let message = "";
+        if (!ready) message = "Wczytywanie aktywnych zamówień…";
+        else if (blocked) message = fulfilled ? "Zamówienie zostało już zrealizowane" : "Wybrana pozycja zamówienia jest niedostępna.";
+        else if (delivery) message = expected === null
+          ? `Przyjęto opakowań: ${received}. Zamówienie nie zawiera liczby opakowań.`
+          : `Przyjęto ${received} z ${expected} opakowań. Zapis przyjmie kolejne opakowanie.`;
+        else if (independent) message = "Partia zostanie zapisana bez powiązania z zamówieniem.";
+        if (progress.textContent !== message) progress.textContent = message;
+        progress.hidden = !message;
+        deliveryBox.hidden = choiceField.hidden && progress.hidden && connection.hidden;
+        submitButton.disabled = inlinePending || blocked || !ready || !online;
+      }
+
+      orderChoice.addEventListener("change", () => {
+        if (!selectedKey || orderChoice.value || !orderChoice.options[0].disabled) {
+          selectedKey = orderChoice.value;
+          retained = undefined;
+          independent = false;
+          complete.checked = false;
+        }
+        updateChoices();
+      });
       const suggest = () => {
-        packaging = inventory.fields(representatives.find(([key]) => key === source.value)?.[1] || {}, false, true);
+        const part = representatives.get(source.value);
+        const history = inventory.productLots(productId(part)).filter((lot) => standardKind(lot) === standardKind(part));
+        const previous = history.filter((lot) => lot.packageAmount).sort((a, b) => b.timestamp - a.timestamp)[0];
+        const root = history.find((lot) => lot.id === inventory.catalogId(productId(part)));
+        const pack = part.packageAmount ? part : previous;
+        packaging = inventory.fields({ ...part, packageAmount: pack?.packageAmount, packageUnit: pack?.packageUnit,
+          producer: part.producer || root?.producer, formula: part.formula || root?.formula, cas: part.cas || root?.cas }, false, true);
         box.replaceChildren(packaging.node);
+        if (!sourceLot) usageInput.value = part.usage || "";
+        selectedKey = "";
+        retained = undefined;
+        independent = false;
+        complete.checked = false;
+        updateChoices();
       };
       source.addEventListener("change", suggest);
+      updateDeliveryForm = updateChoices;
       suggest();
-      fields.append(field("Pozycja handlowa", source), box);
+      if (representatives.size > 1) fields.append(field("Pozycja handlowa", source));
+      fields.append(box, deliveryBox);
+      readDelivery = () => delivery ? { orderId: delivery.order.id, lineIndex: delivery.index, complete: complete.checked,
+        kind: standardKind(representatives.get(source.value)) } : null;
     }
     const actions = createElement("div", "lab-dialog-actions");
     const cancelButton = createElement("button", "lab-button lab-button-cancel", "Anuluj");
     cancelButton.type = "button";
     cancelButton.addEventListener("click", () => navigation?.close());
-    const submitButton = createElement("button", "lab-button lab-button-primary", "Zapisz partię");
-    submitButton.type = "submit";
     actions.append(cancelButton, submitButton);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (inlinePending) return;
+      if (inlinePending || submitButton.disabled) return;
       runSafely(async () => {
         inlinePending = true;
         submitButton.disabled = true;
@@ -221,15 +332,23 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
             expiry: expiryInput.value, category: group.category || category, timestamp: Date.now(), ordered: false,
           };
           if (inventory) {
+            requireInventoryConnection();
+            if (!inventory.ordersReady()) throw new Error("Poczekaj na wczytanie aktywnych zamówień i ponów zapis.");
             const values = packaging.read();
             const initial = packaging.initial(values);
-            const fingerprint = JSON.stringify([data.name, data.group, data.usage, data.received, data.expiry, data.category, values, source.value, initial]);
+            const [product] = JSON.parse(source.value);
+            const deliveryLink = readDelivery();
+            const fingerprint = JSON.stringify([data.name, data.group, data.usage, data.received, data.expiry, data.category, values, source.value, initial, deliveryLink]);
             if (receipt?.fingerprint !== fingerprint) receipt = { fingerprint, id: inventory.store.operationId() };
-            await inventory.store.receive([{ fields: { ...data, ...values, productId: source.value }, initial }], receipt.id);
+            await inventory.store.receive([{ fields: { ...data, ...values, productId: inventory.catalogId(product) }, initial }], receipt.id, deliveryLink);
           } else await addDoc(collection(db, "odczynniki"), data);
           navigation?.close(true);
           notify("Zapisano nową partię.");
-        } finally { submitButton.disabled = false; inlinePending = false; }
+        } finally {
+          inlinePending = false;
+          submitButton.disabled = false;
+          updateDeliveryForm?.();
+        }
       }, "Nie udało się dodać nowej pozycji.");
     });
     form.append(title, fields, actions);
@@ -247,6 +366,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   function render(refreshWarnings = true) {
     const container = byId("chemicalListGrouped");
     const alertBox = byId("alertBox");
+    updateDeliveryForm?.();
     container.replaceChildren();
     if (!inventory) alertBox.replaceChildren();
     const activeItems = items.filter((item) => !inventory || ["active", undefined].includes(inventory.withStock(item).stock?.status));
@@ -268,7 +388,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
       const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
       if (statusFilter === "attention") return days !== null && days <= (chemicalCategory(item) === "Odczynniki" ? 70 : 40);
-      if (statusFilter === "ordered") return item.ordered === true;
+      if (statusFilter === "ordered") return inventory ? inventory.orderStatus(item).state === "ordered" : item.ordered === true;
       if (statusFilter === "expired") return days !== null && days < 0;
       return true;
     });
@@ -311,11 +431,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       summary.append(name, sub);
       card.append(summary);
       const controls = createElement("div", "lab-actions");
-      controls.append(createButton("Nowa partia", `Dodaj nową pozycję do ${group.name}`, () => {
-        if (inlinePending) return;
-        const form = createInlineForm(group);
-        navigation?.show(form, "Nowa partia", { busy: () => inlinePending });
-      }, "lab-button lab-button-primary"));
+      controls.append(createButton("Nowa partia", `Dodaj nową pozycję do ${group.name}`, () => openNewLot(group), "lab-button lab-button-primary"));
       card.append(controls);
 
       group.items.forEach((item) => {
@@ -323,7 +439,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
         const color = days !== null && days < 0 ? "text-red-700 font-semibold"
           : days !== null && days <= (chemicalCategory(item) === "Odczynniki" ? 70 : 40) ? "text-amber-800 font-semibold" : "lab-muted";
-        const row = createElement("div", `${item.ordered ? "ordered-row " : ""}lab-lot`);
+        const state = inventory?.orderStatus(item);
+        const row = createElement("div", `${(state ? state.state === "ordered" : item.ordered) ? "ordered-row " : ""}lab-lot`);
         const info = createElement("div", "lab-lot-info");
         info.append(createElement("strong", "", item.lotNumber ? `Partia ${item.lotNumber}` : item.group || "Partia bez numeru"));
         const expiryLine = createElement("span", color);
@@ -342,7 +459,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         const edit = () => startEdit(item);
         actions.append(...(inventory?.actions(item) || []),
           createButton("Edytuj", "Edytuj pozycję", edit, "lab-button"),
-          navigation ? iconButton(item.ordered ? "check" : "cart", orderLabel, order) : createButton("Zamówienie", orderLabel, order));
+          state ? orderBadge(state, () => runSafely(order, "Nie udało się zmienić statusu zamówienia."))
+            : navigation ? iconButton(item.ordered ? "check" : "cart", orderLabel, order) : createButton("Zamówienie", orderLabel, order));
         row.append(info, actions);
         const archive = inventory?.archiveActions(item) || [];
         if (archive.length) {
@@ -361,7 +479,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     if (sortedGroups.length === 0) container.append(createElement("p", "rounded-lg border border-dashed bg-gray-50 p-6 text-center text-sm text-gray-500", "Brak pozycji spełniających kryteria."));
     if (inventory) {
       if (refreshWarnings) renderInventoryAlerts(alertBox, activeItems.map(inventory.withStock),
-        (item) => item.category === "Odczynniki" ? 70 : 40, inventory, editFromAlert, lpByItem);
+        (item) => item.category === "Odczynniki" ? 70 : 40, inventory, (item) => newLotFromAlert(item, lpByItem.get(item.id)), lpByItem);
     }
     else {
       const alerts = buildChemicalAlerts(categoryItems, threshold);
@@ -370,10 +488,17 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     }
   }
 
-  function editFromAlert(item) {
-    const target = item.category === "Odczynniki" ? "Odczynniki" : "Wzorce";
-    if (category !== target) switchSubTab(target);
-    startEdit(item);
+  function newLotFromAlert(item, lp) {
+    openNewLot({ name: item.name, category: chemicalCategory(item), items: [item], lp }, item);
+  }
+
+  function showWarnings(dedicated) {
+    const box = byId("alertBox");
+    const destination = byId(dedicated ? "warningScreen" : "warningCenter");
+    if (box.parentElement === destination) return;
+    destination.append(box);
+    for (const category of box.querySelectorAll("details[data-warning]")) category.open = dedicated;
+    if (!dedicated) destination.open = false;
   }
 
   function switchSubTab(target) {
@@ -399,6 +524,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     byId("chemicalStatusFilter").addEventListener("change", () => render(false));
     byId("chemicalSort").addEventListener("change", () => render(false));
     if (inventory) {
+      for (const event of ["online", "offline"]) window.addEventListener(event, () => updateDeliveryForm?.());
       let day = warsawDate();
       const refreshDate = () => {
         const current = warsawDate();
@@ -413,7 +539,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
 
   return {
     actions: {
-      addFormRow, cancelEdit, openForm, saveItems, switchSubTab,
+      addFormRow, cancelEdit, openForm, saveItems, switchSubTab, showWarnings,
     },
     bind, initializeForm: cancelEdit, start,
   };

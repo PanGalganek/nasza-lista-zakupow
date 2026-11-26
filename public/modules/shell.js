@@ -1,5 +1,5 @@
-import { icon, fillIcons } from "./icons.js?v=23";
-import { byId, createElement } from "./ui.js?v=23";
+import { icon, fillIcons } from "./icons.js?v=25";
+import { byId, createElement } from "./ui.js?v=25";
 
 const top = [
   ["inventory", "Odczynniki i wzorce", "Rejestr, magazyn i receptury", "flask", "blue", "Odczynniki"],
@@ -28,7 +28,10 @@ const work = [
   ["Porownania", "Porównanie wewnątrzlaboratoryjne", "Parametry i wykonanie", "arrows", "violet"],
 ];
 
-export const routes = new Map([["home", { title: "e-Laboratorium", screen: "home" }]]);
+export const routes = new Map([
+  ["home", { title: "e-Laboratorium", screen: "home" }],
+  ["alerts", { title: "Centrum ostrzeżeń", screen: "alerts" }],
+]);
 for (const [route, title, description, symbol, tone, screen] of top) {
   routes.set(route, { title, description, symbol, tone, screen });
 }
@@ -94,6 +97,7 @@ export function renderShell(route, { inventory, chemicals, schedule, calendar, e
   byId("routeContext").textContent = route.includes("/") ? "Pulpit / " + routes.get(top).title : "Pulpit";
   byId("addChemical").hidden = view.section !== "registry";
   byId("addEquipment").hidden = route !== "equipment";
+  chemicals.actions.showWarnings(route === "alerts");
   if (top === "inventory") {
     if (route === "inventory") inventory.switchSection("menu");
     else if (view.section === "registry") {

@@ -1,8 +1,9 @@
-import { formatLocalDate } from "../utils.js?v=23";
-import { createElement, iconButton, notify } from "./ui.js?v=23";
-import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=23";
-import { legacyCatalogKey, lotOptions, standardKind } from "./inventory-items.js?v=23";
-import { button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=23";
+import { formatLocalDate, parseLocalDate } from "../utils.js?v=25";
+import { createElement, iconButton, notify } from "./ui.js?v=25";
+import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=25";
+import { readableLotNames, standardKind } from "./inventory-items.js?v=25";
+import { productId } from "./inventory-store.js?v=25";
+import { button, details, field, input, panel, saveButton, select, showStock, unitSelect } from "./inventory-ui.js?v=25";
 
 const say = (target, value) => target.append(createElement("p", "text-sm", value));
 const methodOptions = (inventory) => inventory.rows("methods").map((method) => [method.id, method.name]);
@@ -32,14 +33,26 @@ export function recipeIngredients(recipe, volume) {
   }));
 }
 
-export function allocateIngredients(ingredients, getLots, choices = {}, today = formatLocalDate()) {
+function preparationLots(lots, unit, today, used) {
+  return validLots(lots, unit, today).sort((a, b) => Number(used.has(b.id)) - Number(used.has(a.id))
+    || (a.expiry || "9999").localeCompare(b.expiry || "9999")
+    || (a.received || "9999").localeCompare(b.received || "9999") || a.timestamp - b.timestamp);
+}
+
+export function usedPreparationLots(events) {
+  const reversed = new Set(events.filter((event) => event.kind === "reversal").map((event) => event.details.originalId));
+  return new Set(events.filter((event) => ["withdrawal", "preparation"].includes(event.kind) && !reversed.has(event.id))
+    .flatMap((event) => Object.keys(event.changes)));
+}
+
+export function allocateIngredients(ingredients, getLots, choices = {}, today = formatLocalDate(), used = new Set()) {
   const remaining = new Map();
   const requests = [];
   const preview = [];
   ingredients.forEach((ingredient, index) => {
     if (!ingredient.productId) return;
     let need = ingredient.quantity;
-    const candidates = validLots(getLots(ingredient.productId), ingredient.unit, today);
+    const candidates = preparationLots(getLots(ingredient.productId), ingredient.unit, today, used);
     const preferred = choices[index];
     if (preferred) {
       const option = candidates.find((lot) => lot.id === preferred);
@@ -53,7 +66,7 @@ export function allocateIngredients(ingredients, getLots, choices = {}, today = 
       if (!used) continue;
       need -= used;
       remaining.set(lot.id, before - used);
-      requests.push({ lotId: lot.id, productId: ingredient.productId, unit: ingredient.unit, quantity: used });
+      requests.push({ lotId: lot.id, productId: productId(lot), unit: ingredient.unit, quantity: used });
       preview.push({ ingredient, lot, before, after: before - used });
       if (!need) break;
     }
@@ -75,7 +88,7 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
   const createRef = (name) => doc(collection(db, name));
   let preparationPending = false;
   const recipeSearchContext = (recipe, methodName = "") => [recipe.name, methodName,
-    ...recipe.ingredients.flatMap((row) => [row.name, ...inventory.lotsFor(row.productId).flatMap((lot) => [lot.name, lot.group, lot.lotNumber, lot.formula, lot.cas, lot.producer])])];
+    ...recipe.ingredients.flatMap((row) => [row.name, ...inventory.productLots(row.productId).flatMap((lot) => [lot.name, lot.group, lot.lotNumber, lot.formula, lot.cas, lot.producer])])];
 
   inventory.mount("recipes", (container) => {
     const list = createElement("div", "lab-list");
@@ -185,21 +198,16 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
       instruction.maxLength = 4000;
       const ingredients = createElement("div", "lab-list");
       const entries = new Map();
-      const products = new Map(inventory.products());
-      const groups = new Map();
+      const products = new Map(inventory.catalogProducts());
       const describe = (product) => {
         const kind = standardKind(product);
         return [product.name, kind ? `(${kind})` : "", product.producer, product.group].filter(Boolean).join(" · ");
       };
-      for (const [id, product] of products) {
-        const lots = inventory.lotsFor(id);
-        const legacy = !product.productId && legacyCatalogKey(product);
-        const key = legacy ? `legacy:${legacy}` : `product:${id}`;
-        const searchData = [product.name, product.producer, product.cas, product.formula,
-          ...lots.flatMap((lot) => [lot.group, lot.lotNumber])];
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push({ id, product, lots, searchData });
-      }
+      const catalog = [...products].map(([id, product]) => {
+        const lots = inventory.productLots(id);
+        return { id, product, lots, searchData: [product.name, product.producer, product.cas, product.formula,
+          ...lots.flatMap((lot) => [lot.group, lot.lotNumber, lot.producer, lot.cas, lot.formula])] };
+      });
       const add = (item = {}) => {
         const row = createElement("div", "lab-panel lab-fields");
         const search = input("Szukaj nazwy, producenta lub partii", "", "search");
@@ -217,7 +225,7 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
         draftSelection.setAttribute("data-draft-value", "");
 
         function showSelection() {
-          const product = products.get(selected);
+          const product = products.get(inventory.catalogId(selected));
           selectedLabel.textContent = selected === "" ? "Poza ewidencją magazynową"
             : product ? describe(product) : selected ? item.name : "Wybierz składnik z wyników wyszukiwania.";
           outsideField.hidden = selected !== "";
@@ -237,18 +245,11 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
           results.replaceChildren();
           const query = search.value.trim();
           if (!query) return;
-          const matches = [...groups.values()].filter((group) => group.some(({ searchData }) => matchesInventorySearch(query, ...searchData)));
-          for (const entries of matches.slice(0, 16)) {
-            const [first] = entries;
-            if (entries.length === 1) {
-              const label = describe(first.product) + (first.lots.length > 1 ? ` · Partie (${first.lots.length})` : "");
-              results.append(button(label, () => choose(first.id)));
-            } else {
-              const group = details(`${first.product.name} · Partie (${entries.length})`);
-              const labels = lotOptions(entries.map(({ product }) => product));
-              for (const [id, text] of labels) group.append(button(text, () => choose(id)));
-              results.append(group);
-            }
+          const matches = catalog.filter(({ searchData }) => matchesInventorySearch(query, ...searchData));
+          for (const { id, product, lots } of matches.slice(0, 16)) {
+            const count = lots.filter((lot) => !lot.stock || lot.stock.status === "active").length;
+            const label = describe(product) + (count > 1 ? ` · Partie (${count})` : "");
+            results.append(button(label, () => choose(id)));
           }
           if (!matches.length) results.append(createElement("p", "lab-muted", "Brak pasujących składników."));
           if (matches.length > 16) results.append(createElement("p", "lab-muted", "Doprecyzuj wyszukiwanie, aby zobaczyć pozostałe wyniki."));
@@ -264,8 +265,8 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
           field("Jednostka", unit), button("Usuń składnik", () => { entries.delete(row); row.remove(); }, "lab-button-danger"));
         entries.set(row, () => {
           if (selected === null) throw new Error("Wybierz składnik z magazynu lub spoza ewidencji.");
-          const source = products.get(selected);
-          const stockUnit = inventory.lotsFor(selected).find((lot) => lot.stock?.unit)?.stock.unit || source?.packageUnit;
+          const source = products.get(inventory.catalogId(selected));
+          const stockUnit = inventory.productLots(selected).find((lot) => lot.stock?.unit)?.stock.unit || source?.packageUnit;
           if (stockUnit && !compatibleUnits(unit.value, stockUnit)) throw new Error("Jednostka składnika jest niezgodna z pozycją handlową.");
           const name = selected ? source?.name || item.name : label.value;
           return { productId: selected, name: required(name, "Składnik"), quantity: quantity(amount.value, unit.value), unit: unit.value };
@@ -364,6 +365,7 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
     const toolbar = panel();
     toolbar.append(field("Szukaj metody, receptury lub składnika", search), field("Tylko ulubione", favoritesOnly));
     container.replaceChildren(toolbar, list);
+    let refreshDialog;
 
     function prepare(recipe, methodId, methodName) {
       if (preparationPending) return;
@@ -372,6 +374,9 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
       const preview = createElement("div", "lab-stack");
       const previewTitle = createElement("h3", "");
       previewTitle.setAttribute("aria-live", "polite");
+      const draftChoices = createElement("input");
+      draftChoices.type = "hidden";
+      draftChoices.setAttribute("data-draft-value", "");
       const status = createElement("p", "text-sm text-red-700");
       status.setAttribute("role", "status");
       const savedVolumes = readLocal("e-lab-recipe-volumes", {});
@@ -381,7 +386,10 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
         : recipe.baseVolume;
       const id = inventory.store.operationId();
       const volumeLabel = (value) => value === 1000 ? "1 l" : `${value} ml`;
+      const present = () => navigation.show(box, recipe.name, { busy: () => preparationPending, onDismiss: () => { refreshDialog = undefined; } });
       const show = (volume) => {
+        draftChoices.value = JSON.stringify(preferred);
+        refreshDialog = () => { if (box.isConnected && !preparationPending) show(volume); };
         preview.replaceChildren();
         previewTitle.textContent = `Pobranie dla ${volumeLabel(volume)}`;
         status.textContent = "";
@@ -389,24 +397,47 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
         try {
           const ingredients = recipeIngredients(recipe, volume);
           const selectors = createElement("div", "lab-panel lab-list");
+          const used = usedPreparationLots(inventory.rows("events"));
+          const today = formatLocalDate();
           const lotLabels = new Map();
           preview.append(selectors);
           ingredients.forEach((item, index) => {
             say(selectors, `${item.name} · ${formatQuantity(item.quantity, item.unit)}${item.productId ? "" : " · poza magazynem"}`);
             if (!item.productId) return;
-            const candidates = validLots(inventory.lotsFor(item.productId), item.unit, formatLocalDate());
-            const options = lotOptions(candidates);
-            for (const [id, label] of options) lotLabels.set(id, label);
-            const option = select([["", "Automatycznie według terminu ważności"],
-              ...options], preferred[index]);
-            option.addEventListener("change", () => {
-              if (preparationPending) { option.value = preferred[index] || ""; return; }
-              preferred[index] = option.value;
-              show(volume);
-            });
-            selectors.append(field(`Pierwsza partia — ${item.name}`, option));
+            const all = inventory.productLots(item.productId);
+            const candidates = preparationLots(all, item.unit, today, used);
+            const unknown = all.filter((lot) => !lot.stock && (!lot.expiry || (parseLocalDate(lot.expiry) && lot.expiry >= today)));
+            const labels = readableLotNames([...candidates, ...unknown]);
+            for (const [lotId, label] of labels) lotLabels.set(lotId, label);
+            const pick = createElement("div", "lab-list lab-prep-lots");
+            if (preferred[index]) pick.append(button("Użyj sugerowanej kolejności", () => {
+              if (!preparationPending) { delete preferred[index]; show(volume); }
+            }, "lab-button-quiet"));
+            for (const lot of [...candidates, ...unknown]) {
+              const card = createElement("div", "lab-panel lab-prep-lot");
+              const label = labels.get(lot.id);
+              card.append(createElement("strong", "", label), showStock(lot));
+              if (lot.stock) {
+                const suggested = !preferred[index] && lot === candidates[0];
+                const selected = preferred[index] === lot.id;
+                if (used.has(lot.id)) card.append(createElement("span", "lab-muted", "Ma zapisane pobrania"));
+                const option = button(selected ? "Wybrano" : suggested ? "Sugerowane · wybierz" : "Wybierz opakowanie", () => {
+                  if (!preparationPending) { preferred[index] = lot.id; show(volume); }
+                }, selected ? "lab-button-primary" : "");
+                option.setAttribute("aria-label", `${option.textContent}: ${label}`);
+                option.setAttribute("aria-pressed", String(selected || suggested));
+                card.append(option);
+              } else {
+                card.append(button("Ustal stan", () => inventory.showOpening(lot, () => {
+                  if (location.hash === "#inventory/preparation") { show(volume); present(); }
+                })));
+              }
+              pick.append(card);
+            }
+            if (!pick.childElementCount) say(pick, "Brak ważnych opakowań w zgodnej jednostce.");
+            selectors.append(pick);
           });
-          const plan = allocateIngredients(ingredients, inventory.lotsFor, preferred);
+          const plan = allocateIngredients(ingredients, inventory.productLots, preferred, today, used);
           for (const row of plan.preview) {
             const unit = row.lot.stock.unit;
             say(preview, `${lotLabels.get(row.lot.id)} · pobranie ${formatQuantity(row.before - row.after, unit)} · przed ${formatQuantity(row.before, unit)} · po ${formatQuantity(row.after, unit)}`);
@@ -436,9 +467,9 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
       box.append(createElement("p", "lab-muted", methodName), createElement("h3", "", "Objętość roztworu"), choices);
       if (!recipe.scalable) box.append(createElement("p", "lab-muted", "Ta receptura ma stałą objętość. Skalowanie jest wyłączone w jej ustawieniach."));
       if (recipe.instruction) say(box, recipe.instruction);
-      box.append(previewTitle, preview, status, button("Anuluj", () => navigation.close(), "lab-button-cancel"));
+      box.append(draftChoices, previewTitle, preview, status, button("Anuluj", () => navigation.close(), "lab-button-cancel"));
       show(initialVolume);
-      navigation.show(box, recipe.name, { busy: () => preparationPending });
+      present();
     }
     const render = () => {
       const opened = new Set([...list.children].filter((element) => element.open).map((element) => element.dataset.method));
@@ -459,7 +490,7 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
           let availability = "Wczytywanie stanu składników…";
           if (inventory.ready()) {
             try {
-              allocateIngredients(recipeIngredients(recipe, recipe.defaultVolume), inventory.lotsFor);
+              allocateIngredients(recipeIngredients(recipe, recipe.defaultVolume), inventory.productLots);
               availability = "Składniki dostępne dla objętości domyślnej";
             } catch { availability = "Sprawdź dostępność składników"; }
           }
@@ -483,7 +514,8 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
     favoritesOnly.addEventListener("change", render);
     inventory.onChange("recipes", render);
     inventory.onChange("methods", render);
-    inventory.onChange("stock", render);
+    inventory.onChange("stock", () => { render(); refreshDialog?.(); });
+    inventory.onChange("events", () => refreshDialog?.());
     render();
   });
 }

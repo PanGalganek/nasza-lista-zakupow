@@ -23,19 +23,19 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=23";
-import { createCalendarModule } from "./modules/calendar.js?v=23";
-import { createChemicalsModule } from "./modules/chemicals.js?v=23";
-import { createEquipmentModule } from "./modules/equipment.js?v=23";
-import { createInventoryModule } from "./modules/inventory-ui.js?v=23";
-import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=23";
-import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=23";
-import { mountInventoryTheory } from "./modules/inventory-theory.js?v=23";
-import { mountInventoryOrders } from "./modules/inventory-orders.js?v=23";
-import { createScheduleModule } from "./modules/schedule.js?v=23";
-import { byId, notify, runSafely } from "./modules/ui.js?v=23";
-import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=23";
-import { createNavigation } from "./modules/navigation.js?v=23";
+import { createAuthModule } from "./modules/auth.js?v=25";
+import { createCalendarModule } from "./modules/calendar.js?v=25";
+import { createChemicalsModule } from "./modules/chemicals.js?v=25";
+import { createEquipmentModule } from "./modules/equipment.js?v=25";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=25";
+import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=25";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=25";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=25";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=25";
+import { createScheduleModule } from "./modules/schedule.js?v=25";
+import { byId, notify, runSafely } from "./modules/ui.js?v=25";
+import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=25";
+import { createNavigation } from "./modules/navigation.js?v=25";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",

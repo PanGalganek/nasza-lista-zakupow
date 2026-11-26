@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { compatibleUnits, matchesInventorySearch, quantity, scaledQuantity, stockLevel } from "../public/modules/inventory-quantity.js";
-import { allocateIngredients, groupRecipesByMethod, recipeIngredients } from "../public/modules/inventory-recipes.js";
+import { allocateIngredients, groupRecipesByMethod, recipeIngredients, usedPreparationLots } from "../public/modules/inventory-recipes.js";
+import { outgoingAmount } from "../public/modules/inventory-history.js";
 import { calculateTheory } from "../public/modules/inventory-theory.js";
 import { expiryDaysLabel, warningGroups, warsawDate } from "../public/modules/inventory-alerts.js";
 import { createOrderDocx, orderColumns } from "../public/modules/inventory-docx.js";
-import { legacyCatalogKey, lotOptions, orderItemKey, standardKind } from "../public/modules/inventory-items.js";
+import { indexCatalog, legacyCatalogKey, lotOptions, orderItemKey, orderStatus, readableLotNames, standardKind } from "../public/modules/inventory-items.js";
 import { orderDefaults, orderItems, orderRequesters, suggestedOrderLot } from "../public/modules/inventory-orders.js";
 
 test("quantities convert exactly and colours use the unrounded ratio", () => {
@@ -23,6 +24,68 @@ test("quantities convert exactly and colours use the unrounded ratio", () => {
 test("inventory search supports names without Polish accents and multiple fragments", () => {
   assert.equal(matchesInventorySearch("zelaz LOT", "Żelazo", "LOT001"), true);
   assert.equal(matchesInventorySearch("hydroksylo", "chlorowodorek hydroksyloaminy"), true);
+});
+
+test("legacy bottles are grouped by register and commercial identity without overwriting IDs", () => {
+  const root = { id: "first", group: "VI-84", name: "Odczynnik A cz.d.a.", category: "Odczynniki", timestamp: 1 };
+  const sibling = { ...root, id: "second", timestamp: 2, packageAmount: 25000000, packageUnit: "g" };
+  const other = { ...root, id: "other", group: "VI-53" };
+  const differentGrade = { ...root, id: "grade", name: "Odczynnik A 99%" };
+  const initial = indexCatalog([root, sibling, other, differentGrade]);
+  assert.equal(initial.products.size, 3);
+  assert.equal(initial.aliases.get(sibling.id), root.id);
+  const received = { ...sibling, id: "recent", productId: root.id, group: "VI-84/2" };
+  const later = indexCatalog([{ ...root, productId: root.id }, sibling, received]);
+  assert.deepEqual(later.products.get(root.id).lots.map(({ id }) => id), ["first", "recent", "second"]);
+  assert.equal(indexCatalog([{ ...root, producer: "A" }, { ...sibling, producer: "B" }]).products.size, 2);
+  assert.equal(indexCatalog([{ ...root, productId: root.id }, { ...sibling, productId: sibling.id }]).products.size, 2);
+  assert.equal(indexCatalog([{ ...root, category: "Wzorce", usage: "Okresowy" }, { ...sibling, category: "Wzorce", usage: "Bieżący" }]).products.size, 2);
+  const names = readableLotNames([root, sibling]);
+  assert.match(names.get("first"), /Partia bez numeru.*Opakowanie 1/);
+  assert.match(names.get("second"), /Partia bez numeru.*Opakowanie 2/);
+});
+
+test("preparation prefers bottles with valid withdrawals, followed by expiry and receipt date", () => {
+  const stock = { status: "active", balance: quantity("25", "g"), unit: "g" };
+  const lots = [
+    { id: "early", stock, expiry: "2027-01-02", received: "2026-02-01" },
+    { id: "older", stock, expiry: "2027-01-02", received: "2026-01-01" },
+    { id: "used", stock, expiry: "2027-05-02", received: "2026-01-01" },
+    { id: "expired", stock, expiry: "2025-01-02" },
+    { id: "unknown", expiry: "2027-01-01" },
+  ];
+  const ingredients = [{ name: "A", unit: "g", quantity: quantity("1", "g"), productId: "older" }];
+  const used = usedPreparationLots([
+    { id: "a", kind: "withdrawal", changes: { early: {} } },
+    { id: "b", kind: "preparation", changes: { used: {}, expired: {} } },
+    { kind: "reversal", details: { originalId: "a" } },
+  ]);
+  const choose = (manual, history) => allocateIngredients(ingredients, () => lots, manual, "2026-11-26", history).requests[0];
+  assert.equal(choose({}, used).lotId, "used");
+  assert.equal(choose({ 0: "early" }, used).lotId, "early");
+  assert.equal(choose({}).lotId, "older");
+  assert.equal(choose({}, used).productId, "used");
+});
+
+test("order badges distinguish generated documents, pending partial delivery and fulfilled lines", () => {
+  const order = { status: "generated", date: "2026-11-26" };
+  const entries = [{ order, index: 0 }];
+  assert.equal(orderStatus(entries, {}).state, "generated");
+  order.status = "ordered";
+  order.deliveries = { 0: { received: 1, complete: false } };
+  assert.equal(orderStatus(entries, {}).state, "ordered");
+  order.deliveries[0].complete = true;
+  assert.equal(orderStatus(entries, { ordered: true }).state, "idle");
+  assert.equal(orderStatus([], { ordered: true }).state, "ordered");
+});
+
+test("withdrawal aggregates only the remaining balance at retirement and accounts for reversals", () => {
+  const operations = [["receipt", 0, 500], ["preparation", 500, 490], ["preparation", 490, 465],
+    ["reversal", 465, 490], ["withdrawal", 490, 465], ["withdrawn", 465, 0]];
+  const outgoing = operations.map(([kind, before, after]) => outgoingAmount({ kind }, { before, after }));
+  assert.deepEqual(outgoing, [null, 10, 25, -25, 25, 465]);
+  assert.equal(outgoing.reduce((sum, value) => sum + (value || 0), 0), 500);
+  assert.equal(outgoingAmount({ kind: "withdrawn" }, { before: null, after: null }), null);
 });
 
 test("recipe groups share the original records and show empty methods and unassigned recipes", () => {

@@ -79,6 +79,72 @@ service cloud.firestore {
       return /databases/$(database)/documents/odczynniki/$(id);
     }
 
+    function orderPath(id) {
+      return /databases/$(database)/documents/magazyn_zamowienia/$(id);
+    }
+
+    function validDeliveryLink(link) {
+      return link is map && link.keys().hasOnly(['orderId', 'lineIndex', 'complete'])
+        && link.orderId is string && link.orderId.matches('^[A-Za-z0-9_-]{1,128}$')
+        && link.lineIndex is int && link.lineIndex >= 0 && link.complete is bool;
+    }
+
+    function linkedOrderReceipt(link, eventId) {
+      return validDeliveryLink(link)
+        && get(orderPath(link.orderId)).data.get('lastReceipt', '') != eventId
+        && getAfter(orderPath(link.orderId)).data.lastReceipt == eventId;
+    }
+
+    function orderedPackages(line) {
+      return 'packages' in line ? line.packages
+        : (line.amount == '' ? 0 : (line.amount.matches('^\\d+ × .*$') ? int(line.amount.split(' × ')[0]) : 1));
+    }
+
+    function validDeliveryProgress(previous, current, key, count, complete) {
+      let before = previous.get(key, {'received': 0, 'complete': false});
+      let after = current[key];
+      return current.diff(previous).affectedKeys().hasOnly([key]) && !before.complete
+        && after is map && after.keys().hasOnly(['received', 'complete'])
+        && after.received is int && after.received == before.received + 1 && after.received <= 10000
+        && after.complete == complete
+        && (count == 0 || (count is int && count > 0 && after.received <= count && complete == (after.received == count)));
+    }
+
+    function sameLegacyProduct(sourceId, targetId) {
+      let source = get(chemicalPath(sourceId)).data;
+      let target = get(chemicalPath(targetId)).data;
+      let chem = source.get('category', 'Wzorce') == 'Odczynniki';
+      return !('productId' in source) && source.group.split('/')[0] != ''
+        && source.group.split('/')[0] == target.group.split('/')[0] && source.name == target.name
+        && chem == (target.get('category', 'Wzorce') == 'Odczynniki') && (chem || source.usage == target.usage)
+        && compatibleCatalogValue(source, target, 'producer') && compatibleCatalogValue(source, target, 'cas')
+        && compatibleCatalogValue(source, target, 'formula') && compatibleCatalogValue(source, target, 'orderDescription');
+    }
+
+    function compatibleCatalogValue(source, target, key) {
+      return source.get(key, '') == '' || target.get(key, '') == '' || source[key] == target[key];
+    }
+
+    function matchesDeliveryProduct(event, line) {
+      let targetId = event.changes[event.anchor].productId;
+      return targetId == line.productId || sameLegacyProduct(line.productId, targetId);
+    }
+
+    function updatesReceivedOrder(id, before, after) {
+      let eventId = after.lastReceipt;
+      let event = getAfter(eventPath(eventId)).data;
+      let link = event.details.delivery;
+      let index = link.lineIndex;
+      return before.status == 'ordered'
+        && after.diff(before).affectedKeys().hasOnly(['deliveries', 'lastReceipt'])
+        && eventId is string && eventId.matches('^[A-Za-z0-9_-]{1,150}$') && !exists(eventPath(eventId))
+        && event.kind == 'receipt' && event.changes.size() == 1 && validDeliveryLink(link)
+        && link.orderId == id && index < before.lines.size()
+        && matchesDeliveryProduct(event, before.lines[index])
+        && validDeliveryProgress(before.get('deliveries', {}), after.deliveries, string(index),
+          orderedPackages(before.lines[index]), link.complete);
+    }
+
     function isProductRoot(id, newLot) {
       let target = getAfter(chemicalPath(id)).data;
       return target.productId == id
@@ -244,6 +310,8 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time && request.resource.data.details is map
         && request.resource.data.details.intent is string && request.resource.data.details.intent.matches('^[a-f0-9]{64}$')
         && validEventChanges(request.resource.data, documentId)
+        && (!('delivery' in request.resource.data.details)
+          || (request.resource.data.kind == 'receipt' && linkedOrderReceipt(request.resource.data.details.delivery, documentId)))
         && (request.resource.data.kind != 'preparation' || validPreparation(request.resource.data.details))
         && (request.resource.data.kind != 'reversal' || reversalEvent(request.resource.data, documentId));
     }
@@ -297,9 +365,10 @@ service cloud.firestore {
         && validDate(request.resource.data.date) && request.resource.data.date != ''
         && request.resource.data.status == 'generated' && request.resource.data.createdAt == request.time;
       allow update: if activeUser()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'orderedAt'])
-        && resource.data.status == 'generated' && request.resource.data.status == 'ordered'
-        && request.resource.data.orderedAt == request.time;
+        && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'orderedAt'])
+          && resource.data.status == 'generated' && request.resource.data.status == 'ordered'
+          && request.resource.data.orderedAt == request.time)
+          || updatesReceivedOrder(documentId, resource.data, request.resource.data));
     }
 
     match /harmonogram/{documentId} {

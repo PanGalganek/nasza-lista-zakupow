@@ -1,5 +1,5 @@
-import { byId, notify } from "./ui.js?v=23";
-import { routes } from "./shell.js?v=23";
+import { byId, notify } from "./ui.js?v=25";
+import { routes } from "./shell.js?v=25";
 
 export const routeParent = (route) => route.includes("/") ? route.split("/")[0] : "home";
 
@@ -86,7 +86,9 @@ export function createNavigation(render) {
     if (overlay) return close();
     if (!current || current.route === "home" || pending) return;
     const parent = routeParent(current.route);
-    if (current.previous === parent) {
+    const betweenOrdersAndAlerts = (current.route === "alerts" && current.previous === "inventory/orders")
+      || (current.route === "inventory/orders" && current.previous === "alerts");
+    if (current.previous === parent || betweenOrdersAndAlerts) {
       pending = true;
       history.back();
     } else {

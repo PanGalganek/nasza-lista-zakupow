@@ -1,7 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=23";
-import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=23";
-import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=23";
-import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=23";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=25";
+import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=25";
+import { compatibleUnits, formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=25";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=25";
+import { indexCatalog, orderLineMatches, orderLineProgress, orderRecordedDate, orderStatus } from "./inventory-items.js?v=25";
+import { icon } from "./icons.js?v=25";
 
 const textValue = (value) => typeof value === "string";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -69,6 +71,37 @@ export function batchLabel(lot) {
   return [lot.name, lot.lotNumber || lot.group, lot.producer].filter(Boolean).join(" · ");
 }
 
+export function orderBadge({ state, order, history }, toggleLegacy, { showStatusText = false } = {}) {
+  const label = state === "generated" ? "Wygenerowano Word" : state === "ordered" ? "Zamówiono · oczekuje na dostawę" : "Niezamówione";
+  const symbol = icon(state === "generated" ? "document" : "cart");
+  const className = `lab-order-badge lab-order-${state}`;
+  if (state === "idle") {
+    const control = toggleLegacy && !history
+      ? createButton("", "Oznacz jako zamówione", toggleLegacy, className)
+      : createElement("span", className);
+    control.title = label;
+    if (control.tagName === "SPAN") { control.setAttribute("role", "img"); control.setAttribute("aria-label", label); }
+    control.append(symbol);
+    if (showStatusText) control.append(createElement("span", "", label));
+    return control;
+  }
+  const date = order && (state === "generated" ? orderRecordedDate(order, "createdAt") : formatPolishDate(order.date, ""));
+  const caption = state === "generated" && date ? `${label} – ${date}` : label;
+  const box = createElement("details", "lab-order-status");
+  const summary = createElement("summary", className);
+  summary.title = caption;
+  summary.setAttribute("aria-label", caption);
+  summary.append(symbol);
+  if (showStatusText) summary.append(createElement("span", "", state === "ordered" ? "Oczekuje na dostawę" : caption));
+  const description = createElement("div", "lab-order-description");
+  description.append(createElement("p", "", state === "ordered" && date ? `Zamówiono – ${date}` : caption));
+  if (order?.requester) description.append(createElement("p", "", `Zamawia: ${order.requester}`));
+  if (state === "ordered" && order) description.append(createElement("p", "", `Wygenerowano Word – ${orderRecordedDate(order, "createdAt")}`));
+  if (!order && toggleLegacy) description.append(button("Cofnij oznaczenie zamówienia", toggleLegacy));
+  box.append(summary, description);
+  return box;
+}
+
 export function showStock(lot, { compact = false } = {}) {
   const stock = lot.stock;
   const box = createElement(compact ? "span" : "div", "lab-stock");
@@ -100,8 +133,12 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
   let stockById = new Map();
   let registryById = new Map();
   let byProduct = new Map();
+  let catalog = indexCatalog([]);
+  let orderLinesByLot = new Map();
+  let orderLinesByProduct = new Map();
   let visibleCard = "";
   let pendingAction = false;
+  let refreshWithdrawal;
   let lots = [];
   let section = "menu";
   let refreshRegistry = () => {};
@@ -111,23 +148,42 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
   const lotsFor = (id) => (byProduct.get(id) || []).map(withStock);
   const products = () => [...new Map(lots.map((lot) => [productId(lot), registryById.get(productId(lot)) || lot])).entries()];
   const productOptions = () => products().map(([id, lot]) => [id, batchLabel(lot)]);
+  const catalogId = (id) => catalog.aliases.get(id) || id;
+  const productLots = (id) => (catalog.products.get(catalogId(id))?.lots || []).map(withStock);
   const rows = (key) => collections[key] || [];
   const ready = () => loaded.has("stock");
+  const legacyOrderEntries = (lot) => (orderLinesByProduct.get(productId(lot)) || [])
+    .filter(({ line }) => !line.lotId && orderLineMatches(line, lot));
 
-  function refresh() {
+  function indexOrders() {
+    orderLinesByLot = new Map();
+    orderLinesByProduct = new Map();
+    for (const order of rows("orders")) {
+      order.lines.forEach((line, index) => {
+        const entry = { order, line, index };
+        for (const [indexMap, key] of [[orderLinesByLot, line.lotId], [orderLinesByProduct, line.productId]]) {
+          if (!key) continue;
+          if (!indexMap.has(key)) indexMap.set(key, []);
+          indexMap.get(key).push(entry);
+        }
+      });
+    }
+  }
+
+  function refresh(entering = false) {
     changes.clear();
-    if (panels.has(section)) panels.get(section)(byId("inventorySection"));
+    if (panels.has(section)) panels.get(section)(byId("inventorySection"), "", entering);
   }
 
   function switchSection(key) {
+    const entering = key !== section;
     section = key;
-    if (["history", "archive", "statistics"].includes(key)) subscribe("events");
+    if (["archive", "statistics", "preparation"].includes(key)) subscribe("events");
     if (key === "statistics") subscribe("calculations");
-    if (key === "orders") subscribe("orders");
     byId("inventoryMenu").hidden = key !== "menu";
     byId("inventoryRegistry").classList.toggle("hidden", key !== "registry");
     byId("inventorySection").classList.toggle("hidden", !panels.has(key));
-    refresh();
+    refresh(entering);
   }
 
   function start() {
@@ -136,9 +192,11 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     stockById.clear();
     orderSelections.clear();
     visibleCard = "";
+    refreshWithdrawal = undefined;
     byId("inventoryAction").replaceChildren();
     for (const key of Object.keys(inventoryCollections)) delete collections[key];
-    for (const key of ["stock", "recipes", "methods"]) subscribe(key);
+    indexOrders();
+    for (const key of ["stock", "recipes", "methods", "orders"]) subscribe(key);
     switchSection("menu");
   }
 
@@ -153,8 +211,12 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
         collections[key] = inventoryRecords[key] ? data.filter(inventoryRecords[key]) : data;
         if (collections[key].length !== data.length) reportListenerError("Niepoprawne dokumenty magazynowe", new Error(key));
         loaded.add(key);
-        if (key === "stock") stockById = new Map(collections.stock.map((item) => [item.id, item]));
-        if (["stock", "recipes", "methods"].includes(key)) refreshRegistry();
+        if (key === "stock") {
+          stockById = new Map(collections.stock.map((item) => [item.id, item]));
+          refreshWithdrawal?.();
+        }
+        if (key === "orders") indexOrders();
+        if (["stock", "recipes", "methods", "orders"].includes(key)) refreshRegistry();
         changes.get(key)?.();
         if (["history", "archive"].includes(section) && ["stock", "events"].includes(key)) refresh();
         if (visibleCard && ["stock", "events"].includes(key)) showCard(visibleCard, false);
@@ -293,12 +355,14 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
 
   function dismissAction() {
     visibleCard = "";
+    refreshWithdrawal = undefined;
     byId("inventoryAction").replaceChildren();
   }
 
-  function showAction(lot, kind) {
+  function showAction(lot, kind, returnToPreparation) {
     if (pendingAction) return;
     visibleCard = "";
+    refreshWithdrawal = undefined;
     const destination = byId("inventoryAction");
     const box = createElement("div", "lab-stack");
     const message = createElement("p", "text-xs text-red-700");
@@ -306,24 +370,41 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     const labels = { opening: "Ustal stan początkowy", opening_correction: "Skoryguj ilość początkową",
       withdrawal: "Zużycie", used: "Oznacz jako zużyty", withdrawn: "Wycofaj partię" };
     box.append(createElement("p", "lab-muted", batchLabel(lot)));
-    const choices = kind === "withdrawal" ? validLots(lotsFor(productId(lot)), lot.stock.unit, formatLocalDate()) : [lot];
+    const choices = kind === "withdrawal" ? validLots(productLots(productId(lot)), lot.stock.unit, formatLocalDate()) : [lot];
     const selected = select(choices.map((batch) => [batch.id, `${batchLabel(batch)} · ${formatPolishDate(batch.expiry)}`]));
     const unit = unitSelect(lot.stock?.unit || lot.packageUnit);
     const amount = input("Ilość");
+    amount.inputMode = "decimal";
+    const withdrawalUnit = select(Object.keys(units).filter((value) => compatibleUnits(value, lot.stock?.unit))
+      .map((value) => [value, value]), lot.stock?.unit);
     const preview = createElement("p", "text-sm");
-    const chosen = () => choices.find((batch) => batch.id === selected.value);
+    preview.setAttribute("role", "status");
+    const chosen = () => {
+      const item = registryById.get(selected.value);
+      const batch = item && withStock(item);
+      return batch && validLots([batch], withdrawalUnit.value, formatLocalDate())[0];
+    };
     const update = () => {
       const batch = chosen();
-      if (!batch?.stock || kind !== "withdrawal") return;
+      if (!batch) {
+        preview.textContent = "Wybrana partia nie jest dostępna. Wybierz inną ważną partię.";
+        return;
+      }
       try {
-        const remaining = batch.stock.balance - quantity(amount.value, batch.stock.unit);
-        preview.textContent = remaining < 0 ? "Brak wystarczającego zapasu." : `Po pobraniu ${formatQuantity(remaining, batch.stock.unit)}`;
-      } catch { preview.textContent = `Dostępne ${formatQuantity(batch.stock.balance, batch.stock.unit)}`; }
+        const requested = quantity(amount.value, withdrawalUnit.value);
+        const remaining = batch.stock.balance - requested;
+        preview.textContent = remaining < 0 ? "Brak wystarczającego zapasu."
+          : `Pobranie ${formatQuantity(requested, withdrawalUnit.value)} · po pobraniu ${formatQuantity(remaining, batch.stock.unit)}`;
+      } catch { preview.textContent = amount.value.trim() ? "Podaj prawidłową ilość." : `Dostępne ${formatQuantity(batch.stock.balance, batch.stock.unit)}`; }
     };
     if (kind === "withdrawal") {
-      box.append(field("Partia", selected), field("Ilość w jednostce partii", amount), preview);
+      const fields = createElement("div", "lab-fields");
+      fields.append(field("Ilość pobrania", amount), field("Jednostka pobrania", withdrawalUnit));
+      box.append(field("Partia", selected), fields, preview);
       selected.addEventListener("change", update);
       amount.addEventListener("input", update);
+      withdrawalUnit.addEventListener("change", update);
+      refreshWithdrawal = update;
       update();
     }
     if (kind === "opening") box.append(field("Rzeczywisty stan początkowy", amount), field("Jednostka", unit));
@@ -344,7 +425,10 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
           await store.correctOpening(lot.id, quantity(amount.value, lot.stock.unit, { zero: true }), lot.stock.lastEvent, id);
         } else if (kind === "withdrawal") {
           const batch = chosen();
-          await store.withdraw([{ lotId: batch.id, productId: productId(batch), quantity: quantity(amount.value, batch.stock.unit), unit: batch.stock.unit }], { id });
+          if (!batch) throw new Error("Wybrana partia nie jest dostępna. Wybierz inną ważną partię.");
+          const requested = quantity(amount.value, withdrawalUnit.value);
+          if (requested > batch.stock.balance) throw new Error("Brak wystarczającego zapasu.");
+          await store.withdraw([{ lotId: batch.id, productId: productId(batch), quantity: requested, unit: withdrawalUnit.value }], { id });
         } else await store.close(lot.id, kind, id);
         navigation.close(true);
         notify("Zapisano operację magazynową.");
@@ -352,7 +436,10 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     }, message, { danger }));
     box.append(message, footer);
     destination.replaceChildren(box);
-    navigation.show(destination, labels[kind], { busy: () => pendingAction, onDismiss: dismissAction });
+    navigation.show(destination, labels[kind], { busy: () => pendingAction, onDismiss: () => {
+      dismissAction();
+      if (returnToPreparation) queueMicrotask(returnToPreparation);
+    } });
   }
 
   function showCard(id, focus = true) {
@@ -379,6 +466,16 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
 
   return {
     store, fields, start, bind, actions, archiveActions, withStock, allLots, lotsFor, products, productOptions, rows, ready, refresh, orderSelections,
+    ordersReady: () => loaded.has("orders"),
+    activeOrdersFor(lot) {
+      const ids = new Set(productLots(productId(lot)).map(productId));
+      return [...ids].flatMap((id) => (orderLinesByProduct.get(id) || []).filter(({ line, order, index }) =>
+        orderLineMatches(line, { ...lot, productId: id }) && order.status === "ordered" && !orderLineProgress(order, index).complete));
+    },
+    orderStatus: (lot) => orderStatus([...(orderLinesByLot.get(lot.id) || []), ...legacyOrderEntries(lot)], lot),
+    catalogId, productLots, catalogProducts: () => [...catalog.products].map(([id, { product }]) => [id, product]),
+    ensureHistory: () => subscribe("events"),
+    showOpening: (lot, onSaved) => showAction(lot, "opening", onSaved),
     searchContext(lot) {
       const methods = new Map(rows("methods").map((method) => [method.id, method.name]));
       return rows("recipes").filter((recipe) => recipe.ingredients.some((ingredient) => ingredient.productId === productId(lot)))
@@ -387,6 +484,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     setLots(value) {
       lots = value;
       registryById = new Map(lots.map((item) => [item.id, item]));
+      catalog = indexCatalog(lots);
       byProduct = new Map();
       for (const lot of lots) {
         const key = productId(lot);

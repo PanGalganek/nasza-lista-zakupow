@@ -1,5 +1,6 @@
-import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=23";
-import { formatLocalDate } from "../utils.js?v=23";
+import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=25";
+import { chemicalCategory, formatLocalDate } from "../utils.js?v=25";
+import { orderLineProgress, orderPackageCount, standardKind } from "./inventory-items.js?v=25";
 
 export const inventoryCollections = {
   stock: "magazyn_partie",
@@ -95,12 +96,47 @@ export function createInventoryStore(db, firestore) {
     return { productId: productId(lot), number: lot.lotNumber || "", name: lot.name, unit, initial, before, after, status };
   }
 
-  async function receive(items, id = operationId()) {
+  async function receive(items, id = operationId(), delivery = null) {
     const lots = items.map(({ fields, initial }) => ({ initial, fields, document: doc(collection(db, "odczynniki")) }));
     checkSize(lots.length);
     const payload = items.map(({ fields, initial }) => [{ ...fields, timestamp: 0 }, initial]);
-    return transact(id, ["receipt", payload], async (transaction, intent) => {
+    if (delivery && lots.length !== 1) throw new Error("Powiązana dostawa obejmuje jedno przyjmowane opakowanie.");
+    // Zachowaj identyfikator zamiaru dla rozpoczętych zapisów w starszej wersji.
+    const intentPayload = delivery ? ["receipt", payload, delivery] : ["receipt", payload];
+    return transact(id, intentPayload, async (transaction, intent) => {
       const roots = await readRoots(transaction, lots.map(({ fields }) => fields.productId));
+      let linkedDelivery;
+      if (delivery) {
+        const { orderId, lineIndex, kind } = delivery;
+        const orderRef = ref("orders", orderId);
+        const order = (await transaction.get(orderRef)).data();
+        const row = order?.lines?.[lineIndex];
+        const lot = lots[0].fields;
+        const progress = orderLineProgress(order || {}, lineIndex);
+        if (order?.status !== "ordered" || !row || progress.complete
+          || standardKind(lot) !== kind || (row.standardKind && kind && row.standardKind !== kind)) {
+          throw new Error("Wybrana pozycja zamówienia jest już rozliczona lub dotyczy innego produktu. Otwórz formularz ponownie.");
+        }
+        if (row.productId !== lot.productId) {
+          const previous = (await transaction.get(lotRef(row.productId))).data();
+          const root = roots[0].data();
+          const originalGroup = previous?.group?.split("/")[0];
+          if (!previous || previous.productId || previous.name !== root.name || !originalGroup || originalGroup !== root.group.split("/")[0]
+            || chemicalCategory(previous) !== chemicalCategory(root) || standardKind(previous) !== standardKind(root)
+            || ["producer", "formula", "cas", "orderDescription"].some((field) => previous[field] && root[field] && previous[field] !== root[field])) {
+            throw new Error("Wybrane zamówienie dotyczy innego wariantu produktu.");
+          }
+        }
+        const expected = orderPackageCount(row);
+        const received = progress.received + 1;
+        if (expected !== null && received > expected) throw new Error("Dostawa przekracza liczbę zamówionych opakowań.");
+        const complete = expected === null ? delivery.complete === true : received === expected;
+        linkedDelivery = { orderId, lineIndex, complete };
+        transaction.update(orderRef, {
+          deliveries: { ...order.deliveries, [lineIndex]: { received, complete } },
+          lastReceipt: id,
+        });
+      }
       reserveRoots(transaction, roots);
       const changes = {};
       for (const { fields, document, initial } of lots) {
@@ -108,7 +144,7 @@ export function createInventoryStore(db, firestore) {
         transaction.set(document, { ...fields, productId: productId(lot) });
         changes[lot.id] = line(lot, fields.packageUnit, initial, 0, initial, "active");
       }
-      writeOperation(transaction, id, "receipt", changes, { intent });
+      writeOperation(transaction, id, "receipt", changes, { intent, ...(linkedDelivery && { delivery: linkedDelivery }) });
     });
   }
 
