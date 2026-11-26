@@ -1,9 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=21";
-import { createElement } from "./ui.js?v=21";
-import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=21";
-import { button, details, field, input, panel, saveButton, unitSelect } from "./inventory-ui.js?v=21";
-import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=21";
-import { requireInventoryConnection } from "./inventory-store.js?v=21";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=22";
+import { createElement } from "./ui.js?v=22";
+import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=22";
+import { button, details, field, input, orderDescriptionLimit, panel, saveButton, unitSelect } from "./inventory-ui.js?v=22";
+import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=22";
+import { requireInventoryConnection } from "./inventory-store.js?v=22";
 
 function download(rows, date) {
   const blob = createOrderDocx(rows, formatPolishDate(date));
@@ -15,6 +15,23 @@ function download(rows, date) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
+}
+
+function registerOrderName(product) {
+  return product.producer && !matchesInventorySearch(product.producer, product.name)
+    ? `${product.name} ${product.producer}` : product.name;
+}
+
+export function orderDefaults(product, lots) {
+  const previous = lots.filter((record) => record.packageAmount).sort((a, b) => b.timestamp - a.timestamp)[0];
+  const packaging = product.orderPackaging || (previous && { amount: previous.packageAmount, unit: previous.packageUnit });
+  return {
+    description: product.orderDescription?.trim() || registerOrderName(product),
+    size: packaging ? formatQuantity(packaging.amount, packaging.unit).replace(/\s+[^\s]+$/, "").replace(/\s/g, "") : "",
+    unit: packaging?.unit || "",
+    count: product.orderPackages || previous?.orderPackages || 1,
+    notes: "",
+  };
 }
 
 export function mountInventoryOrders(inventory, { db, firestore }) {
@@ -38,14 +55,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
     container.replaceChildren(note, selection, draft, history);
 
     function ensureRow(id) {
-      if (values.has(id)) return values.get(id);
-      const lot = products.get(id);
-      if (!lot) return null;
-      const previous = inventory.lotsFor(id).filter((record) => record.packageAmount).sort((a, b) => b.timestamp - a.timestamp)[0];
-      const order = { size: previous ? formatQuantity(previous.packageAmount, previous.packageUnit).replace(/\s+[^\s]+$/, "").replace(/\s/g, "") : "",
-        unit: previous?.packageUnit || "", count: previous?.orderPackages || lot.orderPackages || 1, notes: "" };
-      values.set(id, order);
-      return order;
+      return { ...orderDefaults(products.get(id), inventory.lotsFor(id)), ...values.get(id) };
     }
 
     const renderCandidates = () => {
@@ -53,7 +63,7 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
       if (!search.value.trim()) return;
       for (const [id, product] of products) {
         const lots = inventory.lotsFor(id);
-        if (!matchesInventorySearch(search.value, product.name, product.producer, product.cas, product.formula,
+        if (!matchesInventorySearch(search.value, product.name, product.orderDescription, product.producer, product.cas, product.formula,
           ...lots.flatMap((lot) => [lot.group, lot.lotNumber]))) continue;
         const checkbox = createElement("input");
         checkbox.type = "checkbox";
@@ -75,17 +85,26 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
         const product = products.get(id);
         const current = ensureRow(id);
         const row = createElement("div", "lab-panel lab-fields");
+        const description = createElement("textarea");
+        description.value = current.description;
+        description.rows = 4;
+        description.maxLength = orderDescriptionLimit;
+        const descriptionField = field("Opis zamówieniowy", description);
+        descriptionField.classList.add("lab-field-wide");
         const size = input("Wielkość opakowania", current.size);
         const unit = unitSelect(current.unit);
         const count = input("Sztuki opakowań", current.count, "number");
         const notes = input("Uwagi", current.notes);
         notes.maxLength = 300;
-        size.addEventListener("input", () => { current.size = size.value; });
-        unit.addEventListener("change", () => { current.unit = unit.value; });
-        count.addEventListener("input", () => { current.count = count.value; });
-        notes.addEventListener("input", () => { current.notes = notes.value; });
+        for (const [key, control, event] of [["description", description, "input"], ["size", size, "input"],
+          ["unit", unit, "change"], ["count", count, "input"], ["notes", notes, "input"]]) {
+          control.addEventListener(event, () => values.set(id, { ...values.get(id), [key]: control.value }));
+        }
         const alreadyOrdered = inventory.lotsFor(id).some((lot) => lot.ordered);
         row.append(createElement("h4", "lab-field-wide lab-section-title", `${product.name}${product.producer ? ` · ${product.producer}` : ""}${alreadyOrdered ? " · już oznaczona jako zamówiona" : ""}`));
+        row.append(descriptionField);
+        if (!product.orderDescription?.trim()) row.append(createElement("p", "lab-muted lab-field-wide",
+          "Brak pełnego opisu w rejestrze. Możesz go uzupełnić dla tego zamówienia."));
         row.append(field("Wielkość opakowania", size), field("Jednostka", unit), field("Liczba opakowań", count),
           field("Uwagi", notes), button("Usuń pozycję z zamówienia", () => {
             inventory.orderSelections.delete(id);
@@ -107,8 +126,8 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
           if (size && current.unit && (!Number.isInteger(count) || count < 1 || count > 10000)) throw new Error("Podaj liczbę opakowań od 1 do 10 000.");
           const amount = size && current.unit
             ? `${count > 1 ? `${count} × ` : ""}${formatQuantity(quantity(size, current.unit), current.unit)}` : "";
-          const name = product.producer && !matchesInventorySearch(product.producer, product.name)
-            ? `${product.name} ${product.producer}` : product.name;
+          const name = current.description.trim() || registerOrderName(product);
+          if (name.length > orderDescriptionLimit) throw new Error("Opis zamówieniowy jest zbyt długi.");
           return { productId: id, name, amount, notes: current.notes.trim() };
         });
         const date = formatLocalDate();
@@ -121,7 +140,10 @@ export function mountInventoryOrders(inventory, { db, firestore }) {
             return { lines, date };
           });
           download(current.lines, current.date);
-          for (const id of selections) inventory.orderSelections.delete(id);
+          for (const id of selections) {
+            inventory.orderSelections.delete(id);
+            values.delete(id);
+          }
           renderDraft();
           renderCandidates();
           status.textContent = "Wygenerowano dokument. Oznaczenie jako zamówione jest dostępne w historii.";

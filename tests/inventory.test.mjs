@@ -3,8 +3,9 @@ import assert from "node:assert/strict";
 import { compatibleUnits, matchesInventorySearch, quantity, scaledQuantity, stockLevel } from "../public/modules/inventory-quantity.js";
 import { allocateIngredients, groupRecipesByMethod, recipeIngredients } from "../public/modules/inventory-recipes.js";
 import { calculateTheory } from "../public/modules/inventory-theory.js";
-import { warningGroups } from "../public/modules/inventory-alerts.js";
+import { expiryDaysLabel, warningGroups, warsawDate } from "../public/modules/inventory-alerts.js";
 import { createOrderDocx, orderColumns } from "../public/modules/inventory-docx.js";
+import { orderDefaults } from "../public/modules/inventory-orders.js";
 
 test("quantities convert exactly and colours use the unrounded ratio", () => {
   assert.equal(quantity("0,5", "kg"), quantity("500", "g"));
@@ -85,6 +86,30 @@ test("expiry and quantity warnings retain linked backup information", () => {
   assert.deepEqual([unknown.low.length, unknown.warning.length], [0, 0]);
 });
 
+test("expiry alerts use Warsaw midnight and rank deadlines by urgency", () => {
+  const now = new Date("2026-03-28T23:05:00Z");
+  const lots = Object.entries({ next: "2026-03-30", near: "2026-03-28", later: "2026-04-03", today: "2026-03-29",
+    overdue: "2026-03-19", distant: "2026-05-10", invalid: "2026-02-30" }).map(([id, expiry]) => ({ id, name: id, expiry }));
+  const { expired, expiring } = warningGroups(lots, 40, now);
+  assert.equal(warsawDate(new Date("2026-03-28T22:59:59Z")), "2026-03-28");
+  assert.equal(warsawDate(now), "2026-03-29");
+  assert.equal(warsawDate(new Date("2026-06-05T22:00:00Z")), "2026-06-06");
+  assert.deepEqual(expired.map(({ lot, days }) => [lot.id, days]), [["overdue", -10], ["near", -1]]);
+  assert.deepEqual(expiring.map(({ lot, days }) => [lot.id, days]), [["today", 0], ["next", 1], ["later", 5]]);
+  assert.deepEqual([0, 1, 5, -1, -10].map(expiryDaysLabel),
+    ["Termin upływa dzisiaj", "Pozostało 1 dzień", "Pozostało 5 dni", "Po terminie o 1 dzień", "Po terminie o 10 dni"]);
+});
+
+test("orders use the product purchasing profile and fall back to available legacy data", () => {
+  const legacy = { name: "Wzorzec żelaza", producer: "Przykładowy producent" };
+  const lots = [{ timestamp: 2, packageAmount: quantity("500", "g"), packageUnit: "g", orderPackages: 2 }];
+  assert.deepEqual(orderDefaults(legacy, []), { description: "Wzorzec żelaza Przykładowy producent", size: "", unit: "", count: 1, notes: "" });
+  assert.deepEqual(orderDefaults(legacy, lots), { description: "Wzorzec żelaza Przykładowy producent", size: "500", unit: "g", count: 2, notes: "" });
+  const description = "Wzorzec SO₄²⁻\nCertyfikat jakości";
+  const profile = { ...legacy, orderDescription: description, orderPackaging: { amount: quantity("125", "ml"), unit: "ml" }, orderPackages: 4 };
+  assert.deepEqual(orderDefaults(profile, lots), { description, size: "125", unit: "ml", count: 4, notes: "" });
+});
+
 test("Word order is an editable table with eleven cells and blank supplier and order number", async () => {
   const row = { name: "Pozycja & wzorzec", amount: "2 × 500 g", notes: "test" };
   const values = orderColumns(row, "25.11.2026");
@@ -99,4 +124,15 @@ test("Word order is an editable table with eleven cells and blank supplier and o
   assert.match(content, /C00000/);
   assert.match(content, /Pozycja &amp; wzorzec/);
   assert.doesNotMatch(content, /w:documentProtection|w:headerReference|w:footerReference/);
+});
+
+test("Word description preserves lines, Unicode and the accepted table grid", async () => {
+  const row = { name: "Zażółć gęślą jaźń · H₂SO₄\r\nCertyfikat & kontrola\n" + "Wymagania 10 µg/L. ".repeat(120), amount: "3 × 125 ml" };
+  const content = new TextDecoder().decode(await createOrderDocx([row], "26.11.2026").arrayBuffer());
+  assert.match(content, /H₂SO₄<\/w:t><w:br\/><w:t xml:space="preserve">Certyfikat &amp; kontrola<\/w:t><w:br\/>/);
+  assert.doesNotMatch(content, /<w:cantSplit\/>/);
+  assert.match(content, /Wymagania 10 µg\/L/);
+  assert.deepEqual([...content.matchAll(/<w:gridCol w:w="(\d+)"/g)].map((match) => Number(match[1])),
+    [454, 1417, 3855, 1247, 1106, 1389, 1247, 1049, 1219, 1162, 1191]);
+  assert.equal([...content.matchAll(/<w:tc>/g)].length, 11);
 });

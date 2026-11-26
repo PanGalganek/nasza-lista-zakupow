@@ -250,6 +250,36 @@ test("schema validation rejects unexpected fields and invalid categories", async
   await assertFails(setDoc(doc(database, "odczynniki", "april"), { ...base, expiry: "2026-04-31" }));
 });
 
+test("optional purchasing data is validated and stays on the root when receiving new lots", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
+  const packageAmount = quantity("500", "g");
+  const fields = { name: "Wzorzec testowy", group: "VI-08", usage: "", received: "", expiry: "2028-03-01",
+    timestamp: 1, ordered: false, packageAmount, packageUnit: "g" };
+  const root = doc(db, "odczynniki", "catalog");
+  await assertSucceeds(setDoc(root, fields));
+  const order = { orderDescription: "Wzorzec SO₄²⁻\nCertyfikat jakości",
+    orderPackages: 3, orderPackaging: { amount: quantity("250", "ml"), unit: "ml" } };
+  await assertSucceeds(updateDoc(root, order));
+  await assertFails(updateDoc(root, { orderDescription: "A".repeat(4001) }));
+  await assertFails(updateDoc(root, { orderPackaging: { amount: -1, unit: "g" } }));
+  await assertFails(updateDoc(root, { orderPackaging: { amount: 1, unit: "xyz" } }));
+  await assertFails(updateDoc(root, { orderPackaging: { amount: 1 } }));
+  await assertFails(setDoc(doc(db, "odczynniki", "wrong"), { ...fields, ...order, productId: "catalog" }));
+  await assertSucceeds(store.receive([{ fields: { ...fields, productId: "catalog", lotNumber: "TEST" }, initial: packageAmount }], "catalog-receipt"));
+  const saved = (await getDoc(root)).data();
+  assert.deepEqual(Object.fromEntries(Object.keys(order).map((key) => [key, saved[key]])), order);
+  assert.equal(saved.name, fields.name);
+  assert.equal(saved.expiry, fields.expiry);
+  assert.equal(saved.packageAmount, packageAmount);
+  const { anchor } = (await getDoc(store.ref("events", "catalog-receipt"))).data();
+  const lot = doc(db, "odczynniki", anchor);
+  await assertFails(updateDoc(lot, { orderDescription: "Niedozwolona kopia" }));
+  await assertSucceeds(updateDoc(lot, { expiry: "2028-03-02", orderPackages: 2 }));
+  assert.equal((await getDoc(lot)).data().orderDescription, undefined);
+  await assertSucceeds(updateDoc(root, { orderDescription: "", orderPackaging: null }));
+});
+
 test("invalid edits are rejected without corrupting an existing chemical", async () => {
   const database = testEnvironment.authenticatedContext(allowedUid).firestore();
   const reference = doc(database, "odczynniki", "protected");

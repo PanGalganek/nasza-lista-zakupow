@@ -1,8 +1,8 @@
-import { calculateCalendarDays, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=21";
-import { createButton, createElement } from "./ui.js?v=21";
-import { stockLevel } from "./inventory-quantity.js?v=21";
-import { productId } from "./inventory-store.js?v=21";
-import { batchLabel, button, details } from "./inventory-ui.js?v=21";
+import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=22";
+import { createButton, createElement } from "./ui.js?v=22";
+import { stockLevel } from "./inventory-quantity.js?v=22";
+import { productId } from "./inventory-store.js?v=22";
+import { batchLabel, button, details } from "./inventory-ui.js?v=22";
 
 const categories = [
   ["expired", "Przekroczony termin ważności"],
@@ -11,18 +11,30 @@ const categories = [
   ["warning", "Ostrzegawczy stan magazynowy"],
 ];
 
+const warsawCalendar = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit", day: "2-digit" });
+export const warsawDate = (now = new Date()) => warsawCalendar.format(now);
+const backupLabel = (part) => `${part.lotNumber || part.group || "bez numeru"} · ${part.expiry ? `ważna do ${formatPolishDate(part.expiry)}` : "brak terminu ważności"}`;
+
+export function expiryDaysLabel(days) {
+  const amount = Math.abs(days);
+  const duration = `${amount} ${amount === 1 ? "dzień" : "dni"}`;
+  if (days === 0) return "Termin upływa dzisiaj";
+  return days < 0 ? `Po terminie o ${duration}` : `Pozostało ${duration}`;
+}
+
 export function warningGroups(lots, threshold, today = new Date()) {
   const result = Object.fromEntries(categories.map(([key]) => [key, []]));
   const legacy = groupChemicalItems(lots.filter((lot) => !lot.productId && !lot.stock));
   const legacyById = new Map(legacy.flatMap((group) => group.items.map((lot) => [lot.id, group.items])));
   const byProduct = new Map();
   const daysLeft = new Map();
-  const current = formatLocalDate(today);
+  const current = warsawDate(today);
+  const calendarDay = parseLocalDate(current);
   for (const lot of lots) {
     const id = productId(lot);
     if (!byProduct.has(id)) byProduct.set(id, []);
     byProduct.get(id).push(lot);
-    daysLeft.set(lot.id, calculateCalendarDays(today, parseLocalDate(lot.expiry)));
+    daysLeft.set(lot.id, calculateCalendarDays(calendarDay, parseLocalDate(lot.expiry)));
   }
   for (const lot of lots) {
     const cutoff = typeof threshold === "function" ? threshold(lot) : threshold;
@@ -38,15 +50,16 @@ export function warningGroups(lots, threshold, today = new Date()) {
     const expiryBackup = later.find((other) => other.stock?.balance > 0);
     const possibleBackup = later.find((other) => !other.stock);
     const stockBackup = validAlternatives.find((other) => other.stock?.balance > 0);
-    if (days !== null && days < 0) result.expired.push({ lot, backup: expiryBackup, possibleBackup, retire: true });
-    else if (days !== null && days <= cutoff) result.expiring.push({ lot, backup: expiryBackup, possibleBackup });
+    if (days !== null && days < 0) result.expired.push({ lot, days, backup: expiryBackup, possibleBackup, otherBackup: stockBackup, retire: true });
+    else if (days !== null && days <= cutoff) result.expiring.push({ lot, days, backup: expiryBackup, possibleBackup, otherBackup: stockBackup });
     if (level?.color === "red") result.low.push({ lot, backup: stockBackup, retire: lot.stock.balance === 0 });
     if (level?.color === "yellow") result.warning.push({ lot, backup: stockBackup });
   }
+  for (const group of [result.expired, result.expiring]) group.sort((a, b) => a.days - b.days);
   return result;
 }
 
-export function renderInventoryAlerts(container, lots, threshold, inventory, edit) {
+export function renderInventoryAlerts(container, lots, threshold, inventory, edit, lpByItem) {
   const open = new Set([...container.children].filter((element) => element.open).map((element) => element.dataset.warning));
   const result = warningGroups(lots, threshold);
   container.replaceChildren();
@@ -69,7 +82,7 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
       items.forEach(({ lot }) => inventory.orderSelections.add(productId(lot)));
       sync();
     }));
-    for (const { lot, backup, possibleBackup, retire } of items) {
+    for (const { lot, days, backup, possibleBackup, otherBackup, retire } of items) {
       const id = productId(lot);
       const row = createElement("div", "lab-alert-row");
       const checkbox = createElement("input");
@@ -83,10 +96,18 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
       });
       if (!checked.has(id)) checked.set(id, []);
       checked.get(id).push(checkbox);
-      const purchase = lot.ordered ? "Zamówiono" : backup
-        ? `Partia zapasowa ${backup.lotNumber || backup.group || ""} · ${backup.expiry ? `ważna do ${formatPolishDate(backup.expiry)}` : "brak terminu ważności"}`
-        : possibleBackup ? "Możliwa partia zapasowa. Ustal jej stan i sprawdź potrzebę zakupu." : "Sprawdź potrzebę zakupu";
-      row.append(checkbox, createElement("span", "flex-1", `${batchLabel(lot)} · ${retire ? "Zamknij lub wycofaj partię · " : ""}${purchase}`),
+      const availability = backup
+        ? `Partia zapasowa ${backupLabel(backup)}`
+        : possibleBackup ? "Możliwa partia zapasowa. Ustal jej stan i sprawdź potrzebę zakupu." : "";
+      const purchase = [lot.ordered ? "Zamówiono" : "", availability].filter(Boolean).join(" · ") || "Sprawdź potrzebę zakupu";
+      const body = createElement("span", "lab-alert-info");
+      if (days !== undefined) {
+        const name = createElement("strong", "", `LP ${lpByItem.get(lot.id)} · ${batchLabel(lot)}`);
+        body.append(name, createElement("span", "", `Ważność do ${formatPolishDate(lot.expiry)} · ${expiryDaysLabel(days)}`));
+      } else body.append(createElement("strong", "", batchLabel(lot)));
+      body.append(createElement("span", "lab-muted", `${retire ? "Zamknij lub wycofaj partię · " : ""}${purchase}`));
+      if (otherBackup && !backup) body.append(createElement("span", "lab-muted", `Dostępna inna partia ${backupLabel(otherBackup)}`));
+      row.append(checkbox, body,
         createButton("Edytuj", `Edytuj pozycję ${lot.group || lot.name}`, () => edit(lot), "lab-button"));
       section.append(row);
     }

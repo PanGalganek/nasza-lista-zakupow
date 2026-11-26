@@ -160,7 +160,7 @@ body:has(#appSection.hidden) .lab-skip { display: none; }
 .lab-alert-category[data-warning=expired], .lab-alert-category[data-warning=low] { border-left: 3px solid var(--lab-danger); }
 .lab-alert-category[data-warning=expiring], .lab-alert-category[data-warning=warning] { border-left: 3px solid var(--lab-amber); }
 .lab-alert-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid var(--lab-border); overflow-wrap: anywhere; }
-.lab-alert-row > span { flex: 1; font-size: var(--lab-small); }
+.lab-alert-info { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: var(--lab-small); }
 .lab-count, .lab-chip { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; color: #244681; background: var(--lab-blue-soft); font-size: .8125rem; font-weight: 700; padding: 3px 9px; }
 .lab-count { min-width: 29px; }
 .lab-notice { display: flex; gap: 8px; align-items: center; border: 1px solid var(--lab-border); border-radius: 12px; padding: 10px 13px; overflow-wrap: anywhere; }
