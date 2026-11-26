@@ -1,9 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=30";
-import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=30";
-import { compatibleUnits, formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=30";
-import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=30";
-import { indexCatalog, orderLineMatches, orderLineProgress, orderRecordedDate, orderStatus } from "./inventory-items.js?v=30";
-import { icon } from "./icons.js?v=30";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=31";
+import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=31";
+import { compatibleUnits, formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=31";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=31";
+import { indexCatalog, orderLineMatches, orderLineProgress, orderRecordedDate, orderStatus } from "./inventory-items.js?v=31";
+import { icon } from "./icons.js?v=31";
 
 const textValue = (value) => typeof value === "string";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -466,6 +466,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
 
   return {
     store, fields, start, bind, actions, archiveActions, withStock, allLots, lotsFor, products, productOptions, rows, ready, refresh, orderSelections,
+    loaded: (key) => loaded.has(key),
     ordersReady: () => loaded.has("orders"),
     activeOrdersFor(lot) {
       const ids = new Set(productLots(productId(lot)).map(productId));
@@ -492,6 +493,7 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
         byProduct.get(key).push(lot);
       }
       if (section === "history") refresh();
+      changes.get("catalog")?.();
     },
     mount(key, render) { panels.set(key, render); },
     onChange(key, callback) { changes.set(key, callback); },

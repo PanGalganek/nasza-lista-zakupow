@@ -1,4 +1,4 @@
-import { byId } from "./ui.js?v=30";
+import { byId } from "./ui.js?v=31";
 
 export function createAuthModule({ auth, db, authApi, firestore, onAuthorized, onSignedOut, runSafely }) {
   const { browserLocalPersistence, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut } = authApi;

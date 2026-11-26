@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { compatibleUnits, matchesInventorySearch, quantity, scaledQuantity, stockLevel } from "../public/modules/inventory-quantity.js";
 import { allocateIngredients, groupRecipesByMethod, recipeIngredients, usedPreparationLots } from "../public/modules/inventory-recipes.js";
 import { outgoingAmount } from "../public/modules/inventory-history.js";
+import { productStatistics, statisticsQuantity, statisticsRange } from "../public/modules/inventory-statistics-data.js";
 import { calculateTheory } from "../public/modules/inventory-theory.js";
 import { expiryDaysLabel, warningGroups, warsawDate } from "../public/modules/inventory-alerts.js";
 import { createOrderDocx, orderColumns } from "../public/modules/inventory-docx.js";
@@ -248,4 +249,76 @@ test("Word description preserves lines, Unicode and the accepted table grid", as
   assert.deepEqual([...content.matchAll(/<w:gridCol w:w="(\d+)"/g)].map((match) => Number(match[1])),
     [454, 1417, 3855, 1247, 1106, 1389, 1247, 1049, 1219, 1162, 1191]);
   assert.equal([...content.matchAll(/<w:tc>/g)].length, 11);
+});
+
+function statisticsEvent(id, date, kind, lotId, before, after, unit = "g", details = {}, productId = "product") {
+  return { id, kind, createdAt: { toDate: () => new Date(date) }, details, changes: {
+    [lotId]: { productId, unit, before, after },
+  } };
+}
+
+test("statistics use Polish calendar days and skip months before the first recorded operation", () => {
+  const today = "2026-04-15";
+  assert.deepEqual(statisticsRange("3", today), { from: "2026-02-01", to: today });
+  assert.deepEqual(statisticsRange("6", today), { from: "2025-11-01", to: today });
+  assert.deepEqual(statisticsRange("12", today), { from: "2025-05-01", to: today });
+  assert.equal(statisticsRange("custom", today, "2026-04-01", "2026-04-16"), null);
+  assert.equal(statisticsRange("custom", today, "2026-02-30", today), null);
+  const range = statisticsRange("custom", today, "2025-11-01", "2026-03-31");
+  const events = [
+    statisticsEvent("start", "2026-01-31T23:20Z", "receipt", "lot", 0, 200_000_000),
+    statisticsEvent("use", "2026-02-26T12:00Z", "withdrawal", "lot", 200_000_000, 140_000_000),
+    statisticsEvent("other", "2026-02-26T12:00Z", "withdrawal", "different", 60_000_000, 0, "g", {}, "other-product"),
+  ];
+  const { groups } = productStatistics({ lots: [], events, calculations: [], matches: (id) => id === "product", range, today });
+  assert.equal(groups[0].first, "2026-02-01");
+  assert.deepEqual(groups[0].months.map(({ month, outgoing }) => [month, outgoing]), [["2026-02", 60_000_000n], ["2026-03", 0n]]);
+  assert.equal(groups[0].average, 30_000_000);
+  assert.equal(groups[0].horizons, undefined);
+});
+
+test("statistics reconcile net withdrawals and project only stock usable before expiry", () => {
+  const today = "2026-04-01";
+  const range = statisticsRange("custom", today, "2025-12-01", "2026-03-31");
+  const events = [
+    statisticsEvent("start", "2026-01-01T12:00Z", "receipt", "lot", 0, 300_000_000),
+    statisticsEvent("use", "2026-01-07T12:00Z", "preparation", "lot", 300_000_000, 200_000_000, "g", { methodId: "method" }),
+    statisticsEvent("correction", "2026-02-02T12:00Z", "reversal", "lot", 200_000_000, 300_000_000, "mg", { originalId: "use" }),
+    statisticsEvent("writeoff", "2026-02-07T12:00Z", "withdrawn", "lot", 300_000_000, 0, "kg"),
+  ];
+  const lots = [
+    { id: "lot", stock: { unit: "g", initial: 300_000_000, balance: 0, status: "withdrawn" } },
+    { id: "old", expiry: "2026-03-31", stock: { unit: "g", initial: 50_000_000, balance: 50_000_000, status: "active" } },
+    { id: "short", expiry: "2026-04-15", stock: { unit: "mg", initial: 100_000_000, balance: 100_000_000, status: "active" } },
+    { id: "fresh", expiry: "2027-04-01", stock: { unit: "kg", initial: 200_000_000, balance: 200_000_000, status: "active" } },
+    { id: "unknown" },
+  ];
+  const calculations = [{ date: "2026-01-20", methodId: "method", commercial: [{ productId: "product", unit: "mg", quantity: 25_000_000 }] }];
+  const { groups: [mass], unknownStock } = productStatistics({ lots, events, calculations, matches: (id) => id === "product",
+    range, today, method: "method" });
+  assert.equal(mass.outgoing, 300_000_000n);
+  assert.equal(mass.stock, 300_000_000n);
+  assert.equal(mass.average, 100_000_000);
+  assert.equal(mass.runway, 2.5);
+  assert.deepEqual(mass.horizons, [3, 6, 12].map((months) => ({ months, demand: months * 100_000_000, usable: 250_000_000 })));
+  assert.equal(mass.theoretical, 25_000_000n);
+  assert.equal(mass.comparisonActual, 0n);
+  assert.equal(unknownStock, true);
+});
+
+test("statistics separate dimensions and distinguish unknown stock, missing theory and a recorded zero", () => {
+  const today = "2026-04-01";
+  const range = statisticsRange("3", today);
+  const events = [
+    statisticsEvent("use", "2026-04-01T08:00Z", "withdrawal", "formerly-linked", 24_500_000, 24_000_000, "g", {}, "legacy-key"),
+    statisticsEvent("liquid", "2026-04-01T08:00Z", "withdrawal", "formerly-linked", 990_000_000, 980_000_000, "ml", {}, "legacy-key"),
+  ];
+  const calculations = [{ date: today, commercial: [{ productId: "product", unit: "g", quantity: 0 }] }];
+  const model = productStatistics({ lots: [{ id: "formerly-linked" }], events, calculations, matches: (id) => id === "product", range, today });
+  assert.equal(model.unknownStock, true);
+  assert.deepEqual(model.groups.map(({ dimension, outgoing, knownStock, theoretical }) => [dimension, outgoing, knownStock, theoretical]),
+    [["masa", 500_000n, false, 0n], ["objętość", 10_000_000n, false, null]]);
+  assert.equal(statisticsQuantity(24_500_000n, "masa"), "24,5 g");
+  assert.equal(statisticsQuantity(450n, "masa"), "0,45 mg");
+  assert.equal(statisticsQuantity(990_000_000n, "objętość"), "990 ml");
 });

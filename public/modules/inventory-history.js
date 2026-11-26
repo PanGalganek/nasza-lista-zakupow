@@ -1,10 +1,10 @@
-import { chemicalRegistryNumbers, formatLocalDate, formatPolishDate } from "../utils.js?v=30";
-import { icon } from "./icons.js?v=30";
-import { createElement } from "./ui.js?v=30";
-import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=30";
-import { productId } from "./inventory-store.js?v=30";
-import { batchLabel, button, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=30";
-import { lotDescription } from "./inventory-items.js?v=30";
+import { chemicalRegistryNumbers, formatLocalDate, formatPolishDate } from "../utils.js?v=31";
+import { icon } from "./icons.js?v=31";
+import { createElement } from "./ui.js?v=31";
+import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=31";
+import { productId } from "./inventory-store.js?v=31";
+import { batchLabel, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=31";
+import { lotDescription } from "./inventory-items.js?v=31";
 
 const operationNames = {
   receipt: "Przychód", opening: "Ustalenie stanu", opening_correction: "Korekta ilości początkowej", withdrawal: "Rozchód", preparation: "Przygotowanie",
@@ -252,81 +252,5 @@ export function mountInventoryHistory(inventory) {
     };
     search.addEventListener("input", () => { archiveQuery = search.value; draw(); });
     draw();
-  });
-}
-
-export function mountInventoryStatistics(inventory) {
-  inventory.mount("statistics", (container) => {
-    container.replaceChildren();
-    const box = panel();
-    const result = createElement("div", "lab-list");
-    const product = select([["", "Wszystkie pozycje"], ...inventory.catalogProducts().map(([id, lot]) => [id, batchLabel(lot)])]);
-    const category = select([["", "Odczynniki i wzorce"], ["Odczynniki", "Odczynniki"], ["Wzorce", "Wzorce"]]);
-    const method = select([["", "Wszystkie metody"], ...inventory.rows("methods").map((row) => [row.id, row.name])]);
-    const from = input("Od", `${new Date().getFullYear()}-01-01`, "date");
-    const to = input("Do", formatLocalDate(), "date");
-    const interval = select([["month", "Miesiące"], ["year", "Lata"]]);
-    const forecast = input("Miesiące prognozy", 3, "number");
-    const display = () => {
-      result.replaceChildren();
-      if (!from.value || !to.value || from.value > to.value) { text(result, "Wybierz prawidłowy okres."); return; }
-      const days = Math.round((Date.parse(to.value) - Date.parse(from.value)) / 86400000) + 1;
-      const products = new Map(inventory.catalogProducts());
-      const belongs = (id) => !category.value || (products.get(inventory.catalogId(id))?.category === "Odczynniki" ? "Odczynniki" : "Wzorce") === category.value;
-      const selected = (id) => !product.value || inventory.catalogId(id) === product.value;
-      const events = inventory.rows("events");
-      const byId = new Map(events.map((event) => [event.id, event]));
-      const periods = new Map();
-      const actual = new Map();
-      const theoretical = new Map();
-      const differences = new Map();
-      const buckets = (key) => {
-        if (!periods.has(key)) periods.set(key, { in: new Map(), out: new Map() });
-        return periods.get(key);
-      };
-      for (const { event, row } of materialRows(events, selected)) {
-        const date = dateOf(event) && formatLocalDate(dateOf(event));
-        const original = event.kind === "reversal" ? byId.get(event.details.originalId) : event;
-        if (!date || date < from.value || date > to.value || !belongs(row.productId)
-          || (method.value && original?.details.methodId !== method.value)) continue;
-        const entry = buckets(date.slice(0, interval.value === "year" ? 4 : 7));
-        addTotal(entry.in, row.unit, receiptAmount(event, row));
-        const amount = outgoingAmount(event, row);
-        addTotal(entry.out, row.unit, amount);
-        addTotal(actual, row.unit, amount);
-        addTotal(differences, row.unit, amount);
-      }
-      for (const record of inventory.rows("calculations")) {
-        const date = record.date;
-        if (date < from.value || date > to.value || (method.value && record.methodId !== method.value)) continue;
-        for (const row of record.commercial || []) {
-          if (!row.productId || !selected(row.productId) || !belongs(row.productId)) continue;
-          addTotal(theoretical, row.unit, row.quantity);
-          addTotal(differences, row.unit, -row.quantity);
-        }
-      }
-      result.append(metrics([["Zużycie teoretyczne", totalsText(theoretical)], ["Rzeczywisty rozchód", totalsText(actual)], ["Różnica", totalsText(differences)]]));
-      for (const [period, entry] of [...periods].sort()) {
-        const row = createElement("div", "lab-data-row");
-        row.append(createElement("strong", "", period), createElement("span", "", `Przychód ${totalsText(entry.in)} · Rozchód ${totalsText(entry.out)}`));
-        result.append(row);
-      }
-      if (!periods.size) result.append(createElement("p", "lab-empty", "Brak operacji w wybranym okresie."));
-      const divisor = BigInt(days);
-      const months = BigInt(Math.floor(Math.max(1, Math.min(24, Number(forecast.value) || 1))));
-      const extrapolate = (factor) => new Map([...actual].map(([key, entry]) => [key, {
-        ...entry, amount: ((entry.amount > 0n ? entry.amount : 0n) * 30n * factor + divisor / 2n) / divisor,
-      }]));
-      const monthly = extrapolate(1n);
-      const projected = extrapolate(months);
-      result.append(metrics([["Średnio na 30 dni", totalsText(monthly)], ["Orientacyjna prognoza", totalsText(projected)]]));
-    };
-    box.classList.add("lab-fields");
-    box.append(field("Pozycja", product), field("Typ pozycji", category), field("Metoda", method), field("Od", from), field("Do", to),
-      field("Zestawienie", interval), field("Miesiące prognozy (1–24)", forecast), button("Przelicz", display, "lab-button-primary"));
-    container.append(box, result);
-    display();
-    inventory.onChange("events", display);
-    inventory.onChange("calculations", display);
   });
 }

@@ -1,5 +1,5 @@
-import { icon, fillIcons } from "./icons.js?v=30";
-import { byId, createElement } from "./ui.js?v=30";
+import { icon, fillIcons } from "./icons.js?v=31";
+import { byId, createElement } from "./ui.js?v=31";
 
 const top = [
   ["inventory", "Odczynniki i wzorce", "Rejestr, magazyn i receptury", "flask", "blue", "Odczynniki"],
