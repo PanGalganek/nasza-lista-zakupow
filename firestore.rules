@@ -23,7 +23,7 @@ service cloud.firestore {
     function validChemical(data) {
       return data.keys().hasAll(['name', 'group', 'usage', 'received', 'expiry', 'timestamp', 'ordered'])
         && data.keys().hasOnly(['name', 'group', 'usage', 'received', 'expiry', 'timestamp', 'ordered', 'category',
-          'productId', 'lotNumber', 'producer', 'formula', 'cas', 'packageAmount', 'packageUnit', 'orderPackages'])
+          'productId', 'lotNumber', 'producer', 'formula', 'cas', 'packageAmount', 'packageUnit', 'orderPackages', 'orderDescription', 'orderPackaging'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 200
         && data.group is string && data.group.size() <= 100
         && data.usage is string && data.usage.size() <= 500
@@ -37,9 +37,16 @@ service cloud.firestore {
         && optionalText(data, 'producer', 200)
         && optionalText(data, 'formula', 100)
         && optionalText(data, 'cas', 40)
+        && optionalText(data, 'orderDescription', 4000)
+        && validOrderPackaging(data.get('orderPackaging', null))
         && (!('packageAmount' in data) || (amount(data.packageAmount) && data.packageAmount > 0 && unit(data.packageUnit)))
         && (!('packageUnit' in data) || 'packageAmount' in data)
         && (!('orderPackages' in data) || (data.orderPackages is int && data.orderPackages >= 1 && data.orderPackages <= 10000));
+    }
+
+    function validOrderPackaging(value) {
+      return value == null || (value is map && value.keys().hasOnly(['amount', 'unit'])
+        && amount(value.amount) && value.amount > 0 && unit(value.unit));
     }
 
     function optionalText(data, key, limit) {
@@ -210,8 +217,11 @@ service cloud.firestore {
       allow read: if activeUser();
       allow create: if activeUser() && validChemical(request.resource.data)
         && (request.resource.data.get('productId', documentId) == documentId
-          || isProductRoot(request.resource.data.productId, request.resource.data));
+          || (!request.resource.data.keys().hasAny(['orderDescription', 'orderPackaging'])
+            && isProductRoot(request.resource.data.productId, request.resource.data)));
       allow update: if activeUser() && validChemical(request.resource.data)
+        && (request.resource.data.get('productId', documentId) == documentId
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['orderDescription', 'orderPackaging']))
         && (resource.data.get('productId', documentId) == request.resource.data.get('productId', documentId)
           || (!('productId' in resource.data) && !exists(stockPath(documentId))
             && isProductRoot(request.resource.data.productId, request.resource.data)));

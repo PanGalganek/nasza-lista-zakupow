@@ -1,10 +1,10 @@
-import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=21";
-import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=21";
-import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=21";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=21";
-import { availability } from "./inventory-history.js?v=21";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=21";
-import { renderInventoryAlerts } from "./inventory-alerts.js?v=21";
+import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=22";
+import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=22";
+import { batchLabel, field, select, showStock } from "./inventory-ui.js?v=22";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=22";
+import { availability } from "./inventory-history.js?v=22";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=22";
+import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=22";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory, navigation }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -80,10 +80,24 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       if (editId) {
         if (selectedItems.length !== 1) throw new Error("Edycja wymaga dokładnie jednego wiersza.");
         if (inventory) requireInventoryConnection();
+        const packaging = packageFields.get(filled[0][0]);
+        const order = packaging?.readOrder() || {};
+        const orderRoot = packaging?.orderRootId;
         if (inventory && selectedItems[0].productId) await inventory.store.linkLot(editId, selectedItems[0]);
-        else await updateDoc(doc(db, "odczynniki", editId), selectedItems[0]);
+        else if (orderRoot && orderRoot !== editId && Object.keys(order).length) {
+          const batch = writeBatch(db);
+          batch.update(doc(db, "odczynniki", editId), selectedItems[0]);
+          batch.update(doc(db, "odczynniki", orderRoot), order);
+          await batch.commit();
+        } else {
+          Object.assign(selectedItems[0], order);
+          await updateDoc(doc(db, "odczynniki", editId), selectedItems[0]);
+        }
       } else if (inventory) {
-        const payload = filled.map(([row, fields]) => ({ fields, initial: packageFields.get(row).initial(fields) }));
+        const payload = filled.map(([row, fields]) => {
+          const packaging = packageFields.get(row);
+          return { fields: { ...fields, ...packaging.readOrder() }, initial: packaging.initial(fields) };
+        });
         const fingerprint = JSON.stringify(payload);
         if (receiptDraft?.fingerprint !== fingerprint) receiptDraft = { fingerprint, id: inventory.store.operationId() };
         await inventory.store.receive(payload.map(({ fields, initial }, index) => ({
@@ -181,7 +195,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       source = select(representatives.map(([id, item]) => [id, batchLabel(item)]));
       const box = createElement("div", "lab-field-wide");
       const suggest = () => {
-        packaging = inventory.fields(representatives.find(([key]) => key === source.value)?.[1] || {});
+        packaging = inventory.fields(representatives.find(([key]) => key === source.value)?.[1] || {}, false, true);
         box.replaceChildren(packaging.node);
       };
       source.addEventListener("change", suggest);
@@ -347,7 +361,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     if (sortedGroups.length === 0) container.append(createElement("p", "rounded-lg border border-dashed bg-gray-50 p-6 text-center text-sm text-gray-500", "Brak pozycji spełniających kryteria."));
     if (inventory) {
       if (refreshWarnings) renderInventoryAlerts(alertBox, activeItems.map(inventory.withStock),
-        (item) => item.category === "Odczynniki" ? 70 : 40, inventory, editFromAlert);
+        (item) => item.category === "Odczynniki" ? 70 : 40, inventory, editFromAlert, lpByItem);
     }
     else {
       const alerts = buildChemicalAlerts(categoryItems, threshold);
@@ -384,6 +398,17 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     byId("chemicalSearch").addEventListener("input", () => render(false));
     byId("chemicalStatusFilter").addEventListener("change", () => render(false));
     byId("chemicalSort").addEventListener("change", () => render(false));
+    if (inventory) {
+      let day = warsawDate();
+      const refreshDate = () => {
+        const current = warsawDate();
+        if (document.hidden || byId("appSection").classList.contains("hidden") || current === day) return;
+        day = current;
+        render();
+      };
+      document.addEventListener("visibilitychange", refreshDate);
+      setInterval(refreshDate, 30_000);
+    }
   }
 
   return {

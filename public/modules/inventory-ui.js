@@ -1,7 +1,7 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=21";
-import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=21";
-import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=21";
-import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=21";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=22";
+import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=22";
+import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=22";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=22";
 
 const textValue = (value) => typeof value === "string";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
@@ -41,6 +41,7 @@ export function select(options, value = "") {
 export const unitSelect = (value) => select([["", "—"], ...Object.keys(units).map((unit) => [unit, unit])], value);
 export const button = (label, action, variant = "") => createButton(label, label, action, `lab-button ${variant}`);
 export const panel = () => createElement("div", "lab-panel lab-stack");
+export const orderDescriptionLimit = 4000;
 
 export function details(label) {
   const box = createElement("details", "lab-accordion");
@@ -164,17 +165,17 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     refreshRegistry = rerender;
   }
 
-  function fields(lot = {}, editing = false) {
+  function fields(lot = {}, editing = false, linkedReceipt = false) {
     const fieldGroup = createElement("div", "lab-stack");
     const size = input("Wielkość opakowania", lot.packageAmount ? formatQuantity(lot.packageAmount, lot.packageUnit).split(/\s+(?=[^\s]+$)/)[0].replace(/\s/g, "") : "");
     const unit = unitSelect(lot.packageUnit);
-    const count = input("Domyślna liczba opakowań", lot.orderPackages || 1, "number");
     const number = input("Numer partii", editing ? lot.lotNumber : "");
     const producer = input("Producent", lot.producer);
     const formula = input("Wzór chemiczny", lot.formula);
     const cas = input("CAS", lot.cas);
     const initial = input("Ilość początkowa", "");
-    const usedAsProduct = () => rows("recipes").some((recipe) => recipe.ingredients.some((row) => row.productId === lot.id))
+    const usedAsProduct = () => Boolean(lot.orderDescription || lot.orderPackaging)
+      || rows("recipes").some((recipe) => recipe.ingredients.some((row) => row.productId === lot.id))
       || rows("methods").some((method) => method.usage.some((row) => row.key === lot.id))
       || lots.some((other) => other.productId === lot.id)
       || rows("orders").some((order) => order.lines.some((row) => row.productId === lot.id));
@@ -183,8 +184,6 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     const link = mayLink ? select([["", "Osobna pozycja"], ...products()
       .filter(([id, other]) => id !== lot.id && (other.category === "Odczynniki") === (lot.category === "Odczynniki"))
       .map(([id, other]) => [id, batchLabel(other)])]) : null;
-    count.min = "1";
-    count.max = "10000";
     number.maxLength = 100;
     producer.maxLength = 200;
     formula.maxLength = 100;
@@ -199,22 +198,63 @@ export function createInventoryModule({ db, firestore, registerSnapshot, reportL
     }
     const extra = details("Dane dodatkowe");
     const extraFields = createElement("div", "lab-fields");
-    extraFields.append(field("Domyślna liczba opakowań", count), field("Producent", producer),
+    extraFields.append(field("Producent", producer),
       field("Wzór chemiczny", formula), field("CAS", cas));
     if (link) extraFields.append(field("Powiąż tylko z identycznym wariantem handlowym", link));
     extra.append(extraFields);
     fieldGroup.append(extra);
+    const orderRootId = lot.id ? productId(lot) : "";
+    const orderProduct = registryById.get(orderRootId) || lot;
+    const order = details("Dane do zamówienia");
+    const description = createElement("textarea");
+    description.rows = 5;
+    description.maxLength = orderDescriptionLimit;
+    description.value = orderProduct.orderDescription || "";
+    const orderPackage = orderProduct.orderPackaging;
+    const orderSize = input("Wielkość zamawianego opakowania",
+      orderPackage ? formatQuantity(orderPackage.amount, orderPackage.unit).split(/\s+(?=[^\s]+$)/)[0].replace(/\s/g, "") : "");
+    orderSize.inputMode = "decimal";
+    const orderUnit = unitSelect(orderPackage?.unit);
+    const orderCount = input("Domyślna liczba zamawianych opakowań", orderProduct.orderPackages || 1, "number");
+    orderCount.min = "1";
+    orderCount.max = "10000";
+    const originalOrder = [description.value, orderSize.value, orderUnit.value, orderCount.value];
+    const orderFields = createElement("div", "lab-fields");
+    orderFields.append(field("Wielkość zamawianego opakowania", orderSize), field("Jednostka", orderUnit),
+      field("Domyślna liczba zamawianych opakowań", orderCount));
+    order.append(field("Pełna nazwa i specyfikacja zamówieniowa", description), orderFields,
+      createElement("p", "lab-muted", "Dane wspólne dla wszystkich partii produktu. Jeśli nie podasz rozmiaru zakupu, użyjemy zapisanego rozmiaru opakowania z magazynu."));
+    if (!linkedReceipt) fieldGroup.append(order);
+    link?.addEventListener("change", () => { order.hidden = Boolean(link.value); });
     return {
       node: fieldGroup,
+      orderRootId,
+      readOrder() {
+        if (linkedReceipt || link?.value) return {};
+        const result = {};
+        const value = description.value.trim();
+        if (value !== originalOrder[0]) {
+          if (value.length > orderDescriptionLimit) throw new Error("Opis zamówieniowy jest zbyt długi.");
+          result.orderDescription = value;
+        }
+        if (orderSize.value !== originalOrder[1] || orderUnit.value !== originalOrder[2]) {
+          if (!orderSize.value.trim() && !orderUnit.value) result.orderPackaging = null;
+          else result.orderPackaging = { amount: quantity(orderSize.value, orderUnit.value), unit: orderUnit.value };
+        }
+        if (orderCount.value !== originalOrder[3]) {
+          const count = Number(orderCount.value);
+          if (!Number.isInteger(count) || count < 1 || count > 10000) throw new Error("Podaj liczbę opakowań od 1 do 10 000.");
+          result.orderPackages = count;
+        }
+        return result;
+      },
       initial(packaging) {
         const value = initial.value.trim() ? quantity(initial.value, packaging.packageUnit) : packaging.packageAmount;
         if (value > packaging.packageAmount) throw new Error("Ilość początkowa przekracza wielkość opakowania.");
         return value;
       },
       read() {
-        const orderPackages = Number(count.value);
-        if (!Number.isInteger(orderPackages) || orderPackages < 1 || orderPackages > 10000) throw new Error("Podaj liczbę opakowań od 1 do 10 000.");
-        const result = { lotNumber: number.value.trim(), producer: producer.value.trim(), formula: formula.value.trim(), cas: cas.value.trim(), orderPackages };
+        const result = { lotNumber: number.value.trim(), producer: producer.value.trim(), formula: formula.value.trim(), cas: cas.value.trim() };
         if (!editing && !result.lotNumber) throw new Error("Podaj numer przyjmowanej partii.");
         if (size.value.trim() || unit.value || !editing) {
           result.packageUnit = unit.value;
