@@ -165,6 +165,25 @@ test("correcting a new receipt keeps it within its package amount", async () => 
   assert.equal(correction.changes[receipt.anchor].after, quantity("100", "g"));
 });
 
+test("editing recipe contents and managing its methods preserve each other's fields", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const recipe = doc(db, "magazyn_receptury", "shared");
+  const ingredients = [{ name: "Woda", productId: "", unit: "ml", quantity: quantity("100", "ml") }];
+  await assertSucceeds(setDoc(recipe, {
+    name: "Roztwór demonstracyjny", baseVolume: 100, defaultVolume: 100, scalable: true,
+    methods: ["a", "b"], ingredients, instruction: "", version: 1,
+  }));
+  await assertSucceeds(updateDoc(recipe, { instruction: "Zmieniona instrukcja", version: 2 }));
+  assert.deepEqual((await getDoc(recipe)).data().methods, ["a", "b"]);
+  await assertSucceeds(updateDoc(recipe, { methods: ["a", "c"], version: 3 }));
+  await assertFails(updateDoc(recipe, { instruction: "Konkurencyjna zmiana", version: 3 }));
+  await assertFails(updateDoc(recipe, { methods: [], version: 4 }));
+  const record = (await getDoc(recipe)).data();
+  assert.equal(record.instruction, "Zmieniona instrukcja");
+  assert.deepEqual(record.ingredients, ingredients);
+  assert.deepEqual(record.methods, ["a", "c"]);
+});
+
 test("multi-ingredient preparation is atomic and retains its recipe snapshot", async () => {
   const db = testEnvironment.authenticatedContext(allowedUid).firestore();
   const store = createInventoryStore(db, { collection, doc, runTransaction, serverTimestamp });
@@ -338,6 +357,19 @@ test("legacy task shape remains updatable", async () => {
   });
   const database = testEnvironment.authenticatedContext(allowedUid).firestore();
   await assertSucceeds(updateDoc(doc(database, "harmonogram", "legacy"), { doneDate: "2026-07-01" }));
+});
+
+test("order history accepts an approved requester alongside earlier history records", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const order = { date: "2026-11-26", status: "generated", createdAt: serverTimestamp(),
+    lines: [{ productId: "catalog", lotId: "batch", name: "Wzorzec", amount: "50 ml", expiry: "2027-01-05", standardKind: "O" }] };
+  await assertSucceeds(setDoc(doc(db, "magazyn_zamowienia", "legacy-order"), order));
+  const current = doc(db, "magazyn_zamowienia", "requester-order");
+  await assertSucceeds(setDoc(current, { ...order, requester: "K. Łoboda" }));
+  await assertFails(setDoc(doc(db, "magazyn_zamowienia", "outside-list"), { ...order, requester: "Inna osoba" }));
+  await assertFails(updateDoc(current, { requester: "M. Piasecka" }));
+  await assertSucceeds(updateDoc(current, { status: "ordered", orderedAt: serverTimestamp() }));
+  assert.equal((await getDoc(current)).data().requester, "K. Łoboda");
 });
 
 test("unknown collections and other access records are denied", async () => {

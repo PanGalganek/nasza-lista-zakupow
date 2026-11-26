@@ -1,8 +1,9 @@
-import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=22";
-import { createButton, createElement } from "./ui.js?v=22";
-import { stockLevel } from "./inventory-quantity.js?v=22";
-import { productId } from "./inventory-store.js?v=22";
-import { batchLabel, button, details } from "./inventory-ui.js?v=22";
+import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=23";
+import { createButton, createElement } from "./ui.js?v=23";
+import { stockLevel } from "./inventory-quantity.js?v=23";
+import { productId } from "./inventory-store.js?v=23";
+import { orderItemKey } from "./inventory-items.js?v=23";
+import { batchLabel, button, details } from "./inventory-ui.js?v=23";
 
 const categories = [
   ["expired", "Przekroczony termin ważności"],
@@ -69,7 +70,9 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
   if (!total) container.append(createElement("p", "lab-empty", "Brak ostrzeżeń."));
   const checked = new Map();
   const sync = () => {
-    for (const [id, inputs] of checked) for (const input of inputs) input.checked = inventory.orderSelections.has(id);
+    for (const [key, inputs] of checked) {
+      for (const [input, lotId] of inputs) input.checked = inventory.orderSelections.get(key) === lotId;
+    }
   };
   for (const [key, label] of categories) {
     const items = result[key];
@@ -79,23 +82,26 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, edi
     section.dataset.warning = key;
     section.open = open.has(key);
     section.append(button("Zaznacz wszystkie", () => {
-      items.forEach(({ lot }) => inventory.orderSelections.add(productId(lot)));
+      for (const { lot } of items) {
+        const itemKey = orderItemKey(lot);
+        if (!inventory.orderSelections.has(itemKey)) inventory.orderSelections.set(itemKey, lot.id);
+      }
       sync();
     }));
     for (const { lot, days, backup, possibleBackup, otherBackup, retire } of items) {
-      const id = productId(lot);
+      const itemKey = orderItemKey(lot);
       const row = createElement("div", "lab-alert-row");
       const checkbox = createElement("input");
       checkbox.type = "checkbox";
-      checkbox.checked = inventory.orderSelections.has(id);
+      checkbox.checked = inventory.orderSelections.get(itemKey) === lot.id;
       checkbox.setAttribute("aria-label", `Dodaj do zamówienia: ${batchLabel(lot)}`);
       checkbox.addEventListener("change", () => {
-        if (checkbox.checked) inventory.orderSelections.add(id);
-        else inventory.orderSelections.delete(id);
+        if (checkbox.checked) inventory.orderSelections.set(itemKey, lot.id);
+        else if (inventory.orderSelections.get(itemKey) === lot.id) inventory.orderSelections.delete(itemKey);
         sync();
       });
-      if (!checked.has(id)) checked.set(id, []);
-      checked.get(id).push(checkbox);
+      if (!checked.has(itemKey)) checked.set(itemKey, []);
+      checked.get(itemKey).push([checkbox, lot.id]);
       const availability = backup
         ? `Partia zapasowa ${backupLabel(backup)}`
         : possibleBackup ? "Możliwa partia zapasowa. Ustal jej stan i sprawdź potrzebę zakupu." : "";

@@ -1,7 +1,8 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=22";
-import { createElement, iconButton, notify } from "./ui.js?v=22";
-import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=22";
-import { batchLabel, button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=22";
+import { formatLocalDate } from "../utils.js?v=23";
+import { createElement, iconButton, notify } from "./ui.js?v=23";
+import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=23";
+import { legacyCatalogKey, lotOptions, standardKind } from "./inventory-items.js?v=23";
+import { button, details, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=23";
 
 const say = (target, value) => target.append(createElement("p", "text-sm", value));
 const methodOptions = (inventory) => inventory.rows("methods").map((method) => [method.id, method.name]);
@@ -70,7 +71,7 @@ function readLocal(key, fallback) {
 }
 
 export function mountInventoryRecipes(inventory, { db, firestore, navigation }) {
-  const { collection, doc, setDoc } = firestore;
+  const { collection, doc, setDoc, updateDoc } = firestore;
   const createRef = (name) => doc(collection(db, name));
   let preparationPending = false;
   const recipeSearchContext = (recipe, methodName = "") => [recipe.name, methodName,
@@ -79,8 +80,11 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
   inventory.mount("recipes", (container) => {
     const list = createElement("div", "lab-list");
     const search = input("Szukaj receptury, składnika lub metody", "", "search");
-    const toolbar = createElement("div", "lab-registry-tools");
-    toolbar.append(field("Szukaj receptury", search), button("Metody", showMethods));
+    const toolbar = createElement("div", "lab-registry-tools lab-recipe-tools");
+    const toolbarActions = createElement("div", "lab-actions");
+    const createRecipe = button("Nowa receptura", showMethodPicker, "lab-button-primary");
+    toolbarActions.append(createRecipe, button("Metody", showMethods));
+    toolbar.append(field("Szukaj receptury", search), toolbarActions);
     container.replaceChildren(toolbar, list);
     let wasSearching = false;
     let openMethods = new Set();
@@ -117,7 +121,58 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
       navigation.show(form, "Dodaj metodę badawczą");
     }
 
-    function showEditor(recipe) {
+    function addForMethod(id) {
+      const method = methodOptions(inventory).find(([key]) => key === id);
+      if (!method) throw new Error("Wybierz dostępną metodę badawczą.");
+      showEditor({ methods: [id] }, method[1]);
+    }
+
+    function showMethodPicker() {
+      const methods = methodOptions(inventory);
+      const box = createElement("div", "lab-stack");
+      const choice = select([["", "Wybierz metodę"], ...methods]);
+      choice.setAttribute("data-form-focus", "");
+      const actions = createElement("div", "lab-dialog-actions");
+      const next = button("Dalej", () => addForMethod(choice.value), "lab-button-primary");
+      next.disabled = true;
+      choice.addEventListener("change", () => { next.disabled = !choice.value; });
+      actions.append(button("Anuluj", () => navigation.close()), next);
+      box.append(field("Metoda badawcza", choice), actions);
+      navigation.show(box, "Wybierz metodę dla receptury");
+    }
+
+    function showAssignments(recipe) {
+      const box = createElement("div", "lab-stack");
+      const methods = createElement("div", "lab-fields");
+      const assigned = new Set(recipe.methods);
+      const choices = new Map();
+      for (const [id, label] of methodOptions(inventory)) {
+        const checkbox = createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = assigned.has(id);
+        methods.append(field(label, checkbox));
+        choices.set(id, checkbox);
+      }
+      const status = createElement("p", "text-sm text-red-700");
+      const actions = createElement("div", "lab-dialog-actions");
+      actions.append(button("Anuluj", () => navigation.close()), saveButton("Zapisz przypisania", async () => {
+        const selected = [...choices].filter(([, checkbox]) => checkbox.checked).map(([id]) => id);
+        if (!selected.length) throw new Error("Przypisz recepturę do co najmniej jednej dostępnej metody.");
+        const updated = recipe.methods.filter((id) => !choices.has(id) || choices.get(id).checked);
+        updated.push(...selected.filter((id) => !assigned.has(id)));
+        if (updated.length !== recipe.methods.length || updated.some((id, index) => id !== recipe.methods[index])) {
+          await updateDoc(inventory.store.ref("recipes", recipe.id), { methods: updated, version: recipe.version + 1 });
+          notify("Zapisano przypisania receptury.");
+        }
+        navigation.close(true);
+      }, status));
+      box.append(createElement("p", "lab-muted", recipe.name));
+      if (!choices.size) box.append(createElement("p", "lab-empty", "Dodaj metodę badawczą, aby przypisać recepturę."));
+      box.append(methods, status, actions);
+      navigation.show(box, "Zarządzaj przypisaniami");
+    }
+
+    function showEditor(recipe, methodName) {
       const box = createElement("div", "lab-stack");
       const name = input("Nazwa roztworu", recipe.name);
       const base = input("Objętość podstawowa (ml)", recipe.baseVolume || 100, "number");
@@ -128,30 +183,92 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
       const instruction = createElement("textarea", "w-full rounded border p-2 text-sm");
       instruction.value = recipe.instruction || "";
       instruction.maxLength = 4000;
-      const methods = createElement("div", "lab-fields");
-      const choices = methodOptions(inventory).map(([id, label]) => {
-        const checkbox = createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.checked = recipe.methods?.includes(id) === true;
-        methods.append(field(label, checkbox));
-        return [id, checkbox];
-      });
       const ingredients = createElement("div", "lab-list");
       const entries = new Map();
+      const products = new Map(inventory.products());
+      const groups = new Map();
+      const describe = (product) => {
+        const kind = standardKind(product);
+        return [product.name, kind ? `(${kind})` : "", product.producer, product.group].filter(Boolean).join(" · ");
+      };
+      for (const [id, product] of products) {
+        const lots = inventory.lotsFor(id);
+        const legacy = !product.productId && legacyCatalogKey(product);
+        const key = legacy ? `legacy:${legacy}` : `product:${id}`;
+        const searchData = [product.name, product.producer, product.cas, product.formula,
+          ...lots.flatMap((lot) => [lot.group, lot.lotNumber])];
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({ id, product, lots, searchData });
+      }
       const add = (item = {}) => {
         const row = createElement("div", "lab-panel lab-fields");
-        const product = select([["", "Poza ewidencją magazynową"], ...inventory.productOptions()], item.productId);
-        const label = input("Nazwa składnika poza magazynem", item.productId ? "" : item.name);
+        const search = input("Szukaj nazwy, producenta lub partii", "", "search");
+        search.maxLength = 200;
+        const picker = createElement("div", "lab-stack lab-field-wide");
+        const selectedLabel = createElement("p", "lab-muted");
+        selectedLabel.setAttribute("role", "status");
+        const results = createElement("div", "lab-list");
+        const label = input("Nazwa składnika poza magazynem", item.productId === "" ? item.name : "");
+        const outsideField = field("Nazwa składnika poza magazynem", label);
+        outsideField.classList.add("lab-field-wide");
+        let selected = item.productId ?? null;
+        const draftSelection = createElement("input");
+        draftSelection.type = "hidden";
+        draftSelection.setAttribute("data-draft-value", "");
+
+        function showSelection() {
+          const product = products.get(selected);
+          selectedLabel.textContent = selected === "" ? "Poza ewidencją magazynową"
+            : product ? describe(product) : selected ? item.name : "Wybierz składnik z wyników wyszukiwania.";
+          outsideField.hidden = selected !== "";
+          draftSelection.value = JSON.stringify(selected);
+        }
+
+        function choose(id) {
+          selected = id;
+          search.value = "";
+          results.replaceChildren();
+          showSelection();
+          if (id === "") label.focus();
+          else search.focus();
+        }
+
+        function showResults() {
+          results.replaceChildren();
+          const query = search.value.trim();
+          if (!query) return;
+          const matches = [...groups.values()].filter((group) => group.some(({ searchData }) => matchesInventorySearch(query, ...searchData)));
+          for (const entries of matches.slice(0, 16)) {
+            const [first] = entries;
+            if (entries.length === 1) {
+              const label = describe(first.product) + (first.lots.length > 1 ? ` · Partie (${first.lots.length})` : "");
+              results.append(button(label, () => choose(first.id)));
+            } else {
+              const group = details(`${first.product.name} · Partie (${entries.length})`);
+              const labels = lotOptions(entries.map(({ product }) => product));
+              for (const [id, text] of labels) group.append(button(text, () => choose(id)));
+              results.append(group);
+            }
+          }
+          if (!matches.length) results.append(createElement("p", "lab-muted", "Brak pasujących składników."));
+          if (matches.length > 16) results.append(createElement("p", "lab-muted", "Doprecyzuj wyszukiwanie, aby zobaczyć pozostałe wyniki."));
+        }
+
+        search.addEventListener("input", showResults);
+        picker.append(field("Składnik z magazynu", search), selectedLabel, results, draftSelection,
+          button("Poza ewidencją magazynową", () => choose("")));
+        showSelection();
         const amount = input("Ilość", item.quantity ? formatQuantity(item.quantity, item.unit).replace(/\s+[^\s]+$/, "").replace(/\s/g, "") : "");
         const unit = unitSelect(item.unit);
-        row.append(field("Składnik", product), field("Nazwa składnika poza magazynem", label), field("Ilość podstawowa", amount),
+        row.append(picker, outsideField, field("Ilość podstawowa", amount),
           field("Jednostka", unit), button("Usuń składnik", () => { entries.delete(row); row.remove(); }, "lab-button-danger"));
         entries.set(row, () => {
-          const productId = product.value;
-          const source = inventory.products().find(([id]) => id === productId)?.[1];
-          const stockUnit = inventory.lotsFor(productId).find((lot) => lot.stock?.unit)?.stock.unit || source?.packageUnit;
+          if (selected === null) throw new Error("Wybierz składnik z magazynu lub spoza ewidencji.");
+          const source = products.get(selected);
+          const stockUnit = inventory.lotsFor(selected).find((lot) => lot.stock?.unit)?.stock.unit || source?.packageUnit;
           if (stockUnit && !compatibleUnits(unit.value, stockUnit)) throw new Error("Jednostka składnika jest niezgodna z pozycją handlową.");
-          return { productId, name: source?.name || required(label.value, "Składnik"), quantity: quantity(amount.value, unit.value), unit: unit.value };
+          const name = selected ? source?.name || item.name : label.value;
+          return { productId: selected, name: required(name, "Składnik"), quantity: quantity(amount.value, unit.value), unit: unit.value };
         });
         ingredients.append(row);
       };
@@ -167,18 +284,20 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
             || !flaskVolumes.includes(defaultVolume) || (!proportional.checked && baseVolume !== defaultVolume)) {
             throw new Error("Receptura bez skalowania musi mieć jedną z dostępnych standardowych objętości.");
           }
-          const assigned = choices.filter(([, checkbox]) => checkbox.checked).map(([id]) => id);
-          if (!entries.size || !assigned.length) throw new Error("Dodaj składnik i przypisz co najmniej jedną metodę.");
-          await setDoc(recipe.id ? inventory.store.ref("recipes", recipe.id) : createRef("magazyn_receptury"), {
+          if (!entries.size) throw new Error("Dodaj co najmniej jeden składnik.");
+          if (!recipe.methods.length) throw new Error("Przypisz recepturę do metody w oknie „Zarządzaj przypisaniami”.");
+          const values = {
             name: required(name.value, "Nazwa roztworu"), baseVolume, defaultVolume, scalable: proportional.checked,
-            methods: assigned, ingredients: [...entries.values()].map((read) => read()), instruction: instruction.value.trim(),
-            version: (recipe.version || 0) + 1,
-          });
+            ingredients: [...entries.values()].map((read) => read()), instruction: instruction.value.trim(),
+          };
+          if (recipe.id) await updateDoc(inventory.store.ref("recipes", recipe.id), { ...values, version: recipe.version + 1 });
+          else await setDoc(createRef("magazyn_receptury"), { ...values, methods: recipe.methods, version: 1 });
           navigation.close(true);
           notify("Zapisano recepturę.");
         }, status));
+      if (methodName) box.append(createElement("p", "lab-muted", methodName));
       box.append(field("Nazwa roztworu", name), volumes, field("Dopuszczalne skalowanie proporcjonalne", proportional),
-        createElement("h3", "", "Metody badawcze"), methods, createElement("h3", "", "Składniki"), ingredients,
+        createElement("h3", "", "Składniki"), ingredients,
         button("Dodaj składnik", () => add()), field("Instrukcja przygotowania (opcjonalnie)", instruction), status, actions);
       navigation.show(box, recipe.id ? "Edytuj recepturę" : "Nowa receptura");
     }
@@ -189,7 +308,9 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
       const query = search.value.trim();
       wasSearching = Boolean(query);
       const recipes = inventory.rows("recipes");
-      const groups = groupRecipesByMethod(methodOptions(inventory), recipes);
+      const methods = methodOptions(inventory);
+      createRecipe.disabled = !methods.length;
+      const groups = groupRecipesByMethod(methods, recipes);
       const contexts = new Map(query ? recipes.map((recipe) => [recipe, recipeSearchContext(recipe)]) : []);
       list.replaceChildren();
       for (const group of groups) {
@@ -211,13 +332,16 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
           say(summary, `Objętość podstawowa ${recipe.baseVolume} ml`);
           recipe.ingredients.forEach((item) => say(summary, `${item.name} · ${formatQuantity(item.quantity, item.unit)}`));
           if (recipe.instruction) say(summary, recipe.instruction);
-          row.append(summary, button("Edytuj recepturę", () => showEditor(recipe)));
+          const actions = createElement("div", "lab-actions");
+          actions.append(button("Edytuj recepturę", () => showEditor(recipe)),
+            button("Zarządzaj przypisaniami", () => showAssignments(recipe)));
+          row.append(summary, actions);
           section.append(row);
         }
         if (!matches.length) section.append(createElement("p", "lab-empty", "Ta metoda nie ma jeszcze receptur."));
         if (group.id !== null) {
           const actions = createElement("div", "lab-actions");
-          actions.append(button("Dodaj recepturę", () => showEditor({ methods: [group.id] }), "lab-button-primary"));
+          actions.append(button("Dodaj recepturę", () => addForMethod(group.id), "lab-button-primary"));
           section.append(actions);
         }
         list.append(section);
@@ -265,13 +389,16 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
         try {
           const ingredients = recipeIngredients(recipe, volume);
           const selectors = createElement("div", "lab-panel lab-list");
+          const lotLabels = new Map();
           preview.append(selectors);
           ingredients.forEach((item, index) => {
             say(selectors, `${item.name} · ${formatQuantity(item.quantity, item.unit)}${item.productId ? "" : " · poza magazynem"}`);
             if (!item.productId) return;
             const candidates = validLots(inventory.lotsFor(item.productId), item.unit, formatLocalDate());
+            const options = lotOptions(candidates);
+            for (const [id, label] of options) lotLabels.set(id, label);
             const option = select([["", "Automatycznie według terminu ważności"],
-              ...candidates.map((lot) => [lot.id, `${batchLabel(lot)} · ${formatPolishDate(lot.expiry)}`])], preferred[index]);
+              ...options], preferred[index]);
             option.addEventListener("change", () => {
               if (preparationPending) { option.value = preferred[index] || ""; return; }
               preferred[index] = option.value;
@@ -282,7 +409,7 @@ export function mountInventoryRecipes(inventory, { db, firestore, navigation }) 
           const plan = allocateIngredients(ingredients, inventory.lotsFor, preferred);
           for (const row of plan.preview) {
             const unit = row.lot.stock.unit;
-            say(preview, `${batchLabel(row.lot)} · pobranie ${formatQuantity(row.before - row.after, unit)} · przed ${formatQuantity(row.before, unit)} · po ${formatQuantity(row.after, unit)}`);
+            say(preview, `${lotLabels.get(row.lot.id)} · pobranie ${formatQuantity(row.before - row.after, unit)} · przed ${formatQuantity(row.before, unit)} · po ${formatQuantity(row.after, unit)}`);
           }
           const confirm = saveButton("Zatwierdź przygotowanie", async () => {
             if (preparationPending) return;

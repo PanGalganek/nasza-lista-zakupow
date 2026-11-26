@@ -186,6 +186,7 @@ textarea { resize: vertical; }
 .lab-inline-form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
 .lab-inline-form .lab-field { flex: 1 1 205px; }
 .lab-registry-tools { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; }
+@media (max-width: 520px) { .lab-recipe-tools { grid-template-columns: minmax(0,1fr); } }
 .lab-search { position: relative; display: flex; align-items: center; min-width: 0; }
 .lab-search .lab-icon-slot { position: absolute; left: 11px; color: var(--lab-muted); pointer-events: none; }
 .lab-search .lab-icon { width: 19px; height: 19px; }
@@ -260,6 +261,8 @@ body:has(.lab-dialog[open]) { overflow: hidden; }
 .lab-metric dt { color: var(--lab-muted); font-size: var(--lab-small); }
 .lab-metric dd { margin: 3px 0 0; color: #203f62; font-weight: 760; overflow-wrap: anywhere; }
 .lab-panel.lab-fields { align-items: end; }
+.lab-order-preview > div { min-width: 0; }
+.lab-order-preview dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .lab-registry-tools:has(.lab-field) { align-items: end; }
 .lab-accordion > .lab-empty { margin-block: 8px 12px; }
 @media (max-width: 380px) { .lab-alert-row { flex-wrap: wrap; } }

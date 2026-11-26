@@ -1,13 +1,19 @@
+import { formatPolishDate } from "../utils.js?v=23";
+
 const widths = [454, 1417, 3855, 1247, 1106, 1389, 1247, 1049, 1219, 1162, 1191];
 const encoder = new TextEncoder();
 const xml = (text) => String(text ?? "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "")
   .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-export function orderColumns(row, date) {
-  return ["", date, row.name, row.amount || "", "", "", "", "", "", "", row.notes || ""];
+export function orderColumns(row, date, requester = "") {
+  const expiry = formatPolishDate(row.expiry, "");
+  const kind = ["O", "B"].includes(row.standardKind) ? `(${row.standardKind})` : "";
+  const end = row.expiry === undefined && row.standardKind === undefined ? row.notes || ""
+    : [expiry ? "Do" : "", expiry, kind].filter(Boolean).join("\n");
+  return ["", [requester, date].filter(Boolean).join("\n"), row.name, row.amount || "", "", "", "", "", "", "", end];
 }
 
-function documentXml(rows, date) {
+function documentXml(rows, date, requester) {
   const border = ["top", "left", "bottom", "right", "insideH", "insideV"]
     .map((side) => `<w:${side} w:val="single" w:sz="4" w:color="000000"/>`).join("");
   const margins = [["top", 20], ["bottom", 20], ["left", 55], ["right", 55]]
@@ -18,7 +24,7 @@ function documentXml(rows, date) {
   const tableRow = (row) => {
     const description = String(row.name ?? "");
     const allowSplit = /[\r\n]/.test(description) || description.length > 900;
-    const cells = orderColumns(row, date).map((value, i) => {
+    const cells = orderColumns(row, date, requester).map((value, i) => {
       const keepLines = allowSplit && i === 2 ? "" : "<w:keepLines/>";
       return `<w:tc><w:tcPr><w:tcW w:w="${widths[i]}" w:type="dxa"/><w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr>${keepLines}<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="${i === 2 ? "left" : "center"}"/>${typography}</w:pPr><w:r>${typography}${textRuns(value)}</w:r></w:p></w:tc>`;
     }).join("");
@@ -84,7 +90,7 @@ function zip(parts) {
   return new Blob([...local, ...central, directory.buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
 }
 
-export function createOrderDocx(rows, date) {
+export function createOrderDocx(rows, date, requester = "") {
   if (!rows.length) throw new Error("Wybierz co najmniej jedną pozycję zamówienia.");
   return zip({
     "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
@@ -94,6 +100,6 @@ export function createOrderDocx(rows, date) {
     "_rels/.rels": `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
       <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
       </Relationships>`,
-    "word/document.xml": documentXml(rows, date),
+    "word/document.xml": documentXml(rows, date, requester),
   });
 }

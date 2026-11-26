@@ -1,5 +1,5 @@
-import { byId, notify } from "./ui.js?v=22";
-import { routes } from "./shell.js?v=22";
+import { byId, notify } from "./ui.js?v=23";
+import { routes } from "./shell.js?v=23";
 
 export const routeParent = (route) => route.includes("/") ? route.split("/")[0] : "home";
 
@@ -8,7 +8,7 @@ function address(route) {
 }
 
 function formValues(element) {
-  const values = [...element.querySelectorAll("input:not([type=hidden]),select,textarea")].map((field) =>
+  const values = [...element.querySelectorAll("input:not([type=hidden]),input[data-draft-value],select,textarea")].map((field) =>
     field.type === "checkbox" || field.type === "radio" ? field.checked : field.value);
   return JSON.stringify([values, element.querySelector("[data-volume][aria-pressed=true]")?.dataset.volume]);
 }
