@@ -23,19 +23,19 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=25";
-import { createCalendarModule } from "./modules/calendar.js?v=25";
-import { createChemicalsModule } from "./modules/chemicals.js?v=25";
-import { createEquipmentModule } from "./modules/equipment.js?v=25";
-import { createInventoryModule } from "./modules/inventory-ui.js?v=25";
-import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=25";
-import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=25";
-import { mountInventoryTheory } from "./modules/inventory-theory.js?v=25";
-import { mountInventoryOrders } from "./modules/inventory-orders.js?v=25";
-import { createScheduleModule } from "./modules/schedule.js?v=25";
-import { byId, notify, runSafely } from "./modules/ui.js?v=25";
-import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=25";
-import { createNavigation } from "./modules/navigation.js?v=25";
+import { createAuthModule } from "./modules/auth.js?v=30";
+import { createCalendarModule } from "./modules/calendar.js?v=30";
+import { createChemicalsModule } from "./modules/chemicals.js?v=30";
+import { createEquipmentModule } from "./modules/equipment.js?v=30";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=30";
+import { mountInventoryHistory, mountInventoryStatistics } from "./modules/inventory-history.js?v=30";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=30";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=30";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=30";
+import { createScheduleModule } from "./modules/schedule.js?v=30";
+import { byId, notify, runSafely } from "./modules/ui.js?v=30";
+import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=30";
+import { createNavigation } from "./modules/navigation.js?v=30";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -73,7 +73,7 @@ function reportListenerError(area, error) {
 }
 
 buildShell();
-const navigation = createNavigation((route) => renderShell(route, { inventory, chemicals, schedule, equipment, calendar }));
+const navigation = createNavigation((route, viewState) => renderShell(route, { inventory, chemicals, schedule, equipment, calendar }, viewState));
 const moduleDependencies = { db, firestore, registerSnapshot, reportListenerError, navigation };
 const inventory = createInventoryModule(moduleDependencies);
 mountInventoryHistory(inventory);

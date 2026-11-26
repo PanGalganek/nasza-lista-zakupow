@@ -1,5 +1,5 @@
-import { byId, notify } from "./ui.js?v=25";
-import { routes } from "./shell.js?v=25";
+import { byId, notify } from "./ui.js?v=30";
+import { routes } from "./shell.js?v=30";
 
 export const routeParent = (route) => route.includes("/") ? route.split("/")[0] : "home";
 
@@ -25,8 +25,8 @@ export function createNavigation(render) {
   let requested = false;
   let sequence = 0;
 
-  function makeState(route, depth, previous, modal = null) {
-    return { elab: true, route, depth, previous, modal };
+  function makeState(route, depth, previous, modal = null, lotId = "") {
+    return { elab: true, route, depth, previous, modal, lotId };
   }
 
   function applyState(next, method) {
@@ -44,12 +44,14 @@ export function createNavigation(render) {
     return false;
   }
 
-  function paint(route, focus = true) {
-    render(route);
+  function paint(route, focus = true, restoreWarnings = false) {
+    const entry = current;
     requestAnimationFrame(() => {
+      if (current !== entry) return;
       window.scrollTo({ top: scrollPositions.get(route) || 0, behavior: "instant" });
       if (focus) byId(route === "home" ? "homeTitle" : "viewTitle").focus({ preventScroll: true });
     });
+    render(route, { lotId: entry.lotId, restoreWarnings });
   }
 
   function start() {
@@ -72,14 +74,14 @@ export function createNavigation(render) {
     paint(current.route, false);
   }
 
-  function push(route) {
-    return applyState(makeState(route, current.depth + 1, current.route), "pushState");
+  function push(route, lotId) {
+    return applyState(makeState(route, current.depth + 1, current.route, null, lotId), "pushState");
   }
 
-  function go(route) {
+  function go(route, lotId) {
     if (!current || !routes.has(route) || route === current.route || overlay || pending) return;
     scrollPositions.set(current.route, scrollY);
-    if (push(route)) paint(route);
+    if (push(route, lotId)) paint(route);
   }
 
   function back() {
@@ -88,7 +90,8 @@ export function createNavigation(render) {
     const parent = routeParent(current.route);
     const betweenOrdersAndAlerts = (current.route === "alerts" && current.previous === "inventory/orders")
       || (current.route === "inventory/orders" && current.previous === "alerts");
-    if (current.previous === parent || betweenOrdersAndAlerts) {
+    const fromWarnings = current.lotId && current.previous === "alerts";
+    if (current.previous === parent || betweenOrdersAndAlerts || fromWarnings) {
       pending = true;
       history.back();
     } else {
@@ -126,7 +129,8 @@ export function createNavigation(render) {
   function show(element, title, { busy, watch = true, onDismiss, wide = false } = {}) {
     if (!current || pending) return;
     if (!overlay) {
-      if (!applyState(makeState(current.route, current.depth + 1, current.route, ++sequence), "pushState")) return;
+      const previous = current.lotId ? current.previous : current.route;
+      if (!applyState(makeState(current.route, current.depth + 1, previous, ++sequence, current.lotId), "pushState")) return;
     }
     const same = overlay?.element === element;
     const trigger = overlay?.trigger || document.activeElement;
@@ -180,11 +184,12 @@ export function createNavigation(render) {
     }
     closeApproved = false;
     const prior = current.route;
+    const restoreWarnings = Boolean(current.lotId && next.route === current.previous);
     if (next.route !== prior) scrollPositions.set(prior, scrollY);
     if (overlay) finish();
     current = { ...next, modal: null };
     if (next.modal || !event.state?.elab) history.replaceState(current, "", address(current.route));
-    if (current.route !== prior) paint(current.route);
+    if (current.route !== prior) paint(current.route, true, restoreWarnings);
   });
 
   window.addEventListener("beforeunload", (event) => {

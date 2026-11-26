@@ -1,5 +1,5 @@
-import { icon, fillIcons } from "./icons.js?v=25";
-import { byId, createElement } from "./ui.js?v=25";
+import { icon, fillIcons } from "./icons.js?v=30";
+import { byId, createElement } from "./ui.js?v=30";
 
 const top = [
   ["inventory", "Odczynniki i wzorce", "Rejestr, magazyn i receptury", "flask", "blue", "Odczynniki"],
@@ -84,7 +84,7 @@ export function syncFilters() {
   byId("clearFilters").hidden = labels.length === 0;
 }
 
-export function renderShell(route, { inventory, chemicals, schedule, calendar, equipment }) {
+export function renderShell(route, { inventory, chemicals, schedule, calendar, equipment }, { lotId, restoreWarnings } = {}) {
   const view = routes.get(route);
   const top = route.split("/")[0];
   for (const section of document.querySelectorAll("[data-app-screen]")) section.hidden = section.dataset.appScreen !== view.screen;
@@ -97,13 +97,14 @@ export function renderShell(route, { inventory, chemicals, schedule, calendar, e
   byId("routeContext").textContent = route.includes("/") ? "Pulpit / " + routes.get(top).title : "Pulpit";
   byId("addChemical").hidden = view.section !== "registry";
   byId("addEquipment").hidden = route !== "equipment";
-  chemicals.actions.showWarnings(route === "alerts");
+  chemicals.actions.showWarnings(route === "alerts", restoreWarnings);
   if (top === "inventory") {
     if (route === "inventory") inventory.switchSection("menu");
     else if (view.section === "registry") {
       const category = route === "inventory/chemicals" ? "Odczynniki" : "Wzorce";
       byId("addChemical").querySelector("span:last-child").textContent = category === "Odczynniki" ? "Dodaj odczynnik" : "Dodaj wzorzec";
-      chemicals.actions.switchSubTab(category);
+      chemicals.actions.switchSubTab(category, lotId);
+      if (lotId) syncFilters();
       inventory.switchSection(view.section);
     } else inventory.switchSection(view.section);
   }

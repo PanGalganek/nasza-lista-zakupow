@@ -1,9 +1,9 @@
-import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=25";
-import { createButton, createElement } from "./ui.js?v=25";
-import { stockLevel } from "./inventory-quantity.js?v=25";
-import { productId } from "./inventory-store.js?v=25";
-import { indexCatalog, orderItemKey, standardKind } from "./inventory-items.js?v=25";
-import { batchLabel, button, details, orderBadge } from "./inventory-ui.js?v=25";
+import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=30";
+import { createButton, createElement } from "./ui.js?v=30";
+import { stockLevel } from "./inventory-quantity.js?v=30";
+import { productId } from "./inventory-store.js?v=30";
+import { indexCatalog, orderItemKey, standardKind } from "./inventory-items.js?v=30";
+import { batchLabel, button, details, orderBadge } from "./inventory-ui.js?v=30";
 
 const categories = [
   ["expired", "Przekroczony termin ważności"],
@@ -63,7 +63,7 @@ export function warningGroups(lots, threshold, today = new Date()) {
   return result;
 }
 
-export function renderInventoryAlerts(container, lots, threshold, inventory, newLot, lpByItem, { expanded } = {}) {
+export function renderInventoryAlerts(container, lots, threshold, inventory, newLot, lpByItem, openPosition) {
   const open = new Map([...container.children].map((element) => [element.dataset.warning, element.open]));
   const result = warningGroups(lots, threshold);
   container.replaceChildren();
@@ -83,7 +83,7 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, new
     const section = details(`${label} (${items.length})`);
     section.classList.add("lab-alert-category");
     section.dataset.warning = key;
-    section.open = expanded ?? open.get(key) ?? container.parentElement?.id === "warningScreen";
+    section.open = open.get(key) ?? container.parentElement?.id === "warningScreen";
     section.append(button("Zaznacz wszystkie", () => {
       for (const { lot } of items) {
         const itemKey = orderItemKey(lot);
@@ -119,8 +119,12 @@ export function renderInventoryAlerts(container, lots, threshold, inventory, new
       if (action) body.append(createElement("span", "lab-muted", action));
       if (otherBackup && !backup) body.append(createElement("span", "lab-muted", `Dostępna inna partia ${backupLabel(otherBackup)}`));
       body.append(orderBadge(state, null, { showStatusText: true }));
-      row.append(checkbox, body,
-        createButton("Nowa partia", `Nowa partia: ${lot.group || lot.name}`, () => newLot(lot), "lab-button"));
+      const actions = createElement("div", "lab-alert-actions");
+      actions.append(
+        createButton("Nowa partia", `Nowa partia: ${lot.group || lot.name}`, () => newLot(lot), "lab-button"),
+        createButton("Otwórz pozycję", `Otwórz pozycję: ${batchLabel(lot)}`, () => openPosition(lot), "lab-button"),
+      );
+      row.append(checkbox, body, actions);
       section.append(row);
     }
     container.append(section);
