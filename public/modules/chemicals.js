@@ -1,11 +1,11 @@
-import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue } from "../utils.js?v=25";
-import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=25";
-import { batchLabel, field, orderBadge, select, showStock } from "./inventory-ui.js?v=25";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=25";
-import { availability } from "./inventory-history.js?v=25";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=25";
-import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=25";
-import { orderPackageCount, orderLineProgress, orderRecordedDate, standardKind } from "./inventory-items.js?v=25";
+import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue, suggestStandardNumber } from "../utils.js?v=30";
+import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=30";
+import { batchLabel, field, orderBadge, select, showStock } from "./inventory-ui.js?v=30";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=30";
+import { availability } from "./inventory-history.js?v=30";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=30";
+import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=30";
+import { orderPackageCount, orderLineProgress, orderRecordedDate, standardKind } from "./inventory-items.js?v=30";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory, navigation }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -18,6 +18,9 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   let receiptDraft;
   let inlinePending = false;
   let updateDeliveryForm;
+  let highlightedLot = "";
+  let pendingLotFocus = false;
+  let warningPosition;
 
   function createInlineField(labelText, input, className = "") {
     const label = createElement("label", className || "lab-field");
@@ -188,16 +191,47 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     form.dataset.inlineChemicalForm = group.key;
     const title = createElement("p", "lab-muted", [group.lp && `LP ${group.lp}`, group.name].filter(Boolean).join(" · "));
     const fields = createElement("div", "lab-fields");
+    const isStandard = (group.category || category) !== "Odczynniki";
     const groupInput = createInput("inline-group w-full rounded border p-2 text-sm text-black", "Grupa / numer",
-      sourceLot?.group ?? suggestNextGroupValue(group.items, group.prefix));
+      isStandard ? "" : (sourceLot?.group ?? suggestNextGroupValue(group.items, group.prefix)));
     groupInput.maxLength = 100;
     groupInput.setAttribute("data-form-focus", "");
+    const priorNumber = createElement("strong");
+    const numberHelp = createElement("p", "lab-muted lab-field-wide");
+    numberHelp.id = "standardNumberHelp";
+    let proposedNumber = "";
+    let proposalMessage = "";
+    const setStandardNumber = (part) => {
+      priorNumber.textContent = part?.group || "Brak numeru";
+      const { value, mode } = suggestStandardNumber(part?.group, items.filter((item) => chemicalCategory(item) === "Wzorce"));
+      proposedNumber = value;
+      groupInput.value = proposedNumber;
+      proposalMessage = {
+        incremented: "Numer automatycznie zwiększony o 1. Możesz go zmienić.",
+        afterHighest: "Numer automatycznie zwiększony o 1 względem najwyższego numeru w tej serii. Możesz go zmienić.",
+        copied: "Oznaczenie skopiowane jako numer grupy. Możesz je zmienić.",
+        manual: "Brak jednoznacznej propozycji. Wpisz numer ręcznie.",
+      }[mode];
+      numberHelp.textContent = proposalMessage;
+    };
+    if (isStandard) {
+      const number = createElement("div", "lab-field");
+      number.append(createElement("span", "", "Dotychczasowy numer wzorca"), priorNumber);
+      groupInput.setAttribute("aria-describedby", numberHelp.id);
+      numberHelp.setAttribute("aria-live", "polite");
+      groupInput.addEventListener("input", () => {
+        numberHelp.textContent = groupInput.value.trim() === proposedNumber
+          ? proposalMessage : "Numer wprowadzono ręcznie.";
+      });
+      fields.append(number, createInlineField("Proponowany numer nowego wzorca", groupInput), numberHelp);
+      if (!inventory) setStandardNumber(sourceLot || group.items[0]);
+    } else fields.append(createInlineField("Grupa / numer", groupInput));
     const usageInput = createInput("inline-usage w-full rounded border p-2 text-sm text-black", "Zastosowanie",
       sourceLot?.usage ?? group.items.find((item) => item.usage)?.usage ?? "");
     usageInput.maxLength = 500;
     const receivedInput = createInput("inline-received w-full rounded border p-2 text-sm text-black", "", formatLocalDate(), "date");
     const expiryInput = createInput("inline-expiry w-full rounded border p-2 text-sm text-black", "", "", "date");
-    fields.append(createInlineField("Grupa / numer", groupInput), createInlineField("Zastosowanie", usageInput), createInlineField("Data przyjęcia", receivedInput), createInlineField("Data ważności", expiryInput));
+    fields.append(createInlineField("Zastosowanie", usageInput), createInlineField("Data przyjęcia", receivedInput), createInlineField("Data ważności", expiryInput));
     let packaging;
     let source;
     let receipt;
@@ -293,6 +327,7 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       });
       const suggest = () => {
         const part = representatives.get(source.value);
+        if (isStandard) setStandardNumber(part);
         const history = inventory.productLots(productId(part)).filter((lot) => standardKind(lot) === standardKind(part));
         const previous = history.filter((lot) => lot.packageAmount).sort((a, b) => b.timestamp - a.timestamp)[0];
         const root = history.find((lot) => lot.id === inventory.catalogId(productId(part)));
@@ -402,8 +437,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     sortedGroups.forEach((group) => {
       group.items.sort((a, b) => sortMode === "expiry" ? String(a.expiry || "9999-12-31").localeCompare(String(b.expiry || "9999-12-31")) : String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
       const card = createElement("details", "lab-accordion lab-product");
-      const wasOpen = expanded.has(group.key);
-      card.open = wasOpen;
+      if (pendingLotFocus && group.items.some((item) => item.id === highlightedLot)) expanded.add(group.key);
+      card.open = expanded.has(group.key);
       card.addEventListener("toggle", () => {
         if (card.open) expanded.add(group.key);
         else expanded.delete(group.key);
@@ -443,6 +478,21 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         const row = createElement("div", `${(state ? state.state === "ordered" : item.ordered) ? "ordered-row " : ""}lab-lot`);
         const info = createElement("div", "lab-lot-info");
         info.append(createElement("strong", "", item.lotNumber ? `Partia ${item.lotNumber}` : item.group || "Partia bez numeru"));
+        if (item.id === highlightedLot) {
+          row.classList.add("lab-lot-highlighted");
+          row.tabIndex = -1;
+          row.setAttribute("role", "group");
+          row.setAttribute("aria-label", `Partia z ostrzeżenia: ${batchLabel(item)}`);
+          info.append(createElement("span", "lab-chip", "Partia z ostrzeżenia"));
+          if (pendingLotFocus) {
+            requestAnimationFrame(() => {
+              if (!pendingLotFocus || !row.getClientRects().length || highlightedLot !== item.id) return;
+              pendingLotFocus = false;
+              row.focus({ preventScroll: true });
+              row.scrollIntoView({ block: "center", behavior: "instant" });
+            });
+          }
+        }
         const expiryLine = createElement("span", color);
         expiryLine.append(document.createTextNode("Ważność: "), createElement("span", "", formatPolishDate(item.expiry)));
         if (days !== null) expiryLine.append(document.createTextNode(days < 0 ? " · po terminie" : ` · ${days} dni`));
@@ -479,7 +529,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     if (sortedGroups.length === 0) container.append(createElement("p", "rounded-lg border border-dashed bg-gray-50 p-6 text-center text-sm text-gray-500", "Brak pozycji spełniających kryteria."));
     if (inventory) {
       if (refreshWarnings) renderInventoryAlerts(alertBox, activeItems.map(inventory.withStock),
-        (item) => item.category === "Odczynniki" ? 70 : 40, inventory, (item) => newLotFromAlert(item, lpByItem.get(item.id)), lpByItem);
+        (item) => item.category === "Odczynniki" ? 70 : 40, inventory, (item) => newLotFromAlert(item, lpByItem.get(item.id)), lpByItem,
+        openPositionFromAlert);
     }
     else {
       const alerts = buildChemicalAlerts(categoryItems, threshold);
@@ -492,17 +543,35 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     openNewLot({ name: item.name, category: chemicalCategory(item), items: [item], lp }, item);
   }
 
-  function showWarnings(dedicated) {
+  function openPositionFromAlert(item) {
     const box = byId("alertBox");
-    const destination = byId(dedicated ? "warningScreen" : "warningCenter");
-    if (box.parentElement === destination) return;
-    destination.append(box);
-    for (const category of box.querySelectorAll("details[data-warning]")) category.open = dedicated;
-    if (!dedicated) destination.open = false;
+    warningPosition = {
+      menuOpen: byId("warningCenter").open,
+      categories: new Map([...box.querySelectorAll("details[data-warning]")].map((element) => [element.dataset.warning, element.open])),
+    };
+    navigation.go(chemicalCategory(item) === "Odczynniki" ? "inventory/chemicals" : "inventory/standards", item.id);
   }
 
-  function switchSubTab(target) {
+  function showWarnings(dedicated, restore) {
+    const box = byId("alertBox");
+    const destination = byId(dedicated ? "warningScreen" : "warningCenter");
+    const moved = box.parentElement !== destination;
+    if (moved) destination.append(box);
+    if (!moved && !restore) return;
+    for (const category of box.querySelectorAll("details[data-warning]")) {
+      category.open = (restore ? warningPosition?.categories.get(category.dataset.warning) : undefined) ?? dedicated;
+    }
+    if (!dedicated) destination.open = Boolean(restore && warningPosition?.menuOpen);
+  }
+
+  function switchSubTab(target, lotId = "") {
     category = target;
+    highlightedLot = lotId;
+    pendingLotFocus = Boolean(lotId);
+    if (lotId) {
+      byId("chemicalSearch").value = "";
+      byId("chemicalStatusFilter").value = "all";
+    }
     render();
   }
 

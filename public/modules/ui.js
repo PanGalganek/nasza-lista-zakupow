@@ -1,4 +1,4 @@
-import { icon } from "./icons.js?v=25";
+import { icon } from "./icons.js?v=30";
 
 export const byId = (id) => document.getElementById(id);
 const messageTimers = new WeakMap();

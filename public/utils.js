@@ -128,3 +128,26 @@ export function suggestNextGroupValue(items, prefix) {
   return values.find(Boolean) || (prefix === "Inne" ? "" : prefix);
 }
 
+export function suggestStandardNumber(current, items) {
+  const previous = String(current || "").trim();
+  if (!previous || !previous.includes("/")) return { value: previous, mode: previous ? "copied" : "manual" };
+  const match = /^([^/]+)\/(\d+)$/.exec(previous);
+  if (!match) return { value: "", mode: "manual" };
+
+  const [, prefix, suffix] = match;
+  const series = (prefix + "/").toLocaleLowerCase("pl");
+  let highest = BigInt(suffix);
+  for (const item of items) {
+    const number = String(item.group || "").trim();
+    if (!number.toLocaleLowerCase("pl").startsWith(series)) continue;
+    const ending = number.slice(series.length);
+    if (!/^\d+$/.test(ending)) return { value: "", mode: "manual" };
+    const sequence = BigInt(ending);
+    if (sequence > highest) highest = sequence;
+  }
+  const value = prefix + "/" + String(highest + 1n).padStart(suffix.length, "0");
+  return value.length <= 100
+    ? { value, mode: highest === BigInt(suffix) ? "incremented" : "afterHighest" }
+    : { value: "", mode: "manual" };
+}
+

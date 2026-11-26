@@ -10,6 +10,7 @@ import {
   parseLocalDate,
   shiftCalendarMonth,
   suggestNextGroupValue,
+  suggestStandardNumber,
 } from "../public/utils.js";
 
 test("formatLocalDate uses the local calendar date", () => {
@@ -96,5 +97,18 @@ test("suggestNextGroupValue proposes the next numeric position", () => {
   );
   assert.equal(suggestNextGroupValue([{ group: "WZ/A" }], "WZ"), "WZ/");
   assert.equal(suggestNextGroupValue([{ group: "Bez numeru" }], "Bez numeru"), "Bez numeru");
+});
+
+test("standard numbers continue the existing series and skip occupied numbers", () => {
+  assert.deepEqual(suggestStandardNumber("II-7/26", [{ group: "II-70/50" }]), { value: "II-7/27", mode: "incremented" });
+  assert.deepEqual(suggestStandardNumber("II-7/26", [{ group: "ii-7/27" }, { group: "II-7/31" }]), { value: "II-7/32", mode: "afterHighest" });
+  assert.deepEqual(suggestStandardNumber("II-7/005", []), { value: "II-7/006", mode: "incremented" });
+});
+
+test("standard numbers with ambiguous suffixes require manual entry", () => {
+  assert.deepEqual(suggestStandardNumber("WZ/A", []), { value: "", mode: "manual" });
+  assert.deepEqual(suggestStandardNumber("WZ/5", [{ group: "WZ/5/A" }]), { value: "", mode: "manual" });
+  assert.deepEqual(suggestStandardNumber("WZ-TEST", []), { value: "WZ-TEST", mode: "copied" });
+  assert.deepEqual(suggestStandardNumber("", []), { value: "", mode: "manual" });
 });
 

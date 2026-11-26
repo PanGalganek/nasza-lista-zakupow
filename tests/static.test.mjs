@@ -32,6 +32,7 @@ test("every chemical LP can render its own add-position form", () => {
   assert.match(modules, /openNewLot\(group\)/);
   assert.match(modules, /dataset\.inlineChemicalForm/);
   assert.match(modules, /suggestNextGroupValue\(group\.items, group\.prefix\)/);
+  assert.match(modules, /suggestStandardNumber\(part\?\.group, items\.filter/);
 });
 
 test("chemical inventory provides search, status filters, and sorting", () => {
@@ -57,10 +58,11 @@ test("routed screens share unique form targets and an accessible dialog", () => 
 test("the dashboard links directly to warnings and affected lots can be replenished", () => {
   assert.match(html, /data-route="alerts" data-warning-count/);
   assert.match(modules, /createButton\("Nowa partia", [^\n]+\(\) => newLot\(lot\)/);
+  assert.match(modules, /createButton\("Otwórz pozycję", [^\n]+\(\) => openPosition\(lot\)/);
   assert.match(modules, /presentForm\("Edytuj partię"\)/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=25/);
-  assert.match(html, /\.\/app\.js\?v=25/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=30/);
+  assert.match(html, /\.\/app\.js\?v=30/);
 });
 
 test("all visible full dates use the Polish day-month-year format", () => {
@@ -95,7 +97,7 @@ test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=25")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=30")));
 });
 
 test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", async () => {
@@ -124,11 +126,11 @@ test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", as
     assert.equal(png[25], 2, "Opaque RGB icon");
   }));
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v25"/);
-  assert.match(html, /styles\.css\?v=25/);
-  assert.match(serviceWorker, /styles\.css\?v=25/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v30"/);
+  assert.match(html, /styles\.css\?v=30/);
+  assert.match(serviceWorker, /styles\.css\?v=30/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
-  for (const name of ["icons", "navigation", "shell"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=25`));
+  for (const name of ["icons", "navigation", "shell"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=30`));
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {
