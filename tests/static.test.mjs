@@ -59,8 +59,8 @@ test("chemical alerts provide direct editing of the affected record", () => {
   assert.match(modules, /\(\) => startEdit\(alertData\.item\)/);
   assert.match(modules, /presentForm\("Edytuj partię"\)/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=17/);
-  assert.match(html, /\.\/app\.js\?v=17/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=18/);
+  assert.match(html, /\.\/app\.js\?v=18/);
 });
 
 test("all visible full dates use the Polish day-month-year format", () => {
@@ -95,18 +95,40 @@ test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=17")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=18")));
 });
 
-test("PWA assets use the correctly cased service worker and local icon", () => {
+test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", async () => {
   assert.match(app, /register\("\.\/sw\.js", \{ updateViaCache: "none" \}\)/);
-  assert.equal(JSON.parse(manifest).icons[0].src, "./icon.svg");
+  const { id, scope, start_url, icons } = JSON.parse(manifest);
+  assert.deepEqual([id, scope, start_url], ["./", "./", "./"]);
+  assert.deepEqual(icons.map(({ sizes, type, purpose }) => [sizes, type, purpose]), [
+    ["192x192", "image/png", "any"],
+    ["512x512", "image/png", "any"],
+    ["512x512", "image/png", "maskable"],
+  ]);
+  assert.match(html, /rel="icon" href="\.\/favicon-v18\.png" type="image\/png" sizes="32x32"/);
+  assert.match(html, /rel="apple-touch-icon" href="\.\/apple-touch-icon-v18\.png" sizes="180x180"/);
+  const assets = [
+    ...icons.map(({ src, sizes }) => [src, Number(sizes.split("x")[0])]),
+    ["./favicon-v18.png", 32], ["./apple-touch-icon-v18.png", 180],
+  ];
+  assert.equal(new Set(assets.map(([src]) => src)).size, assets.length);
+  await Promise.all(assets.map(async ([src, size]) => {
+    assert.match(src, /^\.\/[a-z0-9-]+\.png$/);
+    assert.ok(serviceWorker.includes(JSON.stringify(src)));
+    const png = await readFile(new URL(`../public/${src}`, import.meta.url));
+    assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+    assert.equal(png.subarray(12, 16).toString(), "IHDR");
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [size, size]);
+    assert.equal(png[25], 2, "Opaque RGB icon");
+  }));
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v17"/);
-  assert.match(html, /styles\.css\?v=17/);
-  assert.match(serviceWorker, /styles\.css\?v=17/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v18"/);
+  assert.match(html, /styles\.css\?v=18/);
+  assert.match(serviceWorker, /styles\.css\?v=18/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
-  for (const name of ["icons", "navigation", "shell"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=17`));
+  for (const name of ["icons", "navigation", "shell"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=18`));
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {

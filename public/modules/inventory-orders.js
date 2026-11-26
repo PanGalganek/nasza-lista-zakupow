@@ -1,9 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=17";
-import { createElement } from "./ui.js?v=17";
-import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=17";
-import { button, details, field, input, panel, saveButton, unitSelect } from "./inventory-ui.js?v=17";
-import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=17";
-import { requireInventoryConnection } from "./inventory-store.js?v=17";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=18";
+import { createElement } from "./ui.js?v=18";
+import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=18";
+import { button, details, field, input, panel, saveButton, unitSelect } from "./inventory-ui.js?v=18";
+import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=18";
+import { requireInventoryConnection } from "./inventory-store.js?v=18";
 
 function download(rows, date) {
   const blob = createOrderDocx(rows, formatPolishDate(date));

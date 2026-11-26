@@ -1,7 +1,7 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=17";
-import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=17";
-import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=17";
-import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=17";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=18";
+import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=18";
+import { formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=18";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=18";
 
 const textValue = (value) => typeof value === "string";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
