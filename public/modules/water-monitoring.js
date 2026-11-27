@@ -1,17 +1,16 @@
-import { formatPolishDate } from "../utils.js?v=32";
-import { warsawDate } from "./inventory-alerts.js?v=32";
-import { button, details, field, input } from "./inventory-ui.js?v=32";
-import { byId, createElement, notify } from "./ui.js?v=32";
-import { createWaterStore } from "./water-store.js?v=32";
+import { formatPolishDate } from "../utils.js?v=33";
+import { warsawDate } from "./inventory-alerts.js?v=33";
+import { button, details, field, input } from "./inventory-ui.js?v=33";
+import { byId, createElement, notify } from "./ui.js?v=33";
+import { createWaterStore } from "./water-store.js?v=33";
 import {
-  firstWaterYear, matchWaterTasks, sixMeasurementsKey, waterAnnualId, waterCategory,
-  waterCompleted, waterDateInYear, waterMatrices, waterPlan,
-} from "./water-plan.js?v=32";
+  firstWaterYear, sixMeasurementsKey, waterAnnualId, waterCategory, waterCompleted, waterManualPrefix,
+  waterMatrices, waterPlan,
+} from "./water-plan.js?v=33";
 
 const categories = ["Archiwalna", "Slepa", "Porownania", "Probkobranie", "Granice"];
 const dateLabel = (date) => formatPolishDate(date);
 const currentYear = () => Number(warsawDate().slice(0, 4));
-const categoryOf = (task) => task.category || "Archiwalna";
 
 export function createWaterMonitoring({ db, firestore, navigation }) {
   const store = createWaterStore(db, firestore);
@@ -36,7 +35,8 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
   }
 
   function update(data) {
-    records = data.filter((record) => record.lab === "woda");
+    records = data.filter((record) => record.lab === "woda"
+      && (record.category === waterCategory || record.id.startsWith(waterManualPrefix)));
     loaded = true;
     render();
   }
@@ -146,16 +146,13 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     const plan = waterPlan(year);
     const controls = plan?.controls || [];
     const annual = records.filter((record) => record.category === waterCategory);
-    const legacy = records.filter((record) => record.category !== waterCategory);
+    const manual = records.filter((record) => record.category !== waterCategory);
     const yearRows = new Map(annual.filter((record) => Number(record.year) === year).map((record) => [record.id, record]));
-    const { linked, used, candidates } = matchWaterTasks(legacy, annual, year, controls);
-    const stateFor = (origin, key, task) => yearRows.get(waterAnnualId(year, origin, key))
-      || (waterDateInYear(task?.doneDate, year) ? { doneDate: task.doneDate } : null);
+    const stateFor = (origin, key) => yearRows.get(waterAnnualId(year, origin, key));
     const selected = byId("waterYear");
-    const oldest = Math.min(firstWaterYear, ...legacy.map((task) => Number(task.doneDate?.slice(0,4)) || firstWaterYear));
-    if (selected.options.length !== currentYear() - oldest + 1) {
+    if (selected.options.length !== currentYear() - firstWaterYear + 1) {
       selected.replaceChildren();
-      for (let value = currentYear(); value >= oldest; value--) {
+      for (let value = currentYear(); value >= firstWaterYear; value--) {
         const option = createElement("option", "", value);
         option.value = value;
         selected.append(option);
@@ -164,7 +161,7 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     selected.value = year;
     for (const category of categories) {
       const entries = controls.filter((control) => control.category === category);
-      const completion = entries.filter(({ key }) => waterCompleted(key, stateFor("plan", key, linked.get(key)))).length;
+      const completion = entries.filter(({ key }) => waterCompleted(key, stateFor("plan", key))).length;
       const meter = document.querySelector(`[data-water-progress="${category}"]`);
       meter.textContent = !loaded ? "Wczytywanie…" : entries.length ? `Wykonano ${completion} z ${entries.length}` : "Nie dotyczy planu";
       meter.className = "lab-water-status " + (!loaded || !entries.length ? "lab-water-neutral"
@@ -190,15 +187,14 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
       groups.get(groupKey).push(control);
     }
     for (const [groupKey, groupControls] of groups) {
-      const complete = groupControls.filter(({ key }) => waterCompleted(key, stateFor("plan", key, linked.get(key)))).length;
+      const complete = groupControls.filter(({ key }) => waterCompleted(key, stateFor("plan", key))).length;
       const block = groupKey ? panelGroup(`${waterMatrices[groupKey] || groupControls[0].name} · ${complete}/${groupControls.length}`,
         selectedCategory + "-" + groupKey) : container;
       for (const control of groupControls) {
         const { key, name, boundary, limit } = control;
-        const source = linked.get(key);
-        const state = stateFor("plan", key, source);
+        const state = stateFor("plan", key);
         const label = boundary ? `${boundary === "dol" ? (limit.includes("LOQ") || key === sixMeasurementsKey ? "Granica oznaczalności" : "Dolna granica") : "Górna granica"} · ${limit.replace(" (LOQ)", "")}` : name;
-        const choose = { year, itemKey: key, planVersion: plan.version, origin: "plan", legacyTaskId: source?.id };
+        const choose = { year, itemKey: key, planVersion: plan.version, origin: "plan" };
         const row = createElement("div", "lab-data-row lab-water-control");
         row.dataset.waterControl = key;
         const caption = createElement("div", "lab-stack");
@@ -213,43 +209,21 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     }
 
     if (!taskList) return;
-    const legacyIds = new Set(legacy.map(({ id }) => id));
-    const linkedIds = new Set(annual.filter((record) => record.origin === "plan" && Number(record.year) <= year)
-      .map((record) => record.legacyTaskId).filter(Boolean));
+    const manualIds = new Set(manual.map(({ id }) => id));
     const archived = [...yearRows.values()]
-      .filter((record) => record.origin === "manual" && record.taskName && !legacyIds.has(record.itemKey))
-      .map((record) => ({ id: record.itemKey, name: record.taskName, category: record.taskCategory, sourceRemoved: true }));
-    const rows = [...legacy, ...archived].filter((task) => categoryOf(task) === selectedCategory
-      && (plan || waterDateInYear(task.doneDate, year)));
-    if (!rows.length) taskList.append(createElement("p", "lab-empty", "Brak zapisanych zadań dla tego widoku."));
+      .filter((record) => record.origin === "manual" && record.itemKey.startsWith(waterManualPrefix)
+        && record.taskName && !manualIds.has(record.itemKey))
+      .map((record) => ({ id: record.itemKey, name: record.taskName, category: record.taskCategory }));
+    const rows = [...manual, ...archived].filter((task) => task.category === selectedCategory);
+    if (!rows.length) taskList.append(createElement("p", "lab-empty", "Brak zadań ręcznych w tej kategorii."));
     for (const task of rows) {
-      const linkedTask = used.has(task.id) || (task.sourceRemoved && linkedIds.has(task.id));
-      const candidate = candidates.get(task.id);
-      const historicalOnly = candidate?.reason && task.doneDate && Number(task.doneDate.slice(0, 4)) < firstWaterYear;
-      const state = stateFor("manual", task.id, task);
+      const state = stateFor("manual", task.id);
       const row = createElement("div", "lab-data-row lab-water-manual");
       const caption = createElement("div", "lab-stack");
       caption.append(createElement("strong", "", task.name));
-      if (task.sourceRemoved) caption.append(createElement("span", "lab-muted", "Zapis roczny zachowany po usunięciu zadania źródłowego."));
-      if (task.doneDate) caption.append(createElement("span", "lab-muted", `Data w oryginalnym zadaniu ${dateLabel(task.doneDate)}`));
-      if (!linkedTask && state?.doneDate && state.doneDate !== task.doneDate) caption.append(createElement("span", "", dateLabel(state.doneDate)));
+      if (state?.doneDate) caption.append(createElement("span", "", dateLabel(state.doneDate)));
       if (state?.note) caption.append(createElement("span", "lab-muted whitespace-pre-wrap", state.note));
-      row.append(caption);
-      if (plan && linkedTask) row.append(createElement("span", "lab-water-status lab-water-neutral", "Powiązano z planem"));
-      else if (historicalOnly && plan) row.append(createElement("span", "lab-water-status lab-water-neutral", "Historia sprzed 2026 r."));
-      else if (plan) {
-        row.append(status(Boolean(state?.doneDate)), finishButton(task.name, { year, origin: "manual", itemKey: task.id }, state));
-        if (candidate && !linked.has(candidate.control.key) && (!task.doneDate || task.doneDate.slice(0, 4) >= String(firstWaterYear))) {
-          const target = candidate.control;
-          caption.append(createElement("span", "lab-muted", candidate.reason || "Zadanie wymaga powiązania."));
-          row.append(button("Powiąż z planem", () => {
-            const destination = [target.name, waterMatrices[target.matrix]].filter(Boolean).join(" · ");
-            if (!confirm(`Powiązać „${task.name}” z kontrolą „${destination}” w roku ${year}?`)) return;
-            return store.save({ year, origin: "plan", itemKey: target.key, planVersion: plan.version, legacyTaskId: task.id }, { kind: "link" })
-              .then(() => notify("Powiązano zadanie."));
-          }));
-        }
-      }
+      row.append(caption, status(Boolean(state?.doneDate)), finishButton(task.name, { year, origin: "manual", itemKey: task.id }, state));
       taskList.append(row);
     }
   }

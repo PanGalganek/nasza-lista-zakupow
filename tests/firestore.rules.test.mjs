@@ -489,10 +489,10 @@ test("water records retain dates and history while separating years, matrix and 
   const store = createWaterStore(db, waterFirestore, () => true);
   const legacyTask = { lab: "woda", name: "Azot Amonowy woda podziemna", category: "Probkobranie", timestamp: 1, doneDate: "2026-01-05" };
   await setDoc(doc(db, "harmonogram", "old-source"), legacyTask);
-  const plan = waterSelection("amon-stud", 2026, { legacyTaskId: "old-source" });
+  const plan = waterSelection("amon-stud");
   const manual = { year: 2026, origin: "manual", itemKey: "old-source" };
-  await assertSucceeds(store.save(manual, finishWater("2026-04-05", "2026-01-05")));
-  await assertSucceeds(store.save(plan, { kind: "link" }));
+  await assertSucceeds(store.save(manual, finishWater("2026-04-05")));
+  await assertSucceeds(store.save(plan, finishWater("2026-04-05")));
   assert.equal((await getDoc(waterDoc(db, plan))).data().doneDate, "2026-04-05");
   assert.deepEqual((await getDoc(doc(db, "harmonogram", "old-source"))).data(), legacyTask);
   const next = waterSelection("amon-stud", 2027, { legacyTaskId: "old-source" });
@@ -501,6 +501,7 @@ test("water records retain dates and history while separating years, matrix and 
   await assertSucceeds(store.save(other, finishWater("2027-01-03")));
   assert.equal((await getDoc(waterDoc(db, plan))).data().doneDate, "2026-04-05");
   assert.equal((await getDoc(waterDoc(db, next))).data().doneDate, "2027-01-02");
+  assert.equal((await getDoc(waterDoc(db, next))).data().legacyTaskId, "");
   assert.equal((await getDoc(waterDoc(db, other))).data().doneDate, "2027-01-03");
   await assertFails(setDoc(waterDoc(db, waterSelection("unknown")), { ...(await getDoc(waterDoc(db, other))).data(),
     year: "2026", itemKey: "unknown", revision: 1, doneDate: null }));
@@ -574,9 +575,11 @@ test("annual corrections and identity survive a v31 client deleting the legacy s
   await setDoc(legacy, { name, lab: "woda", category: "Probkobranie", timestamp: 22, doneDate: "2026-01-05" });
   const store = createWaterStore(database, waterFirestore, () => true);
   const manual = { year: 2026, origin: "manual", itemKey: legacy.id };
-  const plan = waterSelection("amon-stud", 2026, { legacyTaskId: legacy.id });
-  await store.save(manual, finishWater("2026-01-07", "2026-01-05", "Uwaga laboratoryjna"));
-  await store.save(plan, { kind: "link" });
+  const plan = waterSelection("amon-stud");
+  await store.save(manual, finishWater("2026-01-07", null, "Uwaga laboratoryjna"));
+  await store.save(plan, finishWater("2026-01-07", null, "Uwaga laboratoryjna"));
+  // A v32 client could associate the old task with this saved plan entry.
+  await assertSucceeds(updateDoc(waterDoc(database, plan), { legacyTaskId: legacy.id, revision: 2 }));
   assert.equal((await getDoc(waterDoc(database, plan))).data().doneDate, "2026-01-07");
   await assertSucceeds(deleteDoc(legacy));
   await assertSucceeds(store.save(plan, finishWater("2026-01-09", "2026-01-07", "Korekta planu", "Uwaga laboratoryjna")));
@@ -587,6 +590,8 @@ test("annual corrections and identity survive a v31 client deleting the legacy s
   assert.equal(remembered.doneDate, "2026-01-11");
   assert.equal((await getDoc(waterDoc(database, plan))).data().legacyTaskId, legacy.id);
   await assertFails(updateDoc(waterDoc(database, manual), { revision: remembered.revision + 1, taskName: "Inne zadanie" }));
-  await assert.rejects(store.save(waterSelection("amon-spo", 2026, { legacyTaskId: legacy.id }), { kind: "link" }), /Źródłowe zadanie Wody/);
+  const unlinked = waterSelection("amon-spo");
+  await store.save(unlinked, finishWater("2026-01-09"));
+  await assertFails(updateDoc(waterDoc(database, unlinked), { legacyTaskId: legacy.id, revision: 2 }));
   await assert.rejects(store.save({ ...manual, year: 2027 }, finishWater("2027-01-02")), /Źródłowe zadanie Wody/);
 });
