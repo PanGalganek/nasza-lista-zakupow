@@ -13,30 +13,34 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
   getFirestore,
   onSnapshot,
+  limit,
   orderBy,
   query,
   runTransaction,
   serverTimestamp,
   setDoc,
+  startAfter,
   updateDoc,
+  where,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=37";
-import { createCalendarModule } from "./modules/calendar.js?v=37";
-import { createChemicalsModule } from "./modules/chemicals.js?v=37";
-import { createEquipmentModule } from "./modules/equipment.js?v=37";
-import { createInventoryModule } from "./modules/inventory-ui.js?v=37";
-import { mountInventoryHistory } from "./modules/inventory-history.js?v=37";
-import { mountInventoryStatistics } from "./modules/inventory-statistics.js?v=37";
-import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=37";
-import { mountInventoryTheory } from "./modules/inventory-theory.js?v=37";
-import { mountInventoryOrders } from "./modules/inventory-orders.js?v=37";
-import { createScheduleModule } from "./modules/schedule.js?v=37";
-import { byId, notify, runSafely } from "./modules/ui.js?v=37";
-import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=37";
-import { createNavigation } from "./modules/navigation.js?v=37";
+import { createAuthModule } from "./modules/auth.js?v=38";
+import { createCalendarModule } from "./modules/calendar.js?v=38";
+import { createChemicalsModule } from "./modules/chemicals.js?v=38";
+import { createEquipmentV38 } from "./modules/equipment-v38.js?v=38";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=38";
+import { mountInventoryHistory } from "./modules/inventory-history.js?v=38";
+import { mountInventoryStatistics } from "./modules/inventory-statistics.js?v=38";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=38";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=38";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=38";
+import { createScheduleModule } from "./modules/schedule.js?v=38";
+import { byId, notify, runSafely } from "./modules/ui.js?v=38";
+import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=38";
+import { createNavigation } from "./modules/navigation.js?v=38";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",
@@ -50,7 +54,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const firestore = { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, updateDoc, writeBatch };
+const firestore = { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, startAfter, updateDoc, where, writeBatch };
 const authApi = { browserLocalPersistence, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut };
 let snapshotUnsubscribers = [];
 const reportedListenerErrors = new Set();
@@ -84,7 +88,7 @@ mountInventoryTheory(inventory, moduleDependencies);
 mountInventoryOrders(inventory, moduleDependencies);
 const chemicals = createChemicalsModule({ ...moduleDependencies, inventory });
 const schedule = createScheduleModule(moduleDependencies);
-const equipment = createEquipmentModule(moduleDependencies);
+const equipment = createEquipmentV38({ ...moduleDependencies, userId: () => auth.currentUser?.uid });
 const calendar = createCalendarModule(moduleDependencies);
 
 function startDataListeners() {
@@ -102,7 +106,7 @@ const login = createAuthModule({
   authApi,
   firestore,
   runSafely,
-  onSignedOut: () => { clearSnapshots(); navigation.stop(); },
+  onSignedOut: () => { equipment.stop(); clearSnapshots(); navigation.stop(); },
   onAuthorized: () => {
     chemicals.initializeForm();
     startDataListeners();

@@ -7,7 +7,7 @@
     "build": "npm run build:css",
     "build:css": "tailwindcss -i ./styles.input.css -o ./public/styles.css --minify",
     "test:unit": "node --test tests/utils.test.mjs tests/static.test.mjs tests/chemicals.test.mjs tests/inventory.test.mjs tests/water-monitoring.test.mjs",
-    "test:rules": "npx --yes firebase-tools@15.22.4 emulators:exec --only firestore --project demo-nasza-lista-zakupow \"node --test tests/firestore.rules.test.mjs\"",
+    "test:rules": "npx --yes firebase-tools@15.22.4 emulators:exec --only firestore --project demo-nasza-lista-zakupow \"node --test tests/firestore.rules.test.mjs tests/equipment.rules.test.mjs\"",
     "test": "npm run test:unit && npm run test:rules",
     "serve": "firebase emulators:start --only hosting,firestore"
   },

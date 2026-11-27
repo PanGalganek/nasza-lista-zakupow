@@ -1,13 +1,13 @@
-import { formatPolishDate } from "../utils.js?v=37";
-import { warsawDate } from "./inventory-alerts.js?v=37";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=37";
-import { button, details, field, input } from "./inventory-ui.js?v=37";
-import { byId, createElement, notify, setPositionOptions } from "./ui.js?v=37";
-import { createWaterStore } from "./water-store.js?v=37";
+import { formatPolishDate } from "../utils.js?v=38";
+import { warsawDate } from "./inventory-alerts.js?v=38";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=38";
+import { button, details, field, input } from "./inventory-ui.js?v=38";
+import { byId, createElement, notify, setPositionOptions } from "./ui.js?v=38";
+import { createWaterStore } from "./water-store.js?v=38";
 import {
   firstWaterYear, waterAnnualId, waterCategory, waterCompleted, waterMeasurementTarget,
   waterPlan, waterSamplingLabel, waterUsesMeasurements,
-} from "./water-plan.js?v=37";
+} from "./water-plan.js?v=38";
 
 const categories = {
   Archiwalna: "Próbki archiwalne",

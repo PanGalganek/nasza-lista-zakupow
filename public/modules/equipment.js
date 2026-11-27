@@ -1,8 +1,8 @@
-import { monthNames } from "./constants.js?v=37";
-import { byId, createElement, iconButton, notify } from "./ui.js?v=37";
-import { formatLocalDate, formatPolishDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=37";
+import { monthNames } from "./constants.js?v=38";
+import { byId, createElement, iconButton, notify } from "./ui.js?v=38";
+import { formatLocalDate, formatPolishDate, isDoneInYear, shiftCalendarMonth } from "../utils.js?v=38";
 
-export function createEquipmentModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
+export function createEquipmentModule({ db, firestore, registerSnapshot, reportListenerError, navigation, equipmentReadOnly = () => false }) {
   const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;
   let items = [];
   let selectedMonth = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -71,7 +71,7 @@ export function createEquipmentModule({ db, firestore, registerSnapshot, reportL
       info.append(heading);
       if (doneThisYear) info.append(createElement("span", "text-sm text-green-800", `Wykonano: ${formatPolishDate(equipment.doneDate)}`));
       const actions = createElement("div", "lab-actions");
-      actions.append(
+      if (!equipmentReadOnly()) actions.append(
         iconButton(doneThisYear ? "check" : "square", doneThisYear ? "Oznacz jako niewykonane" : "Oznacz jako wykonane", () => updateDoc(doc(db, "wzorcowanie", equipment.id), { doneDate: doneThisYear ? null : formatLocalDate() })),
         iconButton("edit", "Edytuj sprzęt", () => startEdit(equipment)),
         iconButton("trash", "Usuń sprzęt", async () => {

@@ -1,37 +1,16 @@
 
-import { activityKinds, createRegister, groupActivities, groupSources, restoreDraft } from "./model.js";
+import { createRegister, groupActivities, groupSources, restoreDraft } from "./model.js";
+
+import { activitySignature, appendActivity, editDevice, equipmentText as text, newDevice, RegistryError } from "../../public/equipment/registry-model.js?v=38";
+export { needsDetails, scheduleEquipment, RegistryError } from "../../public/equipment/registry-model.js?v=38";
 
 const deviceStatuses = new Set(["active", "withdrawn"]);
-const activitySignature = ({ kind, label }) => JSON.stringify([kind, label]);
-const idPattern = /^a[1-9]\d*$/;
-
-export class RegistryError extends Error {
-  constructor(message, status = 400) {
-    super(message);
-    this.status = status;
-  }
-}
-
-function text(value, max, label, required = false) {
-  if (typeof value !== "string" || value.length > max || (required && !value.trim())) {
-    throw new RegistryError("Sprawdź pole „" + label + "”.");
-  }
-  return value.trim();
-}
 
 export function makeInitialRegistry(sources) {
   const { draft } = createRegister(sources);
   const state = { mapping: draft, equipment: {} };
   applyGrouping(state, draft, sources);
   return state;
-}
-
-function newDevice(id, name, number, verified) {
-  return { id, name, number, verified, notes: "", status: "active", nextActivity: 1, activities: [], mergedInto: null };
-}
-
-function appendActivity(device, activity) {
-  device.activities.push({ id: "a" + device.nextActivity++, ...activity });
 }
 
 function applyGrouping(state, mapping, sources) {
@@ -71,49 +50,21 @@ function applyGrouping(state, mapping, sources) {
 function upsertDevice(state, command, operationId) {
   const previous = Object.hasOwn(state.equipment, command.deviceId) ? state.equipment[command.deviceId] : undefined;
   if (command.deviceId && !previous) throw new RegistryError("Nie znaleziono urządzenia.", 404);
-  const device = previous ?? newDevice("eq-" + operationId, "", "", true);
-  const name = text(command.name, 200, "nazwa", true);
-  const number = text(command.number, 80, "numer ewidencyjny");
-  const notes = text(command.notes, 500, "uwagi");
-  if (!Array.isArray(command.activities) || command.activities.length > 100) {
-    throw new RegistryError("Sprawdź listę rodzajów czynności.");
-  }
-
-  const savedById = new Map(device.activities.map(row => [row.id, row]));
-  const editsById = new Map();
-  const newActivities = [];
-  for (const row of command.activities) {
-    const activity = { kind: text(row?.kind, 80, "rodzaj czynności", true), label: text(row?.label, 150, "opis czynności"), active: row.active };
-    if (typeof activity.active !== "boolean") throw new RegistryError("Nieprawidłowy status czynności.");
-    if (row.id === null) {
-      newActivities.push(activity);
-      continue;
-    }
-    if (typeof row.id !== "string" || !idPattern.test(row.id) || !savedById.has(row.id) || editsById.has(row.id)) {
-      throw new RegistryError("Nieprawidłowy identyfikator czynności.");
-    }
-    editsById.set(row.id, { id: row.id, ...activity });
-  }
-  if (editsById.size !== savedById.size) throw new RegistryError("Użyj wycofania czynności, aby zachować jej identyfikator.");
-  const activities = [...editsById.values(), ...newActivities];
-  if (new Set(activities.map(activitySignature)).size !== activities.length) {
-    throw new RegistryError("Dwie czynności mają ten sam rodzaj i opis. Rozróżnij je lub użyj istniejącej.");
-  }
+  const device = editDevice(previous, command, operationId);
+  const editsById = new Map(device.activities.map(row => [row.id, row]));
 
   for (const assignment of Object.values(state.mapping.assignments)) {
     if (assignment.groupId !== device.id) continue;
-    const saved = device.activities.find(activity => activitySignature(activity) === activitySignature(assignment));
+    const saved = previous?.activities.find(activity => activitySignature(activity) === activitySignature(assignment));
     if (saved) {
       const updated = editsById.get(saved.id);
       assignment.kind = updated.kind;
       assignment.label = updated.label;
     }
   }
-  Object.assign(device, { name, number, notes, activities: [...editsById.values()] });
-  for (const activity of newActivities) appendActivity(device, activity);
   state.equipment[device.id] = device;
   const group = state.mapping.groups.find(row => row.id === device.id);
-  if (group) Object.assign(group, { name, number });
+  if (group) Object.assign(group, { name: device.name, number: device.number });
   return device.id;
 }
 
@@ -138,15 +89,4 @@ export function evolveRegistry(previous, command, sources, operationId) {
     return { state, affectedId: null };
   }
   throw new RegistryError("Nieznana operacja.");
-}
-
-export function needsDetails(device) {
-  return !device.number || !device.verified || !device.activities.some(activity => activity.active);
-}
-
-export function scheduleEquipment(equipment) {
-  return Object.values(equipment).filter(device => device.status === "active").map(device => ({
-    id: device.id, name: device.name, number: device.number, needsDetails: needsDetails(device),
-    activities: device.activities.filter(activity => activity.active),
-  }));
 }

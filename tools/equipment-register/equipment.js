@@ -1,5 +1,6 @@
 
 import { loadRegistry, saveRegistry } from "./api.js";
+import * as equipmentApi from "./api.js";
 import { searchText } from "./model.js";
 import { needsDetails } from "./registry-model.js";
 import { annualPlanner } from "./planner.js";
@@ -15,8 +16,8 @@ let editor;
 let busy = false;
 let failedRefresh = false;
 let operation;
-const planner = annualPlanner();
-const execution = executionView();
+const planner = annualPlanner(equipmentApi);
+const execution = executionView(equipmentApi);
 
 function element(tag, text, className) {
   const node = document.createElement(tag);

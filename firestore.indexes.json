@@ -1,4 +1,15 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "equipmentHistory",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "year", "order": "ASCENDING" }, { "fieldPath": "at", "order": "DESCENDING" }]
+    },
+    {
+      "collectionGroup": "equipmentHistory",
+      "queryScope": "COLLECTION",
+      "fields": [{ "fieldPath": "device", "order": "ASCENDING" }, { "fieldPath": "at", "order": "DESCENDING" }]
+    }
+  ],
   "fieldOverrides": []
 }
