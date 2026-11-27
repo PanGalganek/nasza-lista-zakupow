@@ -1,8 +1,9 @@
-import { parseLocalDate } from "../utils.js?v=36";
+import { parseLocalDate } from "../utils.js?v=37";
 
 export const waterCategory = "WodaRoczna";
 export const firstWaterYear = 2026;
-export const sixMeasurementsKey = "siar-g-dol";
+export const waterMeasurementTarget = 6;
+export const waterUsesMeasurements = (key) => key === "siar-g-dol" || key === "siar-g-gor";
 export const waterMatrices = { spo: "Woda do spożycia", pod: "Woda podziemna", pow: "Woda powierzchniowa", sc: "Ścieki" };
 const matrixGroups = { spo: "spo", pod: "pod", stud: "pod", pow: "pow", sc: "sc", przem: "sc" };
 
@@ -65,4 +66,4 @@ export function waterAnnualId(year, origin, key) {
   return `woda_roczna_${year}_${origin}_${key}`;
 }
 
-export const waterCompleted = (key, row) => Boolean(row?.doneDate || (key === sixMeasurementsKey && Object.keys(row?.measurements || {}).length === 6));
+export const waterCompleted = (key, row) => Boolean(row?.doneDate || (waterUsesMeasurements(key) && Object.keys(row?.measurements || {}).length === waterMeasurementTarget));

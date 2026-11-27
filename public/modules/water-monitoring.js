@@ -1,13 +1,13 @@
-import { formatPolishDate } from "../utils.js?v=36";
-import { warsawDate } from "./inventory-alerts.js?v=36";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=36";
-import { button, details, field, input } from "./inventory-ui.js?v=36";
-import { byId, createElement, notify, setPositionOptions } from "./ui.js?v=36";
-import { createWaterStore } from "./water-store.js?v=36";
+import { formatPolishDate } from "../utils.js?v=37";
+import { warsawDate } from "./inventory-alerts.js?v=37";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=37";
+import { button, details, field, input } from "./inventory-ui.js?v=37";
+import { byId, createElement, notify, setPositionOptions } from "./ui.js?v=37";
+import { createWaterStore } from "./water-store.js?v=37";
 import {
-  firstWaterYear, sixMeasurementsKey, waterAnnualId, waterCategory, waterCompleted,
-  waterPlan, waterSamplingLabel,
-} from "./water-plan.js?v=36";
+  firstWaterYear, waterAnnualId, waterCategory, waterCompleted, waterMeasurementTarget,
+  waterPlan, waterSamplingLabel, waterUsesMeasurements,
+} from "./water-plan.js?v=37";
 
 const categories = {
   Archiwalna: "Próbki archiwalne",
@@ -125,35 +125,31 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     navigation.show(form, title, { busy: () => pending });
   }
 
-  function finishButton(name, selection, state, alternate = false) {
+  function finishButton(name, selection, state, annual = false) {
     const expectedDate = state?.doneDate ?? null;
     const expectedNote = state?.note || "";
     const action = { kind: "finish", expectedDate, expectedNote, date: expectedDate, note: expectedNote };
-    const label = expectedDate ? "Zmień datę" : alternate ? "Potwierdź kontrolę roczną" : "Oznacz wykonanie";
+    const label = expectedDate ? (annual ? "Edytuj kontrolę roczną" : "Zmień datę")
+      : annual ? "Potwierdź kontrolę roczną" : "Oznacz wykonanie";
     return button(label, () => edit(name, selection, action, {
       withNote: true,
       clear: expectedDate ? { label: "Cofnij wykonanie", action: { ...action, date: null } } : null,
     }));
   }
 
-  function measurementList(state, selection, open) {
-    const rows = Object.entries(state?.measurements || {}).map(([id, date]) => ({ id, date }))
-      .sort((first, second) => first.date.localeCompare(second.date) || first.id.localeCompare(second.id));
-    const group = details(`Oznaczenia wzorca 10 mg/l (${rows.length}/6)`);
-    group.open = open;
-    group.append(createElement("p", "lab-muted", "Sześć oznaczeń albo odrębna kontrola roczna zaliczają tę pozycję."));
-    if (rows.length < 6) {
-      group.append(button("Dodaj oznaczenie", () => edit("Oznaczenie wzorca 10 mg/l", selection, { kind: "add", id: crypto.randomUUID() })));
-    }
+  function measurementHistory(rows, selection, title, open) {
+    const history = details("Historia oznaczeń (" + rows.length + ")");
+    history.open = open;
+    if (!rows.length) history.append(createElement("p", "lab-muted", "Brak zapisanych oznaczeń."));
     for (const [index, entry] of rows.entries()) {
       const row = createElement("div", "lab-data-row");
       const action = { kind: "edit", id: entry.id, date: entry.date, expectedDate: entry.date };
-      row.append(createElement("span", "", `${index + 1}. ${dateLabel(entry.date)}`),
-        button("Koryguj", () => edit("Korekta oznaczenia", selection, action,
-          { clear: { label: "Usuń oznaczenie", action: { ...action, kind: "remove" } } })));
-      group.append(row);
+      row.append(createElement("span", "", (index + 1) + ". " + dateLabel(entry.date)),
+        button("Koryguj", () => edit("Korekta · " + title, selection, action,
+          { clear: { label: "Cofnij oznaczenie", action: { ...action, kind: "remove" } } })));
+      history.append(row);
     }
-    return group;
+    return history;
   }
 
   function styleStatus(element, done) {
@@ -162,14 +158,47 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     element.className = "lab-water-status lab-notice-" + (done ? "ok" : finishedYear ? "danger" : "warning");
   }
 
-  function paintRow(row, label, title, selection, state, alternate, completed) {
+  function paintRow(row, control, methodName, selection, state, completed, openHistory) {
+    const label = controlLabel(control);
+    const title = methodName + " · " + label;
     const caption = createElement("div", "lab-stack");
+    const measured = waterUsesMeasurements(selection.itemKey);
     caption.append(createElement("strong", "", label));
-    if (state?.doneDate) caption.append(createElement("span", "lab-muted", dateLabel(state.doneDate)));
+    if (state?.doneDate) {
+      caption.append(createElement("span", "lab-muted", (measured ? "Kontrola roczna · " : "") + dateLabel(state.doneDate)));
+    }
     if (state?.note) caption.append(createElement("span", "lab-muted whitespace-pre-wrap", state.note));
     const status = createElement("span");
     styleStatus(status, completed);
-    row.replaceChildren(caption, status, finishButton(title, selection, state, alternate));
+    if (!measured) {
+      row.replaceChildren(caption, status, finishButton(title, selection, state));
+      return;
+    }
+
+    const rows = Object.entries(state?.measurements || {}).map(([id, date]) => ({ id, date }))
+      .sort((first, second) => first.date.localeCompare(second.date) || first.id.localeCompare(second.id));
+    const concentration = control.limit.replace(" (LOQ)", "");
+    const measurementTitle = "Oznaczenie wzorca " + concentration;
+    const heading = createElement("div", "lab-actions");
+    heading.append(caption, status);
+    const counter = createElement("span", "lab-water-method-count", "Oznaczenia wzorca · " + rows.length + "/" + waterMeasurementTarget);
+    const progress = createElement("progress", "lab-water-progress");
+    progress.max = waterMeasurementTarget;
+    progress.value = rows.length;
+    progress.dataset.tone = rows.length === waterMeasurementTarget ? "complete" : year < currentYear() ? "past" : "current";
+    progress.setAttribute("aria-label", "Oznaczenia wzorca " + concentration);
+    const actions = createElement("div", "lab-actions");
+    if (rows.length < waterMeasurementTarget) {
+      actions.append(button("Dodaj oznaczenie", () => edit(measurementTitle, selection, { kind: "add", id: crypto.randomUUID() })));
+    }
+    // The source programme explicitly allows the annual alternative at 10 mg/l.
+    // Existing confirmations for the upper limit remain editable.
+    if (selection.itemKey === "siar-g-dol" || state?.doneDate) {
+      actions.append(finishButton(title, selection, state, true));
+    }
+    row.replaceChildren(heading, counter, progress);
+    if (actions.childElementCount) row.append(actions);
+    row.append(measurementHistory(rows, selection, measurementTitle, openHistory));
   }
 
   function buildMethod(method, controls) {
@@ -201,12 +230,11 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
       section.dataset.waterCategory = category;
       if (category === "Granice" || category === "Probkobranie") section.append(createElement("h3", "", label));
       const rows = entries.map((control) => {
-        const block = createElement("div", "lab-stack lab-water-entry");
         const row = createElement("div", "lab-data-row lab-water-control");
+        row.classList.toggle("lab-water-measured", waterUsesMeasurements(control.key));
         row.dataset.waterControl = control.key;
-        block.append(row);
-        section.append(block);
-        return { control, block, row };
+        section.append(row);
+        return { control, row };
       });
       groups.push({ category, rows });
       body.append(section);
@@ -238,24 +266,17 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
   }
 
   function updateControl(entry, name, yearRows, latestYear) {
-    const { control, block, row } = entry;
+    const { control, row } = entry;
     const state = yearRows.get(waterAnnualId(year, "plan", control.key));
     entry.done = waterCompleted(control.key, state);
     const revision = state?.revision ?? 0;
     if (entry.year !== year || entry.revision !== revision || entry.latestYear !== latestYear) {
+      const openHistory = entry.year === year && Boolean(row.querySelector("details")?.open);
       entry.year = year;
       entry.revision = revision;
       entry.latestYear = latestYear;
       const selection = { year, origin: "plan", itemKey: control.key, planVersion: control.planVersion };
-      const label = controlLabel(control);
-      const alternate = control.key === sixMeasurementsKey;
-      paintRow(row, label, name + " · " + label, selection, state, alternate, entry.done);
-      if (alternate) {
-        const previous = block.querySelector("details");
-        const list = measurementList(state, selection, Boolean(previous?.open));
-        if (previous) previous.replaceWith(list);
-        else block.append(list);
-      }
+      paintRow(row, control, name, selection, state, entry.done, openHistory);
     }
     return Number(entry.done);
   }

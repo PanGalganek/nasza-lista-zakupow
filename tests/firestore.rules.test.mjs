@@ -20,7 +20,7 @@ import {
 import { createInventoryStore } from "../public/modules/inventory-store.js";
 import { quantity } from "../public/modules/inventory-quantity.js";
 import { createWaterStore } from "../public/modules/water-store.js";
-import { waterAnnualId, waterPlan } from "../public/modules/water-plan.js";
+import { waterAnnualId, waterCompleted, waterPlan } from "../public/modules/water-plan.js";
 import { randomUUID } from "node:crypto";
 
 const projectId = "demo-nasza-lista-zakupow";
@@ -557,32 +557,68 @@ test("water records retain dates and history while separating years, matrix and 
     year: "2026", itemKey: "unknown", revision: 1, doneDate: null }));
 });
 
-test("two operators safely share the sixth measurement and corrections", async () => {
-  await testEnvironment.withSecurityRulesDisabled(async (context) => {
-    await setDoc(doc(context.firestore(), "app_users", "second"), { active: true, role: "operator" });
+for (const key of ["siar-g-dol", "siar-g-gor"]) {
+  test("two operators safely share the sixth measurement and corrections for " + key, async () => {
+    await testEnvironment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "app_users", "second"), { active: true, role: "operator" });
+    });
+    const a = testEnvironment.authenticatedContext(allowedUid).firestore();
+    const b = testEnvironment.authenticatedContext("second").firestore();
+    const first = createWaterStore(a, waterFirestore, () => true);
+    const second = createWaterStore(b, waterFirestore, () => true);
+    const selection = waterSelection(key);
+    const add = () => ({ kind: "add", id: randomUUID(), date: "2026-04-06" });
+    const repeated = add();
+    await Promise.all([first.save(selection, repeated), second.save(selection, repeated)]);
+    assert.equal(Object.keys((await getDoc(waterDoc(a, selection))).data().measurements).length, 1);
+    for (let index = 1; index < 5; index++) await first.save(selection, add());
+    const competing = await Promise.allSettled([first.save(selection, add()), second.save(selection, add())]);
+    assert.equal(competing.filter(({ status }) => status === "fulfilled").length, 1);
+    const before = (await getDoc(waterDoc(a, selection))).data();
+    assert.equal(Object.keys(before.measurements).length, 6);
+    await assertFails(updateDoc(waterDoc(a, selection), { revision: before.revision + 1, measurements: { ...before.measurements, [randomUUID()]: repeated.date } }));
+    assert.equal(waterCompleted(key, before), true);
+    await second.save(selection, { kind: "remove", id: repeated.id, expectedDate: repeated.date });
+    const corrected = (await getDoc(waterDoc(a, selection))).data();
+    assert.equal(Object.keys(corrected.measurements).length, 5);
+    assert.equal(corrected.doneDate, null);
+    assert.equal(waterCompleted(key, corrected), false);
+    await first.save(selection, finishWater("2026-04-07"));
+    assert.equal(waterCompleted(key, (await getDoc(waterDoc(a, selection))).data()), true);
+    await assert.rejects(first.save(selection, { kind: "remove", id: repeated.id, expectedDate: repeated.date }));
+    assert.equal((await getDoc(waterDoc(a, waterSelection(key === "siar-g-dol" ? "siar-g-gor" : "siar-g-dol")))).exists(), false);
   });
-  const a = testEnvironment.authenticatedContext(allowedUid).firestore();
-  const b = testEnvironment.authenticatedContext("second").firestore();
-  const first = createWaterStore(a, waterFirestore, () => true);
-  const second = createWaterStore(b, waterFirestore, () => true);
-  const selection = waterSelection("siar-g-dol");
-  const add = () => ({ kind: "add", id: randomUUID(), date: "2026-04-06" });
-  const repeated = add();
-  await Promise.all([first.save(selection, repeated), second.save(selection, repeated)]);
-  assert.equal(Object.keys((await getDoc(waterDoc(a, selection))).data().measurements).length, 1);
-  for (let index = 1; index < 5; index++) await first.save(selection, add());
-  const competing = await Promise.allSettled([first.save(selection, add()), second.save(selection, add())]);
-  assert.equal(competing.filter(({ status }) => status === "fulfilled").length, 1);
-  const before = (await getDoc(waterDoc(a, selection))).data();
-  assert.equal(Object.keys(before.measurements).length, 6);
-  await assertFails(updateDoc(waterDoc(a, selection), { revision: before.revision + 1, measurements: { ...before.measurements, [randomUUID()]: repeated.date } }));
-  await first.save(selection, finishWater("2026-04-07"));
-  await second.save(selection, { kind: "remove", id: repeated.id, expectedDate: repeated.date });
-  const corrected = (await getDoc(waterDoc(a, selection))).data();
-  assert.equal(Object.keys(corrected.measurements).length, 5);
-  assert.equal(corrected.doneDate, "2026-04-07");
-  await assert.rejects(first.save(selection, { kind: "remove", id: repeated.id, expectedDate: repeated.date }));
-  assert.equal((await getDoc(waterDoc(a, waterSelection("siar-g-gor")))).exists(), false);
+}
+
+test("sulphate measurement records are independent across both controls and all three years", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const first = createWaterStore(db, waterFirestore, () => true);
+  const secondDb = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const second = createWaterStore(secondDb, waterFirestore, () => true);
+  const lower = waterSelection("siar-g-dol");
+  const upper = waterSelection("siar-g-gor");
+  const existingId = randomUUID();
+  const add = (year, id = randomUUID()) => ({ kind: "add", id, date: year + "-04-06" });
+  await first.save(lower, add(2026, existingId));
+  const original = (await getDoc(waterDoc(db, lower))).data();
+  await Promise.all([first.save(upper, add(2026)), second.save(upper, add(2026))]);
+  const upperBase = (await getDoc(waterDoc(db, upper))).data();
+  assert.equal(Object.keys(upperBase.measurements).length, 2);
+  assert.deepEqual((await getDoc(waterDoc(db, lower))).data(), original);
+  for (const year of [2027, 2028]) {
+    for (const key of ["siar-g-dol", "siar-g-gor"]) {
+      const selection = waterSelection(key, year);
+      assert.equal((await getDoc(waterDoc(db, selection))).exists(), false);
+      await first.save(selection, add(year));
+      assert.deepEqual(Object.values((await getDoc(waterDoc(db, selection))).data().measurements), [year + "-04-06"]);
+    }
+  }
+  await assertFails(updateDoc(waterDoc(db, upper), { revision: upperBase.revision + 1, measurements: { [randomUUID()]: "2027-04-06" } }));
+  const edit = { kind: "edit", id: existingId, expectedDate: "2026-04-06", date: "2026-04-07" };
+  await second.save(lower, edit);
+  await assert.rejects(first.save(lower, edit), /na innym urządzeniu/);
+  assert.deepEqual((await getDoc(waterDoc(db, lower))).data().measurements, { [existingId]: "2026-04-07" });
+  assert.deepEqual((await getDoc(waterDoc(db, upper))).data(), upperBase);
 });
 
 test("losing the connection does not enqueue a water change or clear a saved date", async () => {
