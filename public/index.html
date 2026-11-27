@@ -9,8 +9,8 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./favicon-v18.png" type="image/png" sizes="32x32">
     <link rel="apple-touch-icon" href="./apple-touch-icon-v18.png" sizes="180x180">
-    <link rel="stylesheet" href="./styles.css?v=34">
-    <script type="module" src="./app.js?v=34"></script>
+    <link rel="stylesheet" href="./styles.css?v=35">
+    <script type="module" src="./app.js?v=35"></script>
 </head>
 <body>
   <a class="lab-skip" href="#mainContent">Przejdź do treści</a>
@@ -71,12 +71,16 @@
               <label class="lab-search"><span data-icon="search" class="lab-icon-slot" aria-hidden="true"></span><span class="sr-only">Szukaj w rejestrze</span><input type="search" id="chemicalSearch" placeholder="Szukaj nazwy, LP lub partii" maxlength="200" autocomplete="off"></label>
               <button type="button" id="toggleFilters" data-action="toggle-filters" aria-controls="chemicalFilters" aria-expanded="false" class="lab-button "><span data-icon="filters" class="lab-icon-slot" aria-hidden="true"></span><span>Filtry</span></button>
             </div>
+            <div class="lab-position-picker">
+              <label class="lab-field"><span>Pozycja w rejestrze</span><select id="chemicalPosition" aria-controls="chemicalListGrouped"></select></label>
+              <button type="button" id="clearChemicalPosition" class="lab-button" disabled>Wyczyść wybór</button>
+            </div>
             <div id="chemicalFilters" class="lab-panel lab-filter-panel" hidden>
               <label class="lab-field"><span>Status</span><select id="chemicalStatusFilter">
                 <option value="all">Wszystkie</option><option value="attention">Wymaga uwagi</option><option value="ordered">Zamówione</option><option value="expired">Po terminie</option>
               </select></label>
-              <label class="lab-field"><span>Sortuj według</span><select id="chemicalSort">
-                <option value="group">Numeru LP</option><option value="name">Nazwy</option><option value="expiry">Terminu ważności</option>
+              <label class="lab-field"><span>Kolejność partii</span><select id="chemicalSort">
+                <option value="group">Według oznaczenia</option><option value="expiry">Według terminu ważności</option>
               </select></label>
             </div>
             <div class="lab-results"><p id="chemicalResultSummary" class="lab-muted" aria-live="polite">Wczytywanie rejestru…</p>
@@ -94,8 +98,12 @@
           <progress id="waterProgress" class="lab-water-progress" aria-label="Realizacja całego planu" max="100" value="0"></progress>
         </div>
       </div>
+      <label class="lab-field"><span>Szukaj oznaczenia</span><input type="search" id="waterSearch" maxlength="100" autocomplete="off" placeholder="Np. przewodność"></label>
+      <div class="lab-position-picker">
+        <label class="lab-field"><span>Oznaczenie</span><select id="waterPosition" aria-controls="waterMethods"></select></label>
+        <button id="clearWaterPosition" type="button" class="lab-button" disabled>Wyczyść wybór</button>
+      </div>
       <div class="lab-water-filters">
-        <label class="lab-field"><span>Szukaj oznaczenia</span><input type="search" id="waterSearch" maxlength="100" autocomplete="off" placeholder="Np. przewodność"></label>
         <label class="lab-field"><span>Rodzaj monitorowania</span><select id="waterFilter">
           <option value="">Wszystkie rodzaje</option>
           <option value="Archiwalna">Próbki archiwalne</option>
@@ -106,12 +114,9 @@
         </select></label>
         <label class="lab-field"><span>Tylko niewykonane</span><input type="checkbox" id="waterOutstanding"></label>
       </div>
-      <div class="lab-actions">
-        <button id="waterExpand" type="button" class="lab-button" aria-controls="waterMethods">Rozwiń wszystkie</button>
-        <button id="waterCollapse" type="button" class="lab-button" aria-controls="waterMethods">Zwiń wszystkie</button>
-      </div>
     </section>
     <div id="waterMethods" class="lab-stack"></div>
+    <p id="waterNoSelection" class="lab-empty" hidden>Wybierz oznaczenie, aby wyświetlić jego kontrole.</p>
     <p id="waterNoMatches" class="lab-empty" role="status" hidden>Brak kontroli pasujących do filtrów.</p>
     <details id="waterManual" class="lab-accordion">
       <summary>Zadania ręczne</summary>

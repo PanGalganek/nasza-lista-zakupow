@@ -1,10 +1,10 @@
-import { chemicalRegistryNumbers, formatPolishDate } from "../utils.js?v=34";
-import { icon } from "./icons.js?v=34";
-import { warsawDate } from "./inventory-alerts.js?v=34";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=34";
-import { productStatistics, statisticsQuantity, statisticsRange } from "./inventory-statistics-data.js?v=34";
-import { details, field, input, panel, select } from "./inventory-ui.js?v=34";
-import { createElement } from "./ui.js?v=34";
+import { chemicalRegistryNumbers, formatPolishDate } from "../utils.js?v=35";
+import { icon } from "./icons.js?v=35";
+import { warsawDate } from "./inventory-alerts.js?v=35";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=35";
+import { productStatistics, statisticsQuantity, statisticsRange } from "./inventory-statistics-data.js?v=35";
+import { details, field, input, panel, select } from "./inventory-ui.js?v=35";
+import { createElement } from "./ui.js?v=35";
 
 const decimal = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 1 });
 const monthLabel = new Intl.DateTimeFormat("pl-PL", { month: "short", year: "numeric", timeZone: "UTC" });
