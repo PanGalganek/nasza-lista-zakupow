@@ -57,6 +57,8 @@ const assets = {
   "/registry-model.js": ["registry-model.js", "text/javascript"],
   "/plan-model.js": ["plan-model.js", "text/javascript"],
   "/planner.js": ["planner.js", "text/javascript"],
+  "/execution-model.js": ["execution-model.js", "text/javascript"],
+  "/execution.js": ["execution.js", "text/javascript"],
   "/register.js": ["register.js", "text/javascript"],
   "/model.js": ["model.js", "text/javascript"],
   "/style.css": ["style.css", "text/css"],
@@ -108,19 +110,25 @@ async function run(path, rawPort = "4388") {
     }
     const relative = request.url.split("?")[0];
     const planRoute = relative.match(/^\/plans\/(\d{4})\.json$/);
-    const year = Number(planRoute?.[1]);
-    if (planRoute && !validYear(year)) {
+    const historyRoute = relative.match(/^\/plans\/(\d{4})\/history\.json$/);
+    const year = Number((planRoute ?? historyRoute)?.[1]);
+    if ((planRoute || historyRoute) && !validYear(year)) {
       sendJson(response, 400, { message: "Nieprawidłowy rok harmonogramu." });
       return;
     }
-    if (relative === "/registry.json" || planRoute) {
-      if (request.method === "GET" || request.method === "POST") {
+    const overview = relative === "/execution.json";
+    const readOnly = overview || Boolean(historyRoute);
+    if (relative === "/registry.json" || planRoute || readOnly) {
+      if (request.method === "GET" || (request.method === "POST" && !readOnly)) {
         if (request.method === "POST" && request.headers.origin !== "http://127.0.0.1:" + port) {
           response.writeHead(403).end();
           return;
         }
         try {
-          const load = planRoute ? () => store.loadPlan(year) : store.load;
+          let load = store.load;
+          if (planRoute) load = () => store.loadPlan(year);
+          if (historyRoute) load = () => store.loadHistory(year);
+          if (overview) load = store.loadSchedule;
           const save = planRoute ? input => store.savePlan(year, input) : store.save;
           const state = request.method === "GET" ? await load() : await save(await readCommand(request, planRoute ? 450_000 : 200_000));
           sendJson(response, 200, state);
@@ -133,7 +141,7 @@ async function run(path, rawPort = "4388") {
         }
         return;
       }
-      response.writeHead(405, { Allow: "GET, POST" }).end();
+      response.writeHead(405, { Allow: readOnly ? "GET" : "GET, POST" }).end();
       return;
     }
     if (request.method !== "GET") {

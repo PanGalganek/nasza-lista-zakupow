@@ -12,6 +12,8 @@ async function request(path, options) {
 
 export const loadRegistry = () => request("/registry.json");
 export const loadPlan = year => request("/plans/" + year + ".json");
+export const loadExecution = () => request("/execution.json");
+export const loadExecutionHistory = year => request("/plans/" + year + "/history.json");
 
 function save(path, revision, command, operationId) {
   return request(path, {

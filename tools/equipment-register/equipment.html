@@ -27,6 +27,7 @@
       <nav class="nav" aria-label="Panele modułu sprzętu">
         <button type="button" data-panel="registry" aria-pressed="true">Rejestr sprzętu</button>
         <button type="button" data-panel="schedule" aria-pressed="false">Harmonogram</button>
+        <button type="button" data-panel="execution" aria-pressed="false">Realizacja</button>
       </nav>
       <section id="registry-panel" aria-label="Rejestr sprzętu">
         <div class="card panel registry-toolbar">
@@ -50,6 +51,50 @@
         </div>
         <div class="list-heading"><h2>Karty urządzeń</h2><span class="muted" id="shown-count"></span></div>
         <div class="stack" id="devices"></div>
+      </section>
+      <section id="execution-panel" hidden aria-label="Realizacja harmonogramu sprzętu" class="stack">
+        <div class="card panel stack">
+          <div>
+            <h2>Realizacja harmonogramu</h2>
+            <p id="exec-status" class="muted" role="status"></p>
+          </div>
+          <div class="fields execution-period">
+            <label>Rok <select id="exec-year"></select></label>
+            <label>Miesiąc <select id="exec-month"></select></label>
+            <button type="button" id="exec-today">Bieżący miesiąc</button>
+          </div>
+          <div class="execution-progress">
+            <div><span id="exec-month-total"></span><progress id="exec-month-progress" max="100" value="0" aria-label="Realizacja w miesiącu"></progress></div>
+            <div><span id="exec-year-total"></span><progress id="exec-year-progress" max="100" value="0" aria-label="Realizacja w roku"></progress></div>
+          </div>
+        </div>
+        <section class="card panel stack" aria-labelledby="exec-warnings-title">
+          <h3 id="exec-warnings-title">Terminy wymagające uwagi</h3>
+          <details class="exec-fold"><summary id="exec-current-count">Bieżący miesiąc</summary><div id="exec-current-rows" class="stack"></div></details>
+          <details class="exec-fold"><summary id="exec-overdue-count">Zaległe</summary><div id="exec-overdue-rows" class="stack"></div></details>
+          <details class="exec-fold"><summary id="exec-upcoming-count">Kolejny miesiąc</summary><div id="exec-upcoming-rows" class="stack"></div></details>
+        </section>
+        <div class="card panel fields">
+          <label>Szukaj sprzętu <input id="exec-query" type="search" placeholder="Nazwa lub numer ewidencyjny"></label>
+          <label>Status
+            <select id="exec-filter">
+              <option value="all">Wszystkie</option>
+              <option value="done">Wykonane</option>
+              <option value="pending">Niewykonane</option>
+              <option value="overdue">Zaległe</option>
+            </select>
+          </label>
+        </div>
+        <div id="exec-rows" class="stack" aria-label="Czynności wybranego miesiąca"></div>
+        <details id="exec-history" class="card panel exec-fold">
+          <summary>Historia wykonań i korekt</summary>
+          <label>Urządzenie
+            <select id="exec-history-device"></select>
+          </label>
+          <p id="exec-history-scope" class="muted"></p>
+          <div id="exec-history-rows" class="stack"></div>
+          <div id="exec-history-source" class="stack" hidden></div>
+        </details>
       </section>
       <section id="schedule-panel" hidden aria-label="Harmonogram sprzętu">
         <div class="card panel registry-toolbar">
@@ -128,6 +173,20 @@
       <div class="actions form-actions">
         <button type="button" id="cancel-device">Anuluj</button>
         <button type="submit" id="save-device" class="primary">Zapisz urządzenie</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="exec-dialog" aria-labelledby="exec-dialog-title">
+    <form id="exec-form" class="stack">
+      <h2 id="exec-dialog-title"></h2>
+      <p id="exec-dialog-term" class="muted"></p>
+      <label id="exec-date-field">Rzeczywista data wykonania <input id="exec-date" type="date" required></label>
+      <label id="exec-notes-field">Uwagi (opcjonalnie) <textarea id="exec-notes" maxlength="500" rows="3"></textarea></label>
+      <p id="exec-undo-text" hidden>Czynność wróci do niewykonanych w swoim miesiącu planu. Zapis dotychczasowego wykonania pozostanie w historii.</p>
+      <p id="exec-error" class="form-error" role="alert"></p>
+      <div class="actions form-actions">
+        <button type="button" id="exec-cancel">Anuluj</button>
+        <button type="submit" class="primary" id="exec-save"></button>
       </div>
     </form>
   </dialog>

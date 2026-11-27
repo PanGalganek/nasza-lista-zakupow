@@ -10,6 +10,7 @@ const warsawDate = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Warsaw",
 export const calendarDate = (now = new Date()) => warsawDate.format(now);
 export const initialYear = () => Number(calendarDate().slice(0, 4));
 export const validYear = year => Number.isInteger(year) && year >= 2000 && year <= 2199;
+export const executionActions = new Set(["complete", "correct", "undo"]);
 
 export function planRows(equipment, entries, editing) {
   const keys = new Set(entries.map(row => rowKey(row.deviceId, row.activityId)));
@@ -26,10 +27,10 @@ export function planCounts(entries) {
   return { months, total: entries.length, completed: entries.filter(entry => entry.doneDate).length };
 }
 
-function validDate(value) {
+function validDate(value, today) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(value + "T00:00:00Z");
-  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value && value <= calendarDate();
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value && value <= today;
 }
 
 function validateEntries(input, plan, equipment) {
@@ -53,6 +54,7 @@ function validateEntries(input, plan, equipment) {
     }
     if (saved?.doneDate && saved.month !== row.month) throw new RegistryError("Wykonanego terminu nie można przesunąć.");
     const entry = { id: row.id, deviceId: row.deviceId, activityId: row.activityId, month: row.month, doneDate: saved?.doneDate ?? null };
+    if (saved?.doneNotes) entry.doneNotes = saved.doneNotes;
     if (slots.has(slot(entry))) throw new RegistryError("Czynność może mieć jeden termin w danym miesiącu.");
     slots.add(slot(entry));
     ids.add(entry.id);
@@ -70,15 +72,27 @@ export function evolvePlan(previous, command, equipment, now = new Date().toISOS
     if (command.action === "draft") return { ...previous, draft: { entries, savedAt: now } };
     return { draft: null, approved: { entries, approvedAt: now } };
   }
-  if (command?.action === "complete") {
-    if (!validDate(command.doneDate)) throw new RegistryError("Wpisz poprawną datę wykonania, nie późniejszą niż dziś.");
+  if (executionActions.has(command?.action)) {
     const current = previous.approved?.entries.find(entry => entry.id === command.entryId);
-    if (!current || current.doneDate) throw new RegistryError("Wybierz zatwierdzony termin bez daty wykonania.");
-    const completed = { ...current, doneDate: command.doneDate };
-    const approved = { ...previous.approved, entries: previous.approved.entries.map(entry => entry.id === current.id ? completed : entry) };
+    if (!current || Boolean(current.doneDate) !== (command.action !== "complete")) {
+      throw new RegistryError(command.action === "complete" ? "Wybierz zatwierdzony termin bez daty wykonania." : "Wybierz wykonany termin.");
+    }
+    const undo = command.action === "undo";
+    const notes = command.doneNotes ?? "";
+    if (!undo && !validDate(command.doneDate, calendarDate(new Date(now)))) {
+      throw new RegistryError("Wpisz poprawną datę wykonania, nie późniejszą niż dziś.");
+    }
+    if (!undo && (typeof notes !== "string" || notes.length > 500)) throw new RegistryError("Uwagi mogą mieć do 500 znaków.");
+    const updated = { ...current, doneDate: undo ? null : command.doneDate };
+    delete updated.doneNotes;
+    if (!undo && notes.trim()) updated.doneNotes = notes.trim();
+    const replace = row => row.id === updated.id ? updated : row;
+    const approved = { ...previous.approved, entries: previous.approved.entries.map(replace) };
     const draft = previous.draft ? {
       ...previous.draft,
-      entries: [...previous.draft.entries.filter(row => row.id !== completed.id && slot(row) !== slot(completed)), completed],
+      entries: command.action === "complete"
+        ? [...previous.draft.entries.filter(row => row.id !== updated.id && slot(row) !== slot(updated)), updated]
+        : previous.draft.entries.map(replace),
     } : null;
     return { approved, draft };
   }

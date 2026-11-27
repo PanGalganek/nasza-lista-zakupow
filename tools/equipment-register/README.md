@@ -19,14 +19,19 @@ npx --yes firebase-tools@15.22.4 emulators:exec --only firestore --project demo-
 
 Otwórz [rejestr sprzętu](http://127.0.0.1:4388/). Serwer przyjmuje połączenia tylko z tego komputera. Zatrzymuj emulator przez Ctrl+C, aby zapisać stan wraz z historią poza repozytorium. Przy kolejnym uruchomieniu wskaż tę samą kopię źródłową i zachowaj ten sam katalog eksportu emulatora.
 
-## Dwa panele
+## Panele sprzętu
 
 - **Rejestr sprzętu** — dodawanie, edycja, wycofywanie i przywracanie urządzeń. Numer ewidencyjny można dopisać później. Rodzaje czynności wybiera się z podpowiedzi lub wpisuje samodzielnie. Zmiana nazwy urządzenia albo rodzaju istniejącej czynności zachowuje jej identyfikator. Czynność można wyłączyć z planowania bez usuwania jej z karty.
 - **Harmonogram** — wybór roku, przygotowanie planu, zapis szkicu i zatwierdzenie. W tabeli każda czynność urządzenia ma osobny wiersz i 12 miesięcy. Na węższych ekranach wybierz jedno urządzenie i zaznacz miesiące na jego kartach. Liczniki obejmują cały rok, również przy aktywnych filtrach.
+- **Realizacja** — zatwierdzone terminy w wybranym miesiącu, wyszukiwarka, filtry i liczniki miesiąca oraz roku. Ostrzeżenia obejmują niewykonane czynności bieżącego miesiąca i zaległości ze wszystkich lat. Osobna grupa pokazuje kolejny miesiąc, również przy zmianie roku.
 
 **Edytuj harmonogram** otwiera zapisany szkic lub aktualny zatwierdzony plan. Odznaczenie miesiąca anuluje niewykonany termin po zatwierdzeniu zmian. Przycisk **Przesuń** przenosi niewykonany termin do wolnego miesiąca ze stałym ID. Czynności zapisanej jako wykonana nie można przesunąć ani anulować. Data wykonania jest odrębna od miesiąca planowanego. Wycofane urządzenia zachowują terminy i pozostają widoczne w danym planie, a nowy aktywny sprzęt trafia do edytora z rejestru.
 
 Sekcja **Harmonogram źródłowy** pokazuje pozycje z kopii wraz z rzeczywistymi datami wykonania. Wszystkie 86 pozycji i 13 dat zachowano poza planami rocznymi, ponieważ źródło nie zawiera wiarygodnego roku planu. Każdy nowy rok zaczyna się od pustego planu.
+
+W panelu **Realizacja** wybierz **Odhacz**, aby zapisać rzeczywistą datę i opcjonalne uwagi. **Zmień wykonanie** koryguje te dane, a **Cofnij odhaczenie** przywraca niewykonany termin w pierwotnym miesiącu. Czynność jest zaległa po zakończeniu planowanego miesiąca, dopóki nie zostanie wykonana. Anulowane terminy znikają z listy, ostrzeżeń i mianownika realizacji po zatwierdzeniu zmian planu.
+
+Sekcja **Historia wykonań i korekt** pokazuje zdarzenia wybranego roku. Wybór urządzenia w tej sekcji albo przycisk **Historia** na jego karcie pokazuje jego zapisy ze wszystkich zatwierdzonych lat, także po zmianie nazwy, numeru albo statusu urządzenia. Powiązane wykonania z kopii są widoczne oddzielnie, z oznaczeniem roboczego powiązania, jeśli grupa nie została zweryfikowana. Nie są rozliczane w żadnym planie rocznym.
 
 Przycisk **Uporządkuj przypisania** prowadzi do dotychczasowego kreatora. Można tam wyszukiwać, zatwierdzać, łączyć, rozdzielać i korygować pozycje. „Zapisz przypisania” aktualizuje wspólny rejestr. Można zapisywać niepełne przypisania i eksportować JSON z ich stanem weryfikacji. Jeśli w tej samej przeglądarce jest szkic poprzedniego kreatora, przy pierwszym uruchomieniu można go wczytać i zapisać jawnie, zanim emulator zawiera zapisane zmiany.
 
@@ -38,12 +43,14 @@ Każdy rok otrzymuje dokument `lokalneRejestrySprzetu/{fingerprint}/plany/{rok}`
 
 Zapis jest warunkowany bieżącą rewizją i czasem ostatniej aktualizacji dokumentu Firestore. Każda zmiana atomowo zapisuje stan i jego poprzednią wersję w `historia/{operationId}` danego dokumentu. Powtórzenie żądania z tym samym identyfikatorem nie wykonuje czynności drugi raz. Otwarte okno zachowuje wpisane zmiany w razie konfliktu. Dwa różne lata i rejestr mają odrębne rewizje. Równoległe edycje kart w samym rejestrze nadal korzystają z jego wspólnej rewizji.
 
+Odhaczenie, korekta i cofnięcie używają tej samej rewizji co edycja planu danego roku. Wpis historii wykonania zawiera stałe ID terminu, urządzenia i czynności, planowany miesiąc, datę i uwagi przed zmianą i po niej oraz dane karty z chwili zapisu. Wcześniejsze odhaczenia z lokalnego edytora można odczytać z jego dziennika rewizji. Realizacja odczytuje zatwierdzone plany, a historię wczytuje na żądanie.
+
 W przyszłym modelu produkcyjnym można rozdzielić agregat na dokumenty sprzętu i czynności, zachowując ich identyfikatory. Osobne pozycje roku powinny wskazywać identyfikator sprzętu i czynności oraz przechowywać historyczną nazwę, miesiąc i datę wykonania. Nie ma jeszcze produkcyjnej migracji ani reguł dla tych ścieżek.
 
 ## Testy
 
 ```powershell
-node --test tools/equipment-register/register.test.mjs tools/equipment-register/registry.test.mjs tools/equipment-register/planner.test.mjs
+node --test tools/equipment-register/register.test.mjs tools/equipment-register/registry.test.mjs tools/equipment-register/planner.test.mjs tools/equipment-register/execution.test.mjs
 npm test
 npm run build
 ```

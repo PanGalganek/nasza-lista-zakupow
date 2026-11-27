@@ -3,6 +3,7 @@ import { loadRegistry, saveRegistry } from "./api.js";
 import { searchText } from "./model.js";
 import { needsDetails } from "./registry-model.js";
 import { annualPlanner } from "./planner.js";
+import { executionView } from "./execution.js";
 
 const byId = id => document.getElementById(id);
 const dialog = byId("device-dialog");
@@ -15,6 +16,7 @@ let busy = false;
 let failedRefresh = false;
 let operation;
 const planner = annualPlanner();
+const execution = executionView();
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -72,6 +74,10 @@ function deviceCard(device) {
   title.append(activityList(device.activities.filter(activity => activity.active)));
   const controls = element("div", undefined, "actions");
   controls.append(action("Edytuj", () => openEditor(device)),
+    action("Historia", () => {
+      showPanel("execution");
+      execution.showHistory(device.id);
+    }),
     action(device.status === "active" ? "Wycofaj" : "Przywróć", () => changeStatus(device)));
   card.append(title, controls);
   return card;
@@ -93,7 +99,8 @@ function render() {
   const mapped = Object.keys(registry.state.mapping.assignments).length;
   byId("overview").textContent = "Rejestr lokalny · " + mapped + " zachowanych pozycji źródłowych";
   if (currentPanel === "registry") renderRegistry();
-  else planner.show(registry.state.equipment);
+  else if (currentPanel === "schedule") planner.show(registry.state.equipment);
+  else execution.show(registry.state);
 }
 
 function appendActivity(activity) {
@@ -223,16 +230,22 @@ byId("cancel-device").onclick = closeEditor;
 dialog.addEventListener("cancel", event => { if (busy) event.preventDefault(); });
 byId("query").oninput = renderRegistry;
 byId("filter").onchange = renderRegistry;
-for (const control of document.querySelectorAll("[data-panel]")) {
-  control.onclick = () => {
-    currentPanel = control.dataset.panel;
-    for (const tab of document.querySelectorAll("[data-panel]")) {
-      tab.setAttribute("aria-pressed", String(tab === control));
-      byId(tab.dataset.panel + "-panel").hidden = tab !== control;
-    }
-    render();
-    if (currentPanel === "schedule") planner.refresh();
-  };
+const tabs = document.querySelectorAll("[data-panel]");
+
+function showPanel(panel) {
+  currentPanel = panel;
+  for (const tab of tabs) {
+    const selected = tab.dataset.panel === panel;
+    tab.setAttribute("aria-pressed", String(selected));
+    byId(tab.dataset.panel + "-panel").hidden = !selected;
+  }
+  render();
+  if (panel === "schedule") planner.refresh();
+  if (panel === "execution") execution.refresh();
+}
+
+for (const control of tabs) {
+  control.onclick = () => showPanel(control.dataset.panel);
 }
 
 if (await refresh()) byId("workspace").hidden = false;
@@ -240,4 +253,5 @@ setInterval(async () => {
   if (document.visibilityState !== "visible") return;
   if (await refresh()) byId("workspace").hidden = false;
   if (currentPanel === "schedule") await planner.refresh();
+  if (currentPanel === "execution") await execution.refresh();
 }, 3000);
