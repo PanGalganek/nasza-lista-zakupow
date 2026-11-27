@@ -35,11 +35,16 @@ export function createScheduleModule({ db, firestore, registerSnapshot, reportLi
 
   function start() {
     water.reset();
+    let firstSnapshot = true;
     registerSnapshot(onSnapshot(
       query(collection(db, "harmonogram"), orderBy("timestamp", "asc")),
+      { includeMetadataChanges: true },
       (snapshot) => {
+        water.update(snapshot.docs.filter((entry) => !entry.metadata.hasPendingWrites)
+          .map((entry) => ({ ...entry.data(), id: entry.id })));
+        if (!firstSnapshot && snapshot.docChanges().length === 0) return;
+        firstSnapshot = false;
         const stats = {};
-        water.update(snapshot.docs.map((entry) => ({ ...entry.data(), id: entry.id })));
         taskCategories.forEach((category) => {
           const key = "scieki" + category;
           stats[key] = { total: 0, doneThisYear: 0, doneThisMonth: false };

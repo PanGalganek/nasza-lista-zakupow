@@ -547,3 +547,46 @@ test("losing the connection does not enqueue a water change or clear a saved dat
   await store.save(selection, finishWater("2026-04-17", "2026-04-15"));
   assert.equal((await getDoc(waterDoc(b, selection))).data().doneDate, "2026-04-17");
 });
+
+
+test("one measurement key has exactly one identifier and one calendar date", async () => {
+  const database = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const selection = waterSelection("siar-g-dol");
+  const target = waterDoc(database, selection);
+  const store = createWaterStore(database, waterFirestore, () => true);
+  const first = randomUUID();
+  const second = randomUUID();
+  const firstDate = "2026-03-04";
+  const secondDate = "2026-03-05";
+  await store.save(selection, { kind: "add", id: first, date: firstDate });
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first]: firstDate + "_" + secondDate } }));
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first + "_" + second]: firstDate } }));
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first]: "2026-02-29" } }));
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first]: "2027-03-04" } }));
+  await store.save(selection, { kind: "add", id: second, date: firstDate });
+  assert.deepEqual((await getDoc(target)).data().measurements, { [first]: firstDate, [second]: firstDate });
+});
+
+test("annual corrections and identity survive a v31 client deleting the legacy source", async () => {
+  const database = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const legacy = doc(database, "harmonogram", "example-legacy-water");
+  const name = "Azot amonowy woda podziemna";
+  await setDoc(legacy, { name, lab: "woda", category: "Probkobranie", timestamp: 22, doneDate: "2026-01-05" });
+  const store = createWaterStore(database, waterFirestore, () => true);
+  const manual = { year: 2026, origin: "manual", itemKey: legacy.id };
+  const plan = waterSelection("amon-stud", 2026, { legacyTaskId: legacy.id });
+  await store.save(manual, finishWater("2026-01-07", "2026-01-05", "Uwaga laboratoryjna"));
+  await store.save(plan, { kind: "link" });
+  assert.equal((await getDoc(waterDoc(database, plan))).data().doneDate, "2026-01-07");
+  await assertSucceeds(deleteDoc(legacy));
+  await assertSucceeds(store.save(plan, finishWater("2026-01-09", "2026-01-07", "Korekta planu", "Uwaga laboratoryjna")));
+  await assertSucceeds(store.save(manual, finishWater("2026-01-11", "2026-01-07", "Korekta ręczna", "Uwaga laboratoryjna")));
+  const remembered = (await getDoc(waterDoc(database, manual))).data();
+  assert.equal(remembered.taskName, name);
+  assert.equal(remembered.taskCategory, "Probkobranie");
+  assert.equal(remembered.doneDate, "2026-01-11");
+  assert.equal((await getDoc(waterDoc(database, plan))).data().legacyTaskId, legacy.id);
+  await assertFails(updateDoc(waterDoc(database, manual), { revision: remembered.revision + 1, taskName: "Inne zadanie" }));
+  await assert.rejects(store.save(waterSelection("amon-spo", 2026, { legacyTaskId: legacy.id }), { kind: "link" }), /Źródłowe zadanie Wody/);
+  await assert.rejects(store.save({ ...manual, year: 2027 }, finishWater("2027-01-02")), /Źródłowe zadanie Wody/);
+});

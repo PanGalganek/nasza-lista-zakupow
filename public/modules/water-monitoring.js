@@ -213,17 +213,24 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     }
 
     if (!taskList) return;
-    const rows = legacy.filter((task) => categoryOf(task) === selectedCategory
+    const legacyIds = new Set(legacy.map(({ id }) => id));
+    const linkedIds = new Set(annual.filter((record) => record.origin === "plan" && Number(record.year) <= year)
+      .map((record) => record.legacyTaskId).filter(Boolean));
+    const archived = [...yearRows.values()]
+      .filter((record) => record.origin === "manual" && record.taskName && !legacyIds.has(record.itemKey))
+      .map((record) => ({ id: record.itemKey, name: record.taskName, category: record.taskCategory, sourceRemoved: true }));
+    const rows = [...legacy, ...archived].filter((task) => categoryOf(task) === selectedCategory
       && (plan || waterDateInYear(task.doneDate, year)));
     if (!rows.length) taskList.append(createElement("p", "lab-empty", "Brak zapisanych zadań dla tego widoku."));
     for (const task of rows) {
-      const linkedTask = used.has(task.id);
+      const linkedTask = used.has(task.id) || (task.sourceRemoved && linkedIds.has(task.id));
       const candidate = candidates.get(task.id);
       const historicalOnly = candidate?.reason && task.doneDate && Number(task.doneDate.slice(0, 4)) < firstWaterYear;
       const state = stateFor("manual", task.id, task);
       const row = createElement("div", "lab-data-row lab-water-manual");
       const caption = createElement("div", "lab-stack");
       caption.append(createElement("strong", "", task.name));
+      if (task.sourceRemoved) caption.append(createElement("span", "lab-muted", "Zapis roczny zachowany po usunięciu zadania źródłowego."));
       if (task.doneDate) caption.append(createElement("span", "lab-muted", `Data w oryginalnym zadaniu ${dateLabel(task.doneDate)}`));
       if (!linkedTask && state?.doneDate && state.doneDate !== task.doneDate) caption.append(createElement("span", "", dateLabel(state.doneDate)));
       if (state?.note) caption.append(createElement("span", "lab-muted whitespace-pre-wrap", state.note));

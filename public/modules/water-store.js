@@ -17,8 +17,10 @@ export function createWaterStore(db, firestore, online = () => navigator.onLine)
       const snapshot = await transaction.get(target);
       const existing = snapshot.data();
       const sourceId = origin === "manual" ? itemKey : existing?.legacyTaskId || legacyTaskId;
-      const sourceTask = sourceId ? (await transaction.get(reference(sourceId))).data() : null;
-      if (sourceId && (sourceTask?.lab !== "woda" || sourceTask?.category === waterCategory)) {
+      // The source is required at the first save or link. Older clients can remove it later.
+      const readSource = sourceId && (!existing || (action.kind === "link" && !existing.legacyTaskId));
+      const sourceTask = readSource ? (await transaction.get(reference(sourceId))).data() : null;
+      if (readSource && (sourceTask?.lab !== "woda" || sourceTask?.category === waterCategory)) {
         throw new Error("Źródłowe zadanie Wody jest niedostępne.");
       }
       const sourceDate = waterDateInYear(sourceTask?.doneDate, year) ? sourceTask.doneDate : null;
@@ -26,11 +28,13 @@ export function createWaterStore(db, firestore, online = () => navigator.onLine)
         lab: "woda", category: waterCategory, year: String(year), origin, itemKey,
         planVersion: origin === "plan" ? planVersion : "", timestamp: Date.now(),
         doneDate: sourceDate, note: "", legacyTaskId: origin === "plan" ? sourceId : "", measurements: {},
+        ...(origin === "manual" ? { taskName: sourceTask.name, taskCategory: sourceTask.category || "Archiwalna" } : {}),
       };
       if (origin === "plan" && record.planVersion !== planVersion) throw new Error("Odśwież aplikację, aby użyć właściwej wersji planu.");
 
       if (action.kind === "link") {
         if (!sourceId || sourceId !== legacyTaskId) throw new Error("Ta kontrola jest już powiązana z innym zadaniem.");
+        if (existing?.legacyTaskId) return;
         const previous = (await transaction.get(reference(waterAnnualId(year, "manual", sourceId)))).data();
         record.legacyTaskId = sourceId;
         record.doneDate = existing ? existing.doneDate : previous ? previous.doneDate : sourceDate;

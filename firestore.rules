@@ -282,10 +282,11 @@ service cloud.firestore {
       return id.matches('^woda_roczna_.*$');
     }
 
-    function waterSource(id) {
+    function waterSource(id, name, category) {
       let task = get(/databases/$(database)/documents/harmonogram/$(id)).data;
       return id.matches('^[A-Za-z0-9_-]{1,128}$') && !annualWaterPath(id) && task.lab == 'woda'
-        && task.get('category', 'Archiwalna') in ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania'];
+        && task.get('category', 'Archiwalna') in ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania']
+        && (name == null || (task.name == name && task.get('category', 'Archiwalna') == category));
     }
 
     function waterDatePattern(year) {
@@ -299,19 +300,25 @@ service cloud.firestore {
       return date is string && date.matches('^' + waterDatePattern(year) + '$');
     }
 
+    function waterMeasurementList(joined, count, width, pattern) {
+      // Check that each map element contributes exactly one part to the joined value.
+      return joined.size() == (width + 1) * count - 1
+        && joined.matches('^' + pattern + '(_' + pattern + '){0,5}$');
+    }
+
     function validWaterMeasurements(data) {
       let entries = data.measurements;
       let date = waterDatePattern(data.year);
       let id = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
       return entries is map && entries.size() <= 6
         && (entries.size() == 0 || (data.origin == 'plan' && data.itemKey == 'siar-g-dol'
-          && entries.keys().join('_').matches('^' + id + '(_' + id + '){0,5}$')
-          && entries.values().join('_').matches('^' + date + '(_' + date + '){0,5}$')));
+          && waterMeasurementList(entries.keys().join('_'), entries.size(), 36, id)
+          && waterMeasurementList(entries.values().join('_'), entries.size(), 10, date)));
     }
 
     function validAnnualWater(id, data) {
       let fields = ['lab', 'category', 'year', 'origin', 'itemKey', 'planVersion', 'timestamp',
-        'doneDate', 'note', 'legacyTaskId', 'measurements', 'revision'];
+        'doneDate', 'note', 'legacyTaskId', 'measurements', 'revision', 'taskName', 'taskCategory'];
       return data.keys().hasOnly(fields) && data.lab == 'woda'
         && data.category == 'WodaRoczna' && data.year is string && data.year.matches('^[0-9]{4}$')
         && int(data.year) >= 2026 && data.origin in ['plan', 'manual'] && data.itemKey is string
@@ -320,9 +327,16 @@ service cloud.firestore {
         && (data.doneDate == null || validWaterDate(data.doneDate, data.year))
         && data.legacyTaskId is string
         && ((data.origin == 'plan' && data.planVersion == 'woda-2026.1' && waterPlanKey(data.itemKey)
-            && (data.legacyTaskId == '' || waterSource(data.legacyTaskId)))
-          || (data.origin == 'manual' && data.planVersion == '' && data.legacyTaskId == '' && waterSource(data.itemKey)))
+            && !data.keys().hasAny(['taskName', 'taskCategory']))
+          || (data.origin == 'manual' && data.planVersion == '' && data.legacyTaskId == ''
+            && data.taskName is string && data.taskName.size() > 0 && data.taskName.size() <= 200
+            && data.taskCategory in ['Archiwalna', 'Slepa', 'Probkobranie', 'Porownania']))
         && validWaterMeasurements(data);
+    }
+
+    function validInitialWaterSource(data) {
+      return data.origin == 'manual' ? waterSource(data.itemKey, data.taskName, data.taskCategory)
+        : (data.legacyTaskId == '' || waterSource(data.legacyTaskId, null, null));
     }
 
     function validEquipment(data) {
@@ -445,14 +459,18 @@ service cloud.firestore {
       allow delete: if activeUser() && !annualWaterPath(documentId)
         && resource.data.get('category', '') != 'WodaRoczna';
       allow create: if activeUser() && (annualWaterPath(documentId)
-        ? validAnnualWater(documentId, request.resource.data) && request.resource.data.revision == 1 : validTask(request.resource.data));
+        ? validAnnualWater(documentId, request.resource.data) && request.resource.data.revision == 1
+          && validInitialWaterSource(request.resource.data) : validTask(request.resource.data));
       allow update: if activeUser() && (annualWaterPath(documentId)
         ? resource.data.category == 'WodaRoczna'
           && request.resource.data.revision == resource.data.revision + 1
           && request.resource.data.timestamp == resource.data.timestamp
           && request.resource.data.planVersion == resource.data.planVersion
-          && (resource.data.legacyTaskId == '' || request.resource.data.legacyTaskId == resource.data.legacyTaskId)
+          && request.resource.data.get('taskName', '') == resource.data.get('taskName', '')
+          && request.resource.data.get('taskCategory', '') == resource.data.get('taskCategory', '')
           && validAnnualWater(documentId, request.resource.data)
+          && (request.resource.data.legacyTaskId == resource.data.legacyTaskId
+            || (resource.data.legacyTaskId == '' && waterSource(request.resource.data.legacyTaskId, null, null)))
         : resource.data.get('category', '') != 'WodaRoczna' && validTask(request.resource.data));
     }
 
