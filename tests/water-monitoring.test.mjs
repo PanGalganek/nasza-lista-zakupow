@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { matchWaterTasks, sixMeasurementsKey, waterCompleted, waterDateInYear, waterManualPrefix, waterPlan } from "../public/modules/water-plan.js";
+import { sixMeasurementsKey, waterAnnualId, waterCompleted, waterDateInYear, waterPlan } from "../public/modules/water-plan.js";
 import { createWaterStore } from "../public/modules/water-store.js";
 
 const plan = waterPlan(2026);
@@ -33,27 +33,30 @@ test("both routes complete exactly one lower-limit control", () => {
   assert.equal(waterCompleted("siar-t-gor", { measurements: six }), false);
 });
 
-test("legacy matching respects documented matrices, scopes and doubles", () => {
-  const tasks = [
-    { id: "archive", name: "Indeks Nadmanganianowy", category: "Archiwalna", doneDate: "2026-03-02" },
-    { id: waterManualPrefix + "later", name: "Indeks Nadmanganianowy", category: "Archiwalna" },
-    { id: "chlor", name: "Chlor wolny", category: "Slepa" },
-    { id: "ground", name: "Azot Amonowy woda podziemna", category: "Probkobranie" },
-    { id: "river", name: "Azot Azotanowy rzeka", category: "Probkobranie" },
-    { id: "iron", name: "Żelazo popłuczne SUW Jutrzkowice", category: "Probkobranie" },
-    { id: "old", name: "Mangan", doneDate: "2025-12-26" },
-    { id: "new", name: "Mangan", category: "Archiwalna" },
-  ];
-  const before = structuredClone(tasks);
-  let result = matchWaterTasks(tasks, [], 2026, plan.controls);
-  assert.deepEqual([...result.linked], [["indeks-arch", tasks[0]], ["azotany-pow", tasks[4]]]);
-  assert.equal(result.candidates.get("ground").control.key, "amon-stud");
-  assert.equal(result.candidates.get("iron").control.key, "zelazo-przem");
-  const link = { year: "2027", origin: "plan", itemKey: "amon-stud", legacyTaskId: "ground" };
-  assert.equal(matchWaterTasks(tasks, [link], 2026, plan.controls).used.has("ground"), false);
-  result = matchWaterTasks(tasks, [link], 2027, plan.controls);
-  assert.equal(result.linked.get("amon-stud")?.id, "ground");
-  assert.deepEqual(tasks, before);
+test("plan writes read only the annual record and retain any saved v32 provenance", async () => {
+  const selection = { year: 2026, origin: "plan", itemKey: "indeks-arch", planVersion: plan.version };
+  const target = waterAnnualId(selection.year, selection.origin, selection.itemKey);
+  let record;
+  const store = createWaterStore({}, {
+    doc: (_db, _collection, id) => id,
+    runTransaction: (_db, body) => body({
+      get(id) {
+        assert.equal(id, target);
+        return { data: () => record };
+      },
+      set(id, data) {
+        assert.equal(id, target);
+        record = data;
+      },
+    }),
+  }, () => true);
+  const action = { kind: "finish", expectedDate: null, expectedNote: "", date: "2026-06-03", note: "Kontrola" };
+  await store.save({ ...selection, legacyTaskId: "legacy-task" }, action);
+  assert.equal(record.legacyTaskId, "");
+  record.legacyTaskId = "saved-v32-link";
+  const previous = { ...record };
+  await store.save(selection, { ...action, expectedDate: record.doneDate, expectedNote: record.note, date: "2026-06-04" });
+  assert.deepEqual(record, { ...previous, doneDate: "2026-06-04", revision: 2 });
 });
 
 test("going offline keeps a pending edit out of the write queue", async () => {

@@ -1,11 +1,11 @@
-import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue, suggestStandardNumber } from "../utils.js?v=32";
-import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=32";
-import { batchLabel, field, orderBadge, select, showStock } from "./inventory-ui.js?v=32";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=32";
-import { availability } from "./inventory-history.js?v=32";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=32";
-import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=32";
-import { orderPackageCount, orderLineProgress, orderRecordedDate, standardKind } from "./inventory-items.js?v=32";
+import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue, suggestStandardNumber } from "../utils.js?v=33";
+import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=33";
+import { batchLabel, field, orderBadge, select, showStock } from "./inventory-ui.js?v=33";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=33";
+import { availability } from "./inventory-history.js?v=33";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=33";
+import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=33";
+import { orderPackageCount, orderLineProgress, orderRecordedDate, standardKind } from "./inventory-items.js?v=33";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory, navigation }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;

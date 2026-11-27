@@ -1,5 +1,4 @@
-import { parseLocalDate } from "../utils.js?v=32";
-import { normalizeInventorySearch } from "./inventory-quantity.js?v=32";
+import { parseLocalDate } from "../utils.js?v=33";
 
 export const waterCategory = "WodaRoczna";
 export const waterManualPrefix = "woda_reczne_";
@@ -53,73 +52,3 @@ export function waterAnnualId(year, origin, key) {
 }
 
 export const waterCompleted = (key, row) => Boolean(row?.doneDate || (key === sixMeasurementsKey && Object.keys(row?.measurements || {}).length === 6));
-
-const aliases = new Map(methods.map(([id, name]) => [normalizeInventorySearch(name), id]));
-for (const [alias, method] of [
-  ["chlor wolny", "chlor"], ["chlorki", "chlorki"], ["azot azotanowy", "azotany"], ["azot azotynowy", "azotyny"],
-  ["przewodnosc elektryczna", "przewod"], ["twardosc ogolna", "twardosc"], ["ph", "ph"],
-]) aliases.set(alias, method);
-
-function candidateFor(task, controls) {
-  if (task.id.startsWith(waterManualPrefix)) return null;
-  const category = task.category || "Archiwalna";
-  let name = normalizeInventorySearch(task.name).replace(/\s+/g, " ");
-  let matrix;
-  let reason = "";
-  if (category === "Probkobranie") {
-    const suffix = / (woda do spozycia|woda podziemna|woda ze studni|rzeka|woda powierzchniowa|scieki|popluczne suw jutrzkowice)$/.exec(name);
-    if (!suffix) return null;
-    matrix = {
-      "woda do spozycia": "spo", "woda podziemna": "pod", "woda ze studni": "stud",
-      rzeka: "pow", "woda powierzchniowa": "pow", scieki: "sc", "popluczne suw jutrzkowice": "przem",
-    }[suffix[1]];
-    name = name.slice(0, suffix.index);
-    if (matrix === "przem") reason = "Potwierdź, czy popłuczyny dotyczą tej samej matrycy i SUW.";
-  }
-  const method = aliases.get(name);
-  const relevant = controls.filter((control) => control.method === method && control.category === category);
-  let control = relevant.find((item) => item.matrix === matrix);
-  if (!control && matrix === "pod") {
-    control = relevant.find((item) => item.matrix === "stud");
-    if (control) reason = "Potwierdź, że próbka pochodziła ze studni.";
-  }
-  if (!control) return null;
-  if (name === "chlor wolny") reason = "Potwierdź zakres programu chloru wolnego i ogólnego.";
-  return { control, reason };
-}
-
-export function matchWaterTasks(legacy, annual, year, controls) {
-  const candidates = new Map();
-  const byControl = new Map();
-  for (const task of legacy) {
-    const match = candidateFor(task, controls);
-    if (!match) continue;
-    candidates.set(task.id, match);
-    if (!byControl.has(match.control.key)) byControl.set(match.control.key, []);
-    byControl.get(match.control.key).push(task);
-  }
-
-  const linked = new Map();
-  const used = new Set();
-  const sorted = annual.filter((record) => record.origin === "plan" && Number(record.year) <= Number(year) && record.legacyTaskId)
-    .sort((first, second) => Number(second.year) - Number(first.year));
-  const byId = new Map(legacy.map((task) => [task.id, task]));
-  for (const record of sorted) {
-    const task = byId.get(record.legacyTaskId);
-    if (task && candidates.get(task.id)?.control.key === record.itemKey && !used.has(task.id) && !linked.has(record.itemKey)) {
-      linked.set(record.itemKey, task);
-      used.add(task.id);
-    }
-  }
-  for (const [key, tasks] of byControl) {
-    if (tasks.length > 1) {
-      for (const task of tasks) candidates.get(task.id).reason ||= "Kilka starszych zadań odpowiada tej kontroli.";
-    }
-    const task = tasks[0];
-    if (!linked.has(key) && tasks.length === 1 && !candidates.get(task.id).reason) {
-      linked.set(key, task);
-      used.add(task.id);
-    }
-  }
-  return { linked, used, candidates };
-}
