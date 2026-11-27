@@ -9,8 +9,8 @@
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./favicon-v18.png" type="image/png" sizes="32x32">
     <link rel="apple-touch-icon" href="./apple-touch-icon-v18.png" sizes="180x180">
-    <link rel="stylesheet" href="./styles.css?v=31">
-    <script type="module" src="./app.js?v=31"></script>
+    <link rel="stylesheet" href="./styles.css?v=32">
+    <script type="module" src="./app.js?v=32"></script>
 </head>
 <body>
   <a class="lab-skip" href="#mainContent">Przejdź do treści</a>
@@ -85,38 +85,56 @@
           </section>
         </section>
         <section id="tabContentWoda" data-app-screen="Woda" hidden>
+  <div class="lab-water-year">
+    <label class="lab-field"><span>Rok planu</span><select id="waterYear"></select></label>
+  </div>
   <div id="waterMenu" class="lab-tile-grid lab-tile-grid-sub" aria-label="Kategorie harmonogramu"></div>
   <section id="subContentWodaArchiwalna" class="lab-stack hidden">
-    <div class="lab-status-row"><p id="mStatusWodaArchiwalna"></p><p id="yStatusWodaArchiwalna"></p></div>
-    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Archiwalna">
-      <label class="lab-field"><span>Oznaczenie</span><input id="taskInputWodaArchiwalna" placeholder="Oznaczenie" maxlength="200"></label>
-      <button type="button" data-action="add-task" data-lab="woda" data-category="Archiwalna" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
-    </form>
-    <div id="taskListWodaArchiwalna" class="lab-list"></div>
+    <div id="waterPlanArchiwalna" class="lab-stack"></div>
+    <details class="lab-accordion">
+      <summary>Zadania ręczne i źródłowe</summary>
+      <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Archiwalna">
+        <label class="lab-field"><span>Oznaczenie</span><input id="taskInputWodaArchiwalna" placeholder="Oznaczenie" maxlength="200"></label>
+        <button type="button" data-action="add-task" data-lab="woda" data-category="Archiwalna" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+      </form>
+      <div id="taskListWodaArchiwalna" class="lab-list"></div>
+    </details>
   </section>
   <section id="subContentWodaSlepa" class="lab-stack hidden">
-    <div class="lab-status-row"><p id="mStatusWodaSlepa"></p><p id="yStatusWodaSlepa"></p></div>
-    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Slepa">
-      <label class="lab-field"><span>Oznaczenie</span><input id="taskInputWodaSlepa" placeholder="Oznaczenie" maxlength="200"></label>
-      <button type="button" data-action="add-task" data-lab="woda" data-category="Slepa" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
-    </form>
-    <div id="taskListWodaSlepa" class="lab-list"></div>
+    <div id="waterPlanSlepa" class="lab-stack"></div>
+    <details class="lab-accordion">
+      <summary>Zadania ręczne i źródłowe</summary>
+      <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Slepa">
+        <label class="lab-field"><span>Oznaczenie</span><input id="taskInputWodaSlepa" placeholder="Oznaczenie" maxlength="200"></label>
+        <button type="button" data-action="add-task" data-lab="woda" data-category="Slepa" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+      </form>
+      <div id="taskListWodaSlepa" class="lab-list"></div>
+    </details>
   </section>
   <section id="subContentWodaProbkobranie" class="lab-stack hidden">
-    <div class="lab-status-row"><p id="mStatusWodaProbkobranie"></p><p id="yStatusWodaProbkobranie"></p></div>
-    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Probkobranie">
-      <label class="lab-field"><span>Miejsce</span><input id="taskInputWodaProbkobranie" placeholder="Miejsce" maxlength="200"></label>
-      <button type="button" data-action="add-task" data-lab="woda" data-category="Probkobranie" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
-    </form>
-    <div id="taskListWodaProbkobranie" class="lab-list"></div>
+    <div id="waterPlanProbkobranie" class="lab-stack"></div>
+    <details class="lab-accordion">
+      <summary>Zadania ręczne i źródłowe</summary>
+      <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Probkobranie">
+        <label class="lab-field"><span>Miejsce</span><input id="taskInputWodaProbkobranie" placeholder="Miejsce" maxlength="200"></label>
+        <button type="button" data-action="add-task" data-lab="woda" data-category="Probkobranie" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+      </form>
+      <div id="taskListWodaProbkobranie" class="lab-list"></div>
+    </details>
   </section>
   <section id="subContentWodaPorownania" class="lab-stack hidden">
-    <div class="lab-status-row"><p id="mStatusWodaPorownania"></p><p id="yStatusWodaPorownania"></p></div>
-    <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Porownania">
-      <label class="lab-field"><span>Parametr porównania wewnątrzlaboratoryjnego</span><input id="taskInputWodaPorownania" placeholder="Parametr porównania wewnątrzlaboratoryjnego" maxlength="200"></label>
-      <button type="button" data-action="add-task" data-lab="woda" data-category="Porownania" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
-    </form>
-    <div id="taskListWodaPorownania" class="lab-list"></div>
+    <div id="waterPlanPorownania" class="lab-stack"></div>
+    <details class="lab-accordion">
+      <summary>Zadania ręczne i źródłowe</summary>
+      <form class="lab-panel lab-inline-form" data-submit-action="add-task" data-lab="woda" data-category="Porownania">
+        <label class="lab-field"><span>Parametr porównania wewnątrzlaboratoryjnego</span><input id="taskInputWodaPorownania" placeholder="Parametr porównania wewnątrzlaboratoryjnego" maxlength="200"></label>
+        <button type="button" data-action="add-task" data-lab="woda" data-category="Porownania" class="lab-button lab-button-primary"><span data-icon="plus" class="lab-icon-slot" aria-hidden="true"></span><span>Dodaj zadanie</span></button>
+      </form>
+      <div id="taskListWodaPorownania" class="lab-list"></div>
+    </details>
+  </section>
+  <section id="subContentWodaGranice" class="lab-stack hidden">
+    <div id="waterPlanGranice" class="lab-stack"></div>
   </section>
 </section>
         <section id="tabContentScieki" data-app-screen="Scieki" hidden>
