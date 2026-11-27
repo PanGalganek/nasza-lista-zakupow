@@ -27,6 +27,10 @@ Otwórz [rejestr sprzętu](http://127.0.0.1:4388/). Serwer przyjmuje połączeni
 
 **Edytuj harmonogram** otwiera zapisany szkic lub aktualny zatwierdzony plan. Odznaczenie miesiąca anuluje niewykonany termin po zatwierdzeniu zmian. Przycisk **Przesuń** przenosi niewykonany termin do wolnego miesiąca ze stałym ID. Czynności zapisanej jako wykonana nie można przesunąć ani anulować. Data wykonania jest odrębna od miesiąca planowanego. Wycofane urządzenia zachowują terminy i pozostają widoczne w danym planie, a nowy aktywny sprzęt trafia do edytora z rejestru.
 
+**Kopiuj harmonogram** otwiera wybór zatwierdzonego roku źródłowego i pustego roku docelowego. W podglądzie można odznaczyć całe urządzenie lub pojedynczą czynność i sprawdzić planowane miesiące. **Utwórz szkic** zapisuje kopię i otwiera edytor roku docelowego. Dopiero **Zatwierdź harmonogram** udostępnia skopiowane terminy w realizacji.
+
+Kopia obejmuje terminy aktywnych czynności aktywnego sprzętu. Każdy nowy termin otrzymuje własne ID. Daty wykonania, odhaczenia, uwagi i dziennik źródłowy pozostają w poprzednim roku. Podgląd i zapis uwzględniają zatwierdzony plan źródłowy, w którym anulowane terminy zostały już usunięte.
+
 Sekcja **Harmonogram źródłowy** pokazuje pozycje z kopii wraz z rzeczywistymi datami wykonania. Wszystkie 86 pozycji i 13 dat zachowano poza planami rocznymi, ponieważ źródło nie zawiera wiarygodnego roku planu. Każdy nowy rok zaczyna się od pustego planu.
 
 W panelu **Realizacja** wybierz **Odhacz**, aby zapisać rzeczywistą datę i opcjonalne uwagi. **Zmień wykonanie** koryguje te dane, a **Cofnij odhaczenie** przywraca niewykonany termin w pierwotnym miesiącu. Czynność jest zaległa po zakończeniu planowanego miesiąca, dopóki nie zostanie wykonana. Anulowane terminy znikają z listy, ostrzeżeń i mianownika realizacji po zatwierdzeniu zmian planu.
@@ -45,12 +49,14 @@ Zapis jest warunkowany bieżącą rewizją i czasem ostatniej aktualizacji dokum
 
 Odhaczenie, korekta i cofnięcie używają tej samej rewizji co edycja planu danego roku. Wpis historii wykonania zawiera stałe ID terminu, urządzenia i czynności, planowany miesiąc, datę i uwagi przed zmianą i po niej oraz dane karty z chwili zapisu. Wcześniejsze odhaczenia z lokalnego edytora można odczytać z jego dziennika rewizji. Realizacja odczytuje zatwierdzone plany, a historię wczytuje na żądanie.
 
+Kopiowanie tworzy dokument roku docelowego tylko wtedy, gdy ten dokument jeszcze nie istnieje. Operacja atomowo sprawdza także wersje planu źródłowego i rejestru z podglądu. Przy konflikcie można odświeżyć podgląd, zmienić rok docelowy albo anulować. Ponowienie tego samego żądania zwraca istniejący wynik.
+
 W przyszłym modelu produkcyjnym można rozdzielić agregat na dokumenty sprzętu i czynności, zachowując ich identyfikatory. Osobne pozycje roku powinny wskazywać identyfikator sprzętu i czynności oraz przechowywać historyczną nazwę, miesiąc i datę wykonania. Nie ma jeszcze produkcyjnej migracji ani reguł dla tych ścieżek.
 
 ## Testy
 
 ```powershell
-node --test tools/equipment-register/register.test.mjs tools/equipment-register/registry.test.mjs tools/equipment-register/planner.test.mjs tools/equipment-register/execution.test.mjs
+node --test tools/equipment-register/register.test.mjs tools/equipment-register/registry.test.mjs tools/equipment-register/planner.test.mjs tools/equipment-register/execution.test.mjs tools/equipment-register/copy.test.mjs
 npm test
 npm run build
 ```

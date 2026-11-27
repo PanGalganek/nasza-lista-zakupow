@@ -1,9 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { evolveRegistry, makeInitialRegistry, RegistryError } from "./registry-model.js";
-import { evolvePlan, executionActions } from "./plan-model.js";
+import { evolvePlan, executionActions, validYear } from "./plan-model.js";
 import { executionEvent, executionHistory } from "./execution-model.js";
+import { copyDraft } from "./copy-model.js";
 
 export const emulatorProject = "demo-elab-equipment-register";
 const operationPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const occupied = "W roku docelowym istnieje już harmonogram lub szkic. Wybierz inny rok albo anuluj.";
+const staleCopy = "Harmonogram źródłowy lub rejestr sprzętu zmienił się od otwarcia podglądu. Odśwież podgląd.";
 
 export function emulatorStore(dataset, { GCLOUD_PROJECT: project, FIRESTORE_EMULATOR_HOST: host } = process.env) {
   if (project !== emulatorProject || !/^127\.0\.0\.1:[1-9]\d{0,4}$/.test(host ?? "")) {
@@ -38,6 +42,7 @@ export function emulatorStore(dataset, { GCLOUD_PROJECT: project, FIRESTORE_EMUL
 
   const encoded = (state, revision) => ({ revision: { integerValue: String(revision) }, state: { stringValue: JSON.stringify(state) } });
   const write = (suffix, fields, precondition) => ({ update: { name: database + suffix, fields }, currentDocument: precondition });
+  const verify = (suffix, updateTime) => ({ verify: database + suffix, currentDocument: { updateTime } });
   const publicState = ({ revision, state }) => ({ revision, state });
 
   async function load(path, initial, initialize = false) {
@@ -100,18 +105,20 @@ export function emulatorStore(dataset, { GCLOUD_PROJECT: project, FIRESTORE_EMUL
     return executionHistory(journal, current.state);
   }
 
-  async function saveVersion(path, read, apply, { revision, operationId, command }) {
+  async function saveVersion(path, read, apply, { revision, operationId, command }, createOnly = false) {
     if (!Number.isSafeInteger(revision) || revision < 0 || typeof operationId !== "string" || !operationPattern.test(operationId)) {
       throw new RegistryError("Nieprawidłowe żądanie zapisu.");
     }
     const journal = path + "/historia/" + operationId;
     const current = await read();
     if (await request(journal)) return publicState(await read());
+    if (createOnly && current.updateTime) throw new RegistryError(occupied, 409);
     if (revision !== current.revision) throw new RegistryError("Dane zmieniły się w innym oknie. Wczytaj aktualny stan przed zapisem.", 409);
-    const { state, affectedId, execution } = await apply(current.state, command, operationId);
+    const { state, affectedId, execution, checks = [] } = await apply(current.state, command, operationId);
     const next = revision + 1;
     try {
       await request(":commit", { writes: [
+        ...checks,
         write(path, encoded(state, next), current.updateTime ? { updateTime: current.updateTime } : { exists: false }),
         write(journal, {
           revision: { integerValue: String(next) },
@@ -120,13 +127,29 @@ export function emulatorStore(dataset, { GCLOUD_PROJECT: project, FIRESTORE_EMUL
           affectedId: { stringValue: affectedId ?? "" },
           previous: { stringValue: JSON.stringify(current.state) },
           ...(execution ? { execution: { stringValue: JSON.stringify(execution) } } : {}),
+          ...(createOnly ? { sourceYear: { integerValue: String(command.sourceYear) } } : {}),
         }, { exists: false }),
       ] });
     } catch (error) {
       if (error.status === 409 && await request(journal)) return publicState(await read());
+      if (error.status === 409 && createOnly) {
+        throw new RegistryError((await read()).updateTime ? occupied : staleCopy, 409);
+      }
       throw error;
     }
     return { revision: next, state, affectedId };
+  }
+
+  async function prepareCopy(targetYear, command) {
+    if (!validYear(command.sourceYear) || command.sourceYear === targetYear) {
+      throw new RegistryError("Wybierz dwa różne lata harmonogramu.");
+    }
+    const [source, registry] = await Promise.all([loadPlan(command.sourceYear), loadRegistry()]);
+    if (source.revision !== command.sourceRevision || registry.revision !== command.registryRevision) {
+      throw new RegistryError(staleCopy, 409);
+    }
+    const state = copyDraft(source.state.approved, registry.state.equipment, command.selectedIds, randomUUID);
+    return { state, checks: [verify(planPath(command.sourceYear), source.updateTime), verify(root, registry.updateTime)] };
   }
 
   return {
@@ -136,6 +159,7 @@ export function emulatorStore(dataset, { GCLOUD_PROJECT: project, FIRESTORE_EMUL
     loadSchedule,
     loadHistory,
     savePlan: (year, input) => saveVersion(planPath(year), () => loadPlan(year), async (previous, command) => {
+      if (command?.action === "copy") return prepareCopy(year, command);
       const equipment = (await loadRegistry()).state.equipment;
       const state = evolvePlan(previous, command, equipment);
       if (!executionActions.has(command.action)) return { state };
@@ -143,6 +167,6 @@ export function emulatorStore(dataset, { GCLOUD_PROJECT: project, FIRESTORE_EMUL
       const byId = row => row.id === affectedId;
       const execution = executionEvent(command.action, previous.approved.entries.find(byId), state.approved.entries.find(byId), equipment);
       return { state, affectedId, execution };
-    }, input ?? {}),
+    }, input ?? {}, input?.command?.action === "copy"),
   };
 }

@@ -108,6 +108,7 @@
           <div class="actions">
             <button type="button" id="plan-start" class="primary" hidden>Przygotuj harmonogram</button>
             <button type="button" id="plan-edit" class="primary" hidden>Edytuj harmonogram</button>
+            <button type="button" id="plan-copy" hidden>Kopiuj harmonogram</button>
             <button type="button" id="plan-save" hidden>Zapisz szkic</button>
             <button type="button" id="plan-approve" class="primary" hidden>Zatwierdź harmonogram</button>
             <button type="button" id="plan-close" hidden>Zakończ edycję</button>
@@ -201,6 +202,32 @@
       <div class="actions form-actions">
         <button type="button" id="plan-dialog-cancel">Anuluj</button>
         <button type="submit" class="primary" id="plan-dialog-save"></button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="copy-dialog" aria-labelledby="copy-title">
+    <form id="copy-form" class="stack">
+      <div class="stack copy-body">
+        <h2 id="copy-title">Kopiuj harmonogram</h2>
+        <p class="muted">Skopiuj wybrane terminy z zatwierdzonego planu. W roku docelowym powstanie szkic do edycji i zatwierdzenia.</p>
+        <div class="fields">
+          <label>Rok źródłowy <select id="copy-source" required></select></label>
+          <label>Rok docelowy <input id="copy-target" type="number" min="2000" max="2199" step="1" required></label>
+        </div>
+        <p id="copy-target-status" class="muted" role="status"></p>
+        <div class="editor-heading copy-heading">
+          <h3>Terminy do skopiowania</h3>
+          <button type="button" id="copy-reload">Odśwież podgląd</button>
+        </div>
+        <p id="copy-count" class="muted" aria-live="polite"></p>
+        <div id="copy-rows" class="stack"></div>
+      </div>
+      <div class="stack copy-footer">
+        <p id="copy-error" class="form-error" role="alert"></p>
+        <div class="actions form-actions">
+          <button type="button" id="copy-cancel">Anuluj</button>
+          <button type="submit" id="copy-save" class="primary" disabled>Utwórz szkic</button>
+        </div>
       </div>
     </form>
   </dialog>

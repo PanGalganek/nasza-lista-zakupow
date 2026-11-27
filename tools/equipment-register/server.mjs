@@ -57,6 +57,8 @@ const assets = {
   "/registry-model.js": ["registry-model.js", "text/javascript"],
   "/plan-model.js": ["plan-model.js", "text/javascript"],
   "/planner.js": ["planner.js", "text/javascript"],
+  "/copy-model.js": ["copy-model.js", "text/javascript"],
+  "/plan-copy.js": ["plan-copy.js", "text/javascript"],
   "/execution-model.js": ["execution-model.js", "text/javascript"],
   "/execution.js": ["execution.js", "text/javascript"],
   "/register.js": ["register.js", "text/javascript"],

@@ -1,5 +1,6 @@
 import { loadPlan, savePlan } from "./api.js";
 import { searchText } from "./model.js";
+import { copyDialog } from "./plan-copy.js";
 import { calendarDate, initialYear, monthlyNames, planCounts, planRows, rowKey, validYear } from "./plan-model.js";
 
 const get = id => document.getElementById("plan-" + id);
@@ -39,6 +40,17 @@ export function annualPlanner() {
   let refreshFailed = false;
   let sourceLoaded = false;
   const dialog = get("dialog");
+  const copy = copyDialog((target, saved) => {
+    year = target;
+    get("year").value = target;
+    snapshot = saved;
+    entries = saved.state.draft?.entries;
+    dirty = conflict = refreshFailed = false;
+    get("query").value = get("kind").value = "";
+    message("Skopiowano harmonogram na " + target + ". Szkic jest gotowy do edycji.");
+    render();
+    get("query").focus({ preventScroll: true });
+  });
   get("year").value = year;
 
   function message(text, error = false) {
@@ -58,6 +70,9 @@ export function annualPlanner() {
       + (approved && draft ? " · Są zapisane zmiany w szkicu" : "") + (dirty ? " · Niezapisane zmiany" : "");
     get("start").hidden = !snapshot || editing || Boolean(approved || draft);
     get("edit").hidden = !snapshot || editing || !(approved || draft);
+    get("copy").hidden = !snapshot;
+    get("copy").disabled = busy || editing;
+    get("copy").title = editing ? "Zakończ edycję, aby skopiować harmonogram" : "";
     get("save").hidden = get("approve").hidden = get("close").hidden = !editing;
     get("reload").hidden = !conflict && !refreshFailed;
     for (const id of ["start", "edit", "save", "approve", "close", "reload"]) get(id).disabled = busy;
@@ -307,6 +322,7 @@ export function annualPlanner() {
 
   const discard = () => !dirty || confirm("Odrzucić niezapisane zmiany harmonogramu? Zapisany szkic pozostanie dostępny.");
   get("start").onclick = get("edit").onclick = edit;
+  get("copy").onclick = () => copy.open(year);
   get("close").onclick = () => {
     if (!discard()) return;
     entries = undefined;
