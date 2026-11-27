@@ -1,12 +1,16 @@
-import { taskCategories, taskLabs } from "./constants.js?v=31";
-import { byId, createElement, iconButton, notify } from "./ui.js?v=31";
-import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=31";
+import { taskCategories } from "./constants.js?v=32";
+import { byId, createElement, iconButton, notify } from "./ui.js?v=32";
+import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=32";
+import { createWaterMonitoring } from "./water-monitoring.js?v=32";
+import { waterManualPrefix } from "./water-plan.js?v=32";
 
-export function createScheduleModule({ db, firestore, registerSnapshot, reportListenerError }) {
-  const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;
+export function createScheduleModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
+  const water = createWaterMonitoring({ db, firestore, navigation });
+  const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, updateDoc } = firestore;
   const pending = new Set();
 
   function switchSubTab(lab, target) {
+    if (lab === "woda") return water.selectCategory(target);
     const capitalizedLab = lab.charAt(0).toUpperCase() + lab.slice(1);
     for (const category of taskCategories) {
       byId(`subContent${capitalizedLab}${category}`)?.classList.toggle("hidden", category !== target);
@@ -21,22 +25,31 @@ export function createScheduleModule({ db, firestore, registerSnapshot, reportLi
     pending.add(input);
     submit.disabled = true;
     try {
-      await addDoc(collection(db, "harmonogram"), { name, lab, category, doneDate: null, timestamp: Date.now() });
+      const task = { name, lab, category, doneDate: null, timestamp: Date.now() };
+      if (lab === "woda") await setDoc(doc(db, "harmonogram", waterManualPrefix + crypto.randomUUID()), task);
+      else await addDoc(collection(db, "harmonogram"), task);
       input.value = "";
       notify("Dodano zadanie.");
     } finally { pending.delete(input); submit.disabled = false; }
   }
 
   function start() {
+    water.reset();
+    let firstSnapshot = true;
     registerSnapshot(onSnapshot(
       query(collection(db, "harmonogram"), orderBy("timestamp", "asc")),
+      { includeMetadataChanges: true },
       (snapshot) => {
+        water.update(snapshot.docs.filter((entry) => !entry.metadata.hasPendingWrites)
+          .map((entry) => ({ ...entry.data(), id: entry.id })));
+        if (!firstSnapshot && snapshot.docChanges().length === 0) return;
+        firstSnapshot = false;
         const stats = {};
-        taskLabs.forEach((lab) => taskCategories.forEach((category) => {
-          const key = `${lab}${category}`;
+        taskCategories.forEach((category) => {
+          const key = "scieki" + category;
           stats[key] = { total: 0, doneThisYear: 0, doneThisMonth: false };
-          byId(`taskList${lab.charAt(0).toUpperCase() + lab.slice(1)}${category}`)?.replaceChildren();
-        }));
+          byId("taskListScieki" + category)?.replaceChildren();
+        });
 
         const currentYear = new Date().getFullYear();
         const currentMonth = new Date().getMonth();

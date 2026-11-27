@@ -19,6 +19,9 @@ import {
 } from "firebase/firestore";
 import { createInventoryStore } from "../public/modules/inventory-store.js";
 import { quantity } from "../public/modules/inventory-quantity.js";
+import { createWaterStore } from "../public/modules/water-store.js";
+import { waterAnnualId, waterPlan } from "../public/modules/water-plan.js";
+import { randomUUID } from "node:crypto";
 
 const projectId = "demo-nasza-lista-zakupow";
 const allowedUid = "allowed-user";
@@ -447,4 +450,143 @@ test("unknown collections and other access records are denied", async () => {
   const database = testEnvironment.authenticatedContext(allowedUid).firestore();
   await assertFails(setDoc(doc(database, "unknown", "one"), { value: true }));
   await assertFails(getDoc(doc(database, "app_users", "another-user")));
+});
+
+
+const waterFirestore = { doc, runTransaction };
+const waterSelection = (key, year = 2026, extra = {}) => ({
+  year, itemKey: key, origin: "plan", planVersion: waterPlan(year).version, ...extra,
+});
+const waterDoc = (db, { year, origin, itemKey }) => doc(db, "harmonogram", waterAnnualId(year, origin, itemKey));
+const finishWater = (date, expectedDate = null, note = "", expectedNote = "") =>
+  ({ kind: "finish", date, expectedDate, note, expectedNote });
+
+test("water annual rules protect against v31 partial writes, replacement and deletion", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const selection = waterSelection("barwa-spo");
+  const target = waterDoc(db, selection);
+  const store = createWaterStore(db, waterFirestore, () => true);
+  await assertSucceeds(store.save(selection, finishWater("2026-05-03")));
+  const today = (await getDoc(target)).data();
+  assert.equal(today.revision, 1);
+  await assertFails(updateDoc(target, { doneDate: null }));
+  await assertFails(updateDoc(target, { doneDate: "2026-06-01" }));
+  await assertFails(deleteDoc(target));
+  await assertFails(setDoc(target, { name: "Starszy formularz", lab: "woda", doneDate: null, timestamp: 1 }));
+  await assertFails(updateDoc(target, { year: "2027", revision: 2 }));
+  await assertFails(updateDoc(target, { doneDate: "2026-02-29", revision: 2 }));
+  await assertFails(updateDoc(target, { doneDate: "2027-03-03", revision: 2 }));
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [randomUUID()]: "2026-03-03" } }));
+  const anonymous = testEnvironment.authenticatedContext("outsider").firestore();
+  await assertFails(getDoc(waterDoc(anonymous, selection)));
+  await assertSucceeds(store.save(selection, finishWater("2026-06-01", "2026-05-03")));
+  await assertSucceeds(store.save(selection, finishWater(null, "2026-06-01")));
+  assert.equal((await getDoc(target)).data().doneDate, null);
+});
+
+test("water records retain dates and history while separating years, matrix and method", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createWaterStore(db, waterFirestore, () => true);
+  const legacyTask = { lab: "woda", name: "Azot Amonowy woda podziemna", category: "Probkobranie", timestamp: 1, doneDate: "2026-01-05" };
+  await setDoc(doc(db, "harmonogram", "old-source"), legacyTask);
+  const plan = waterSelection("amon-stud", 2026, { legacyTaskId: "old-source" });
+  const manual = { year: 2026, origin: "manual", itemKey: "old-source" };
+  await assertSucceeds(store.save(manual, finishWater("2026-04-05", "2026-01-05")));
+  await assertSucceeds(store.save(plan, { kind: "link" }));
+  assert.equal((await getDoc(waterDoc(db, plan))).data().doneDate, "2026-04-05");
+  assert.deepEqual((await getDoc(doc(db, "harmonogram", "old-source"))).data(), legacyTask);
+  const next = waterSelection("amon-stud", 2027, { legacyTaskId: "old-source" });
+  const other = waterSelection("amon-spo", 2027);
+  await assertSucceeds(store.save(next, finishWater("2027-01-02")));
+  await assertSucceeds(store.save(other, finishWater("2027-01-03")));
+  assert.equal((await getDoc(waterDoc(db, plan))).data().doneDate, "2026-04-05");
+  assert.equal((await getDoc(waterDoc(db, next))).data().doneDate, "2027-01-02");
+  assert.equal((await getDoc(waterDoc(db, other))).data().doneDate, "2027-01-03");
+  await assertFails(setDoc(waterDoc(db, waterSelection("unknown")), { ...(await getDoc(waterDoc(db, other))).data(),
+    year: "2026", itemKey: "unknown", revision: 1, doneDate: null }));
+});
+
+test("two operators safely share the sixth measurement and corrections", async () => {
+  await testEnvironment.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), "app_users", "second"), { active: true, role: "operator" });
+  });
+  const a = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const b = testEnvironment.authenticatedContext("second").firestore();
+  const first = createWaterStore(a, waterFirestore, () => true);
+  const second = createWaterStore(b, waterFirestore, () => true);
+  const selection = waterSelection("siar-g-dol");
+  const add = () => ({ kind: "add", id: randomUUID(), date: "2026-04-06" });
+  const repeated = add();
+  await Promise.all([first.save(selection, repeated), second.save(selection, repeated)]);
+  assert.equal(Object.keys((await getDoc(waterDoc(a, selection))).data().measurements).length, 1);
+  for (let index = 1; index < 5; index++) await first.save(selection, add());
+  const competing = await Promise.allSettled([first.save(selection, add()), second.save(selection, add())]);
+  assert.equal(competing.filter(({ status }) => status === "fulfilled").length, 1);
+  const before = (await getDoc(waterDoc(a, selection))).data();
+  assert.equal(Object.keys(before.measurements).length, 6);
+  await assertFails(updateDoc(waterDoc(a, selection), { revision: before.revision + 1, measurements: { ...before.measurements, [randomUUID()]: repeated.date } }));
+  await first.save(selection, finishWater("2026-04-07"));
+  await second.save(selection, { kind: "remove", id: repeated.id, expectedDate: repeated.date });
+  const corrected = (await getDoc(waterDoc(a, selection))).data();
+  assert.equal(Object.keys(corrected.measurements).length, 5);
+  assert.equal(corrected.doneDate, "2026-04-07");
+  await assert.rejects(first.save(selection, { kind: "remove", id: repeated.id, expectedDate: repeated.date }));
+  assert.equal((await getDoc(waterDoc(a, waterSelection("siar-g-gor")))).exists(), false);
+});
+
+test("losing the connection does not enqueue a water change or clear a saved date", async () => {
+  const a = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const b = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const selection = waterSelection("chlorki-dol");
+  const store = createWaterStore(a, waterFirestore, () => true);
+  await store.save(selection, finishWater("2026-04-15"));
+  let checks = 0;
+  const interrupted = createWaterStore(a, waterFirestore, () => ++checks === 1);
+  await assert.rejects(interrupted.save(selection, finishWater(null, "2026-04-15")), /Brak połączenia/);
+  assert.equal((await getDoc(waterDoc(b, selection))).data().doneDate, "2026-04-15");
+  await store.save(selection, finishWater("2026-04-17", "2026-04-15"));
+  assert.equal((await getDoc(waterDoc(b, selection))).data().doneDate, "2026-04-17");
+});
+
+
+test("one measurement key has exactly one identifier and one calendar date", async () => {
+  const database = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const selection = waterSelection("siar-g-dol");
+  const target = waterDoc(database, selection);
+  const store = createWaterStore(database, waterFirestore, () => true);
+  const first = randomUUID();
+  const second = randomUUID();
+  const firstDate = "2026-03-04";
+  const secondDate = "2026-03-05";
+  await store.save(selection, { kind: "add", id: first, date: firstDate });
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first]: firstDate + "_" + secondDate } }));
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first + "_" + second]: firstDate } }));
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first]: "2026-02-29" } }));
+  await assertFails(updateDoc(target, { revision: 2, measurements: { [first]: "2027-03-04" } }));
+  await store.save(selection, { kind: "add", id: second, date: firstDate });
+  assert.deepEqual((await getDoc(target)).data().measurements, { [first]: firstDate, [second]: firstDate });
+});
+
+test("annual corrections and identity survive a v31 client deleting the legacy source", async () => {
+  const database = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const legacy = doc(database, "harmonogram", "example-legacy-water");
+  const name = "Azot amonowy woda podziemna";
+  await setDoc(legacy, { name, lab: "woda", category: "Probkobranie", timestamp: 22, doneDate: "2026-01-05" });
+  const store = createWaterStore(database, waterFirestore, () => true);
+  const manual = { year: 2026, origin: "manual", itemKey: legacy.id };
+  const plan = waterSelection("amon-stud", 2026, { legacyTaskId: legacy.id });
+  await store.save(manual, finishWater("2026-01-07", "2026-01-05", "Uwaga laboratoryjna"));
+  await store.save(plan, { kind: "link" });
+  assert.equal((await getDoc(waterDoc(database, plan))).data().doneDate, "2026-01-07");
+  await assertSucceeds(deleteDoc(legacy));
+  await assertSucceeds(store.save(plan, finishWater("2026-01-09", "2026-01-07", "Korekta planu", "Uwaga laboratoryjna")));
+  await assertSucceeds(store.save(manual, finishWater("2026-01-11", "2026-01-07", "Korekta ręczna", "Uwaga laboratoryjna")));
+  const remembered = (await getDoc(waterDoc(database, manual))).data();
+  assert.equal(remembered.taskName, name);
+  assert.equal(remembered.taskCategory, "Probkobranie");
+  assert.equal(remembered.doneDate, "2026-01-11");
+  assert.equal((await getDoc(waterDoc(database, plan))).data().legacyTaskId, legacy.id);
+  await assertFails(updateDoc(waterDoc(database, manual), { revision: remembered.revision + 1, taskName: "Inne zadanie" }));
+  await assert.rejects(store.save(waterSelection("amon-spo", 2026, { legacyTaskId: legacy.id }), { kind: "link" }), /Źródłowe zadanie Wody/);
+  await assert.rejects(store.save({ ...manual, year: 2027 }, finishWater("2027-01-02")), /Źródłowe zadanie Wody/);
 });

@@ -1,9 +1,9 @@
-import { formatLocalDate, formatPolishDate } from "../utils.js?v=31";
-import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=31";
-import { compatibleUnits, formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=31";
-import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=31";
-import { indexCatalog, orderLineMatches, orderLineProgress, orderRecordedDate, orderStatus } from "./inventory-items.js?v=31";
-import { icon } from "./icons.js?v=31";
+import { formatLocalDate, formatPolishDate } from "../utils.js?v=32";
+import { byId, createButton, createElement, createInput, notify } from "./ui.js?v=32";
+import { compatibleUnits, formatQuantity, quantity, stockLevel, units, validLots } from "./inventory-quantity.js?v=32";
+import { createInventoryStore, inventoryCollections, openingSource, productId, requireInventoryConnection } from "./inventory-store.js?v=32";
+import { indexCatalog, orderLineMatches, orderLineProgress, orderRecordedDate, orderStatus } from "./inventory-items.js?v=32";
+import { icon } from "./icons.js?v=32";
 
 const textValue = (value) => typeof value === "string";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;

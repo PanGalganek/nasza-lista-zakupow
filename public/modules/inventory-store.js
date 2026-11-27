@@ -1,6 +1,6 @@
-import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=31";
-import { chemicalCategory, formatLocalDate } from "../utils.js?v=31";
-import { orderLineProgress, orderPackageCount, standardKind } from "./inventory-items.js?v=31";
+import { compatibleUnits, maxQuantity, units, validLots } from "./inventory-quantity.js?v=32";
+import { chemicalCategory, formatLocalDate } from "../utils.js?v=32";
+import { orderLineProgress, orderPackageCount, standardKind } from "./inventory-items.js?v=32";
 
 export const inventoryCollections = {
   stock: "magazyn_partie",
