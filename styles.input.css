@@ -2,6 +2,7 @@
 @source "./public/index.html";
 @source "./public/app.js";
 @source "./public/modules";
+@source not "./tools/equipment-register";
 
 :root {
   color-scheme: light;
