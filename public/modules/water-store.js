@@ -1,4 +1,4 @@
-import { sixMeasurementsKey, waterAnnualId, waterCategory, waterDateInYear, waterPlan } from "./water-plan.js?v=36";
+import { waterAnnualId, waterCategory, waterDateInYear, waterMeasurementTarget, waterPlan, waterUsesMeasurements } from "./water-plan.js?v=37";
 
 export function createWaterStore(db, firestore, online = () => navigator.onLine) {
   const { doc, runTransaction } = firestore;
@@ -41,12 +41,12 @@ export function createWaterStore(db, firestore, online = () => navigator.onLine)
         record.doneDate = action.date;
         record.note = action.note;
       } else {
-        if (origin !== "plan" || itemKey !== sixMeasurementsKey) throw new Error("Ta kontrola nie ma licznika oznaczeń.");
+        if (origin !== "plan" || !waterUsesMeasurements(itemKey)) throw new Error("Ta kontrola nie ma licznika oznaczeń.");
         const entries = { ...record.measurements };
         const previousDate = entries[action.id];
         if (action.kind === "add") {
           if (previousDate) return;
-          if (Object.keys(entries).length === 6) throw new Error("Zapisano już sześć oznaczeń.");
+          if (Object.keys(entries).length >= waterMeasurementTarget) throw new Error("Zapisano już sześć oznaczeń.");
           entries[action.id] = action.date;
         } else {
           if (!previousDate || previousDate !== action.expectedDate) {

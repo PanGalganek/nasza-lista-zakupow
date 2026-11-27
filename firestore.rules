@@ -311,7 +311,7 @@ service cloud.firestore {
       let date = waterDatePattern(data.year);
       let id = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
       return entries is map && entries.size() <= 6
-        && (entries.size() == 0 || (data.origin == 'plan' && data.itemKey == 'siar-g-dol'
+        && (entries.size() == 0 || (data.origin == 'plan' && data.itemKey in ['siar-g-dol', 'siar-g-gor']
           && waterMeasurementList(entries.keys().join('_'), entries.size(), 36, id)
           && waterMeasurementList(entries.values().join('_'), entries.size(), 10, date)));
     }

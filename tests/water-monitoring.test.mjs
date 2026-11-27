@@ -1,12 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sixMeasurementsKey, waterAnnualId, waterCompleted, waterDateInYear, waterPlan, waterSamplingLabel } from "../public/modules/water-plan.js";
+import { waterAnnualId, waterCompleted, waterDateInYear, waterPlan, waterSamplingLabel, waterUsesMeasurements } from "../public/modules/water-plan.js";
 import { createWaterStore } from "../public/modules/water-store.js";
 
 const plan = waterPlan(2026);
 test("the revised water catalogue covers 101 controls in 17 methods and keeps the original revisions", () => {
   assert.equal(waterPlan(2025), undefined);
   assert.equal(waterPlan(2027), plan);
+  assert.equal(waterPlan(2028), plan);
   assert.equal(plan.methods.length, 17);
   assert.equal(new Set(plan.methods.map(({ key }) => key)).size, 17);
   assert.equal(new Set(plan.controls.map(({ key }) => key)).size, 101);
@@ -35,13 +36,18 @@ test("the revised water catalogue covers 101 controls in 17 methods and keeps th
   assert.equal(waterDateInYear("2026-02-29", 2026), false);
 });
 
-test("both routes complete exactly one lower-limit control", () => {
+test("each gravimetric sulphate limit completes independently with six measurements or a saved annual confirmation", () => {
   const entries = Array.from({ length: 6 }, (_, id) => [id, "2026-09-01"]);
   const six = Object.fromEntries(entries);
-  assert.equal(waterCompleted(sixMeasurementsKey, { measurements: six }), true);
-  assert.equal(waterCompleted(sixMeasurementsKey, { measurements: Object.fromEntries(entries.slice(1)) }), false);
-  assert.equal(waterCompleted(sixMeasurementsKey, { doneDate: "2026-09-01" }), true);
-  assert.equal(waterCompleted("siar-g-gor", { measurements: six }), false);
+  const five = Object.fromEntries(entries.slice(1));
+  const measuredKeys = plan.controls.filter(({key}) => waterUsesMeasurements(key)).map(({key}) => key);
+  assert.deepEqual(measuredKeys, ["siar-g-dol", "siar-g-gor"]);
+  for (const key of measuredKeys) {
+    assert.equal(waterCompleted(key, { measurements: six }), true);
+    assert.equal(waterCompleted(key, { measurements: five }), false);
+    assert.equal(waterCompleted(key, { measurements: five, doneDate: "2026-09-01" }), true);
+    assert.equal(waterCompleted(key, undefined), false);
+  }
   assert.equal(waterCompleted("siar-t-gor", { measurements: six }), false);
 });
 
