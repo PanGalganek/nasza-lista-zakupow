@@ -16,5 +16,10 @@
     "@tailwindcss/cli": "4.3.2",
     "firebase": "12.15.0",
     "tailwindcss": "4.3.2"
+  },
+  "overrides": {
+    "@firebase/firestore@4.16.0": {
+      "@grpc/grpc-js": "1.14.7"
+    }
   }
 }
