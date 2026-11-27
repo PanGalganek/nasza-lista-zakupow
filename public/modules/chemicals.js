@@ -1,11 +1,11 @@
-import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, compareChemicalGroups, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue, suggestStandardNumber } from "../utils.js?v=34";
-import { byId, createButton, createElement, createInput, iconButton, notify, runSafely } from "./ui.js?v=34";
-import { batchLabel, field, orderBadge, select, showStock } from "./inventory-ui.js?v=34";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=34";
-import { availability } from "./inventory-history.js?v=34";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=34";
-import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=34";
-import { orderPackageCount, orderLineProgress, orderRecordedDate, standardKind } from "./inventory-items.js?v=34";
+import { buildChemicalAlerts, calculateCalendarDays, chemicalCategory, chemicalRegistryNumbers, formatLocalDate, formatPolishDate, groupChemicalItems, parseLocalDate, suggestNextGroupValue, suggestStandardNumber } from "../utils.js?v=35";
+import { byId, createButton, createElement, createInput, iconButton, notify, runSafely, setPositionOptions } from "./ui.js?v=35";
+import { batchLabel, field, orderBadge, select, showStock } from "./inventory-ui.js?v=35";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=35";
+import { availability } from "./inventory-history.js?v=35";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=35";
+import { renderInventoryAlerts, warsawDate } from "./inventory-alerts.js?v=35";
+import { orderPackageCount, orderLineProgress, orderRecordedDate, standardKind } from "./inventory-items.js?v=35";
 
 export function createChemicalsModule({ db, firestore, registerSnapshot, reportListenerError, inventory, navigation }) {
   const { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc, writeBatch } = firestore;
@@ -14,7 +14,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   let editCategory = null;
   let formRowCount = 0;
   const packageFields = new WeakMap();
-  const expanded = new Set();
+  const selections = new Map();
+  const collapsed = new Set();
   let receiptDraft;
   let inlinePending = false;
   let updateDeliveryForm;
@@ -121,6 +122,8 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
   }
 
   function startEdit(item) {
+    const selected = selections.get(chemicalCategory(item));
+    if (selected) selected.lotId = item.id;
     editCategory = item.category || "Wzorce";
     byId("editId").value = item.id;
     byId("dynamicItemsContainer").replaceChildren();
@@ -394,54 +397,66 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     return group.items.map((item) => String(item.expiry || "")).filter(Boolean).sort()[0] || "9999-12-31";
   }
 
-  function normalizeSearch(value) {
-    return String(value || "").toLocaleLowerCase("pl").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l");
+  function positionOption(group) {
+    const number = group.items.length === 1 ? group.items[0].group : group.prefix;
+    return {
+      value: encodeURIComponent(group.key),
+      label: [`LP ${group.lp}`, number, group.name].filter(Boolean).join(" · "),
+    };
   }
 
-  function render(refreshWarnings = true) {
+  function render(refreshWarnings = true, requestedPosition) {
     const container = byId("chemicalListGrouped");
     const alertBox = byId("alertBox");
     updateDeliveryForm?.();
     container.replaceChildren();
     if (!inventory) alertBox.replaceChildren();
     const activeItems = items.filter((item) => !inventory || ["active", undefined].includes(inventory.withStock(item).stock?.status));
-    const searchQuery = normalizeSearch(byId("chemicalSearch").value.trim());
-    const categoryItems = activeItems.filter((item) => {
-      const itemCategory = item.category || "Wzorce";
-      return searchQuery || itemCategory === category || (category === "Wzorce" && itemCategory === "Standardowe");
-    });
+    const searchQuery = byId("chemicalSearch").value.trim();
+    const searchedLp = /\bLP\s*[.:-]?\s*(\d+)\b/i.exec(searchQuery);
+    const textQuery = searchedLp ? searchQuery.replace(searchedLp[0], " ").trim() : searchQuery;
+    const categoryItems = activeItems.filter((item) => chemicalCategory(item) === category);
     const threshold = category === "Odczynniki" ? 70 : 40;
     const statusFilter = byId("chemicalStatusFilter").value;
     const sortMode = byId("chemicalSort").value;
-    const partition = (list, kind) => groupChemicalItems(list.filter((item) => chemicalCategory(item) === kind))
-      .map((group) => ({ ...group, category: kind, key: `${kind}:${group.key}` }));
-    const categories = ["Wzorce", "Odczynniki"];
     const lpByItem = chemicalRegistryNumbers(activeItems);
-    const filtered = categoryItems.filter((item) => {
-      if (searchQuery && !matchesInventorySearch(searchQuery, item.name, item.group, item.usage, item.lotNumber, `LP ${lpByItem.get(item.id)}`,
+    const groups = groupChemicalItems(categoryItems).map((group) => ({
+      ...group, category, key: `${category}:${group.key}`, lp: lpByItem.get(group.items[0].id),
+    })).sort((a, b) => a.lp - b.lp);
+    const matches = (item) => {
+      if (searchedLp && Number(searchedLp[1]) !== lpByItem.get(item.id)) return false;
+      if (textQuery && !matchesInventorySearch(textQuery, item.name, item.group, item.usage, item.lotNumber, `LP ${lpByItem.get(item.id)}`,
         item.producer, item.formula, item.cas, ...(inventory?.searchContext(item) || []))) return false;
       const expiryDate = item.expiry ? parseLocalDate(item.expiry) : null;
       const days = expiryDate ? calculateCalendarDays(new Date(), expiryDate) : null;
-      if (statusFilter === "attention") return days !== null && days <= (chemicalCategory(item) === "Odczynniki" ? 70 : 40);
+      if (statusFilter === "attention") return days !== null && days <= threshold;
       if (statusFilter === "ordered") return inventory ? inventory.orderStatus(item).state === "ordered" : item.ordered === true;
       if (statusFilter === "expired") return days !== null && days < 0;
       return true;
-    });
-
-    const sortedGroups = categories.flatMap((kind) => partition(filtered, kind)).sort((a, b) => {
-      if (sortMode === "name") return a.name.localeCompare(b.name, "pl", { sensitivity: "base" }) || a.prefix.localeCompare(b.prefix, "pl", { numeric: true, sensitivity: "base" });
-      if (sortMode === "expiry") return earliestExpiry(a).localeCompare(earliestExpiry(b)) || a.name.localeCompare(b.name, "pl", { sensitivity: "base" });
-      return compareChemicalGroups(a, b);
-    });
-
-    sortedGroups.forEach((group) => {
+    };
+    const matchingGroups = groups.filter((group) => group.items.some(matches));
+    const requestedGroup = pendingLotFocus ? groups.find((group) => group.items.some((item) => item.id === highlightedLot))
+      : matchingGroups.find((group) => positionOption(group).value === requestedPosition);
+    if (requestedGroup) {
+      selections.set(category, { key: requestedGroup.key, lotId: highlightedLot || requestedGroup.items[0].id });
+      collapsed.delete(requestedGroup.key);
+    }
+    const selection = selections.get(category);
+    const selectedGroup = (!pendingLotFocus || requestedGroup) && selection && (groups.find((group) => group.items.some((item) => item.id === selection.lotId))
+      || groups.find((group) => group.key === selection.key));
+    if (selectedGroup) selection.key = selectedGroup.key;
+    setPositionOptions(byId("chemicalPosition"), matchingGroups.map(positionOption),
+      selectedGroup ? positionOption(selectedGroup) : null, "Wybierz pozycję");
+    byId("clearChemicalPosition").disabled = !selectedGroup;
+    if (selectedGroup) {
+      const group = selectedGroup;
       group.items.sort((a, b) => sortMode === "expiry" ? String(a.expiry || "9999-12-31").localeCompare(String(b.expiry || "9999-12-31")) : String(a.group || "").localeCompare(String(b.group || ""), "pl", { numeric: true }));
       const card = createElement("details", "lab-accordion lab-product");
-      if (pendingLotFocus && group.items.some((item) => item.id === highlightedLot)) expanded.add(group.key);
-      card.open = expanded.has(group.key);
+      card.open = !collapsed.has(group.key);
       card.addEventListener("toggle", () => {
-        if (card.open) expanded.add(group.key);
-        else expanded.delete(group.key);
+        if (!card.isConnected) return;
+        if (card.open) collapsed.delete(group.key);
+        else collapsed.add(group.key);
       });
       const primary = group.items[0];
       const summary = createElement("summary", "lab-product-summary");
@@ -451,7 +466,6 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
       const expiry = earliestExpiry(group);
       const identifiers = [group.items.length === 1 ? primary.group : group.prefix, expiry === "9999-12-31" ? "Brak terminu" : `Ważność: ${formatPolishDate(expiry)}`];
       if (group.items.length > 1) identifiers.push(`${group.items.length} partie`);
-      if (searchQuery) identifiers.push(group.category);
       sub.append(createElement("span", "", identifiers.filter(Boolean).join(" · ")));
       if (expiry < formatLocalDate()) sub.append(createElement("span", "text-red-700 font-semibold", "Po terminie"));
       const productIds = [...new Set(group.items.map(productId))];
@@ -524,9 +538,12 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
         card.append(row);
       });
       container.append(card);
-    });
-    byId("chemicalResultSummary").textContent = `Pozycje: ${filtered.length} • Grupy: ${sortedGroups.length}`;
-    if (sortedGroups.length === 0) container.append(createElement("p", "rounded-lg border border-dashed bg-gray-50 p-6 text-center text-sm text-gray-500", "Brak pozycji spełniających kryteria."));
+    }
+    byId("chemicalResultSummary").textContent = matchingGroups.length
+      ? `Pozycje na liście: ${matchingGroups.length}` : "Brak pozycji spełniających kryteria.";
+    if (!selectedGroup && matchingGroups.length) {
+      container.append(createElement("p", "lab-empty", "Wybierz pozycję, aby wyświetlić jej kartę."));
+    }
     if (inventory) {
       if (refreshWarnings) renderInventoryAlerts(alertBox, activeItems.map(inventory.withStock),
         (item) => item.category === "Odczynniki" ? 70 : 40, inventory, (item) => newLotFromAlert(item, lpByItem.get(item.id)), lpByItem,
@@ -589,6 +606,18 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
 
   function bind() {
     inventory?.bind(render);
+    const position = byId("chemicalPosition");
+    function changePosition(value) {
+      highlightedLot = "";
+      pendingLotFocus = false;
+      if (!value) selections.delete(category);
+      render(false, value);
+    }
+    position.addEventListener("change", () => changePosition(position.value));
+    byId("clearChemicalPosition").addEventListener("click", () => {
+      changePosition("");
+      position.focus();
+    });
     byId("chemicalSearch").addEventListener("input", () => render(false));
     byId("chemicalStatusFilter").addEventListener("change", () => render(false));
     byId("chemicalSort").addEventListener("change", () => render(false));
@@ -610,6 +639,13 @@ export function createChemicalsModule({ db, firestore, registerSnapshot, reportL
     actions: {
       addFormRow, cancelEdit, openForm, saveItems, switchSubTab, showWarnings,
     },
-    bind, initializeForm: cancelEdit, start,
+    bind, start,
+    initializeForm() {
+      selections.clear();
+      collapsed.clear();
+      highlightedLot = "";
+      pendingLotFocus = false;
+      cancelEdit();
+    },
   };
 }

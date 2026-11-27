@@ -37,12 +37,20 @@ test("every chemical LP can render its own add-position form", () => {
 
 test("chemical inventory provides search, status filters, and sorting", () => {
   assert.match(html, /id="chemicalSearch"/);
+  assert.match(html, /<select id="chemicalPosition" aria-controls="chemicalListGrouped"/);
   assert.match(html, /id="chemicalStatusFilter"/);
   assert.match(html, /id="chemicalSort"/);
   assert.match(modules, /statusFilter === "attention"/);
   assert.match(modules, /statusFilter === "ordered"/);
   assert.match(modules, /statusFilter === "expired"/);
   assert.match(modules, /Brak pozycji spełniających kryteria\./);
+});
+
+test("water uses a single method picker while keeping the annual and manual views", () => {
+  assert.match(html, /<select id="waterPosition" aria-controls="waterMethods"/);
+  assert.match(html, /id="waterTotal"/);
+  assert.match(html, /<details id="waterManual"/);
+  assert.doesNotMatch(html, /id="water(?:Expand|Collapse)"/);
 });
 
 test("routed screens share unique form targets and an accessible dialog", () => {
@@ -61,8 +69,8 @@ test("the dashboard links directly to warnings and affected lots can be replenis
   assert.match(modules, /createButton\("Otwórz pozycję", [^\n]+\(\) => openPosition\(lot\)/);
   assert.match(modules, /presentForm\("Edytuj partię"\)/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=34/);
-  assert.match(html, /\.\/app\.js\?v=34/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=35/);
+  assert.match(html, /\.\/app\.js\?v=35/);
 });
 
 test("all visible full dates use the Polish day-month-year format", () => {
@@ -97,7 +105,7 @@ test("all local JavaScript imports use one cache version", () => {
   const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=34")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=35")));
 });
 
 test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", async () => {
@@ -126,11 +134,11 @@ test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", as
     assert.equal(png[25], 2, "Opaque RGB icon");
   }));
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v34"/);
-  assert.match(html, /styles\.css\?v=34/);
-  assert.match(serviceWorker, /styles\.css\?v=34/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v35"/);
+  assert.match(html, /styles\.css\?v=35/);
+  assert.match(serviceWorker, /styles\.css\?v=35/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
-  for (const name of ["icons", "navigation", "shell", "inventory-statistics", "inventory-statistics-data", "water-plan", "water-store", "water-monitoring"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=34`));
+  for (const name of ["icons", "navigation", "shell", "inventory-statistics", "inventory-statistics-data", "water-plan", "water-store", "water-monitoring"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=35`));
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {

@@ -1,4 +1,4 @@
-import { parseLocalDate } from "../utils.js?v=34";
+import { parseLocalDate } from "../utils.js?v=35";
 
 export const waterCategory = "WodaRoczna";
 export const waterManualPrefix = "woda_reczne_";

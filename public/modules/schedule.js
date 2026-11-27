@@ -1,8 +1,8 @@
-import { taskCategories } from "./constants.js?v=34";
-import { byId, createElement, iconButton, notify } from "./ui.js?v=34";
-import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=34";
-import { createWaterMonitoring } from "./water-monitoring.js?v=34";
-import { waterManualPrefix } from "./water-plan.js?v=34";
+import { taskCategories } from "./constants.js?v=35";
+import { byId, createElement, iconButton, notify } from "./ui.js?v=35";
+import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=35";
+import { createWaterMonitoring } from "./water-monitoring.js?v=35";
+import { waterManualPrefix } from "./water-plan.js?v=35";
 
 export function createScheduleModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
   const water = createWaterMonitoring({ db, firestore, navigation });

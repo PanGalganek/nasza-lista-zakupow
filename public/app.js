@@ -23,20 +23,20 @@ import {
   updateDoc,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-import { createAuthModule } from "./modules/auth.js?v=34";
-import { createCalendarModule } from "./modules/calendar.js?v=34";
-import { createChemicalsModule } from "./modules/chemicals.js?v=34";
-import { createEquipmentModule } from "./modules/equipment.js?v=34";
-import { createInventoryModule } from "./modules/inventory-ui.js?v=34";
-import { mountInventoryHistory } from "./modules/inventory-history.js?v=34";
-import { mountInventoryStatistics } from "./modules/inventory-statistics.js?v=34";
-import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=34";
-import { mountInventoryTheory } from "./modules/inventory-theory.js?v=34";
-import { mountInventoryOrders } from "./modules/inventory-orders.js?v=34";
-import { createScheduleModule } from "./modules/schedule.js?v=34";
-import { byId, notify, runSafely } from "./modules/ui.js?v=34";
-import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=34";
-import { createNavigation } from "./modules/navigation.js?v=34";
+import { createAuthModule } from "./modules/auth.js?v=35";
+import { createCalendarModule } from "./modules/calendar.js?v=35";
+import { createChemicalsModule } from "./modules/chemicals.js?v=35";
+import { createEquipmentModule } from "./modules/equipment.js?v=35";
+import { createInventoryModule } from "./modules/inventory-ui.js?v=35";
+import { mountInventoryHistory } from "./modules/inventory-history.js?v=35";
+import { mountInventoryStatistics } from "./modules/inventory-statistics.js?v=35";
+import { mountInventoryRecipes } from "./modules/inventory-recipes.js?v=35";
+import { mountInventoryTheory } from "./modules/inventory-theory.js?v=35";
+import { mountInventoryOrders } from "./modules/inventory-orders.js?v=35";
+import { createScheduleModule } from "./modules/schedule.js?v=35";
+import { byId, notify, runSafely } from "./modules/ui.js?v=35";
+import { bindShell, buildShell, renderShell, syncFilters } from "./modules/shell.js?v=35";
+import { createNavigation } from "./modules/navigation.js?v=35";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANS8FT-mgc8D1kR-WXlhzjEvufveMMeM8",

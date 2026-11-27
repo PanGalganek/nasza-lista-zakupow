@@ -1,13 +1,13 @@
-import { formatPolishDate } from "../utils.js?v=34";
-import { warsawDate } from "./inventory-alerts.js?v=34";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=34";
-import { button, details, field, input } from "./inventory-ui.js?v=34";
-import { byId, createElement, notify } from "./ui.js?v=34";
-import { createWaterStore } from "./water-store.js?v=34";
+import { formatPolishDate } from "../utils.js?v=35";
+import { warsawDate } from "./inventory-alerts.js?v=35";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=35";
+import { button, details, field, input } from "./inventory-ui.js?v=35";
+import { byId, createElement, notify, setPositionOptions } from "./ui.js?v=35";
+import { createWaterStore } from "./water-store.js?v=35";
 import {
   firstWaterYear, sixMeasurementsKey, waterAnnualId, waterCategory, waterCompleted, waterManualPrefix,
   waterPlan, waterSamplingLabel,
-} from "./water-plan.js?v=34";
+} from "./water-plan.js?v=35";
 
 const categories = {
   Archiwalna: "Próbki archiwalne",
@@ -33,6 +33,7 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
   const manualPanel = byId("waterManual");
   const yearField = byId("waterYear");
   const searchField = byId("waterSearch");
+  const position = byId("waterPosition");
   const categoryFilter = byId("waterFilter");
   const outstanding = byId("waterOutstanding");
   let year;
@@ -40,6 +41,7 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
   let loaded = false;
   let catalogue;
   let cards = [];
+  let selectedMethod = "";
 
   function reset() {
     year = currentYear();
@@ -47,6 +49,7 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     loaded = false;
     catalogue = undefined;
     cards = [];
+    selectedMethod = "";
     methods.replaceChildren();
     manualPanel.open = false;
     manualPanel.querySelector("form").reset();
@@ -60,8 +63,11 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     searchField.oninput = applyFilters;
     categoryFilter.onchange = applyFilters;
     outstanding.onchange = applyFilters;
-    byId("waterExpand").onclick = () => toggleVisibleCards(true);
-    byId("waterCollapse").onclick = () => toggleVisibleCards(false);
+    position.onchange = () => selectMethod(position.value);
+    byId("clearWaterPosition").onclick = () => {
+      selectMethod("");
+      position.focus();
+    };
     render();
   }
 
@@ -206,36 +212,33 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
         section.append(block);
         return { control, block, row };
       });
-      groups.push({ category, section, rows });
+      groups.push({ category, rows });
       body.append(section);
     }
     box.append(body);
-    return { box, name: method.name, count, status, progress, groups, total: controls.length };
+    return { box, key: method.key, name: method.name, count, status, progress, groups, total: controls.length };
   }
 
-  function toggleVisibleCards(open) {
-    for (const { box } of cards) if (!box.hidden) box.open = open;
-    updateExpandButtons();
-  }
-
-  function updateExpandButtons() {
-    const available = cards.filter(({ box }) => !box.hidden);
-    byId("waterExpand").disabled = !loaded || !available.some(({ box }) => !box.open);
-    byId("waterCollapse").disabled = !loaded || !available.some(({ box }) => box.open);
+  function selectMethod(key) {
+    selectedMethod = key;
+    const selected = cards.find((card) => card.key === key);
+    if (selected) selected.box.open = true;
+    applyFilters();
   }
 
   function applyFilters() {
-    for (const { box, name, groups } of cards) {
-      const matchesName = matchesInventorySearch(searchField.value, name);
-      for (const { category, section, rows } of groups) {
-        const matchesCategory = !categoryFilter.value || categoryFilter.value === category;
-        for (const entry of rows) entry.block.hidden = !matchesCategory || (outstanding.checked && entry.done);
-        section.hidden = rows.every(({ block }) => block.hidden);
-      }
-      box.hidden = !matchesName || groups.every(({ section }) => section.hidden);
+    const selected = cards.find(({ key }) => key === selectedMethod);
+    const available = cards.filter(({ name, groups }) => matchesInventorySearch(searchField.value, name)
+      && groups.some(({ category, rows }) => (!categoryFilter.value || categoryFilter.value === category)
+        && (!outstanding.checked || rows.some(({ done }) => !done))));
+    const option = ({ key, name }) => ({ value: key, label: name });
+    setPositionOptions(position, available.map(option), selected ? option(selected) : null, "Wybierz oznaczenie");
+    if (methods.firstElementChild !== (selected?.box || null)) {
+      methods.replaceChildren(...(selected ? [selected.box] : []));
     }
-    byId("waterNoMatches").hidden = !loaded || cards.some(({ box }) => !box.hidden);
-    updateExpandButtons();
+    byId("clearWaterPosition").disabled = !selected;
+    byId("waterNoMatches").hidden = !loaded || available.length > 0;
+    byId("waterNoSelection").hidden = !loaded || Boolean(selected) || available.length === 0;
   }
 
   function updateControl(entry, name, yearRows, latestYear) {
@@ -301,9 +304,10 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     const plan = waterPlan(year);
     if (catalogue !== plan) {
       catalogue = plan;
-      cards = plan.methods.map((method) => buildMethod(method, plan.controls.filter((control) => control.method === method.key)));
-      methods.replaceChildren(...cards.map(({ box }) => box));
-      for (const { box } of cards) box.addEventListener("toggle", updateExpandButtons);
+      cards = [...plan.methods].sort((a, b) => a.name.localeCompare(b.name, "pl"))
+        .map((method) => buildMethod(method, plan.controls.filter((control) => control.method === method.key)));
+      const selected = cards.find(({ key }) => key === selectedMethod);
+      if (selected) selected.box.open = true;
     }
     const yearRows = new Map(records.filter((record) => record.category === waterCategory && Number(record.year) === year)
       .map((record) => [record.id, record]));

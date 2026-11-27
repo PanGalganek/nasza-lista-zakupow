@@ -212,7 +212,7 @@ button.lab-order-badge, summary.lab-order-badge { border: 1px solid currentColor
 .lab-water-control .lab-button, .lab-water-manual .lab-button { white-space: normal; }
 .lab-water-manual span { overflow-wrap: anywhere; }
 @media (max-width: 560px) {
-  .lab-water-overview { grid-template-columns: minmax(0, 1fr); }
+  .lab-water-overview { grid-template-columns: minmax(5.25rem, 7rem) minmax(0, 1fr); }
   .lab-water-method-heading > strong { flex-basis: 100%; }
 }
 
@@ -231,6 +231,12 @@ textarea { resize: vertical; }
 .lab-inline-form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
 .lab-inline-form .lab-field { flex: 1 1 205px; }
 .lab-registry-tools { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; }
+.lab-position-picker { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.lab-position-picker select { text-overflow: ellipsis; }
+@media (max-width: 340px) {
+  .lab-position-picker { grid-template-columns: minmax(0, 1fr); }
+  .lab-position-picker > button { justify-self: start; }
+}
 @media (max-width: 520px) { .lab-recipe-tools { grid-template-columns: minmax(0,1fr); } }
 .lab-search { position: relative; display: flex; align-items: center; min-width: 0; }
 .lab-search .lab-icon-slot { position: absolute; left: 11px; color: var(--lab-muted); pointer-events: none; }
