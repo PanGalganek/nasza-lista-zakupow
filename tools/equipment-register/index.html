@@ -13,7 +13,7 @@
     <div class="shell brandbar">
       <div class="brand">
         <span class="mark" aria-hidden="true">e</span>
-        <span>e-Laboratorium</span>
+        <a href="/" class="brand-link">e-Laboratorium · Rejestr sprzętu</a>
       </div>
       <span class="local">Kreator lokalny</span>
     </div>
@@ -21,12 +21,14 @@
   <main class="shell">
     <section class="intro">
       <div>
-        <h1>Rejestr sprzętu laboratoryjnego</h1>
+        <h1>Porządkowanie przypisań</h1>
         <p id="source-info">Odczytywanie kopii harmonogramu…</p>
       </div>
       <div class="actions">
-        <button type="button" id="save-draft" disabled>Zapisz szkic</button>
-        <button type="button" id="export-register" class="primary" disabled>Eksportuj przypisanie JSON</button>
+        <button type="button" id="reload-register" disabled>Wczytaj aktualne przypisania</button>
+        <button type="button" id="legacy-draft" hidden>Wczytaj wcześniejszy szkic</button>
+        <button type="button" id="save-draft" class="primary" disabled>Zapisz przypisania</button>
+        <button type="button" id="export-register" disabled>Eksportuj przypisanie JSON</button>
       </div>
     </section>
     <p id="message" class="feedback" role="status" aria-live="polite"></p>

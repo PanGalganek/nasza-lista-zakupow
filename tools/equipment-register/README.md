@@ -1,32 +1,45 @@
 
-# Lokalny kreator rejestru sprzętu
+# Lokalny rejestr sprzętu laboratoryjnego
 
-Kreator działa osobno od produkcyjnej PWA. Korzysta z pliku JSON kopii Firestore w formacie eksportu e-Laboratorium, zawierającego kolekcję `wzorcowanie`. Wymaga Node.js 24, który jest używany w projekcie. Sam kreator nie wymaga instalowania pakietów. Kopię i wyeksportowane przypisanie przechowuj poza repozytorium.
+Narzędzie działa obok produkcyjnej PWA. Do odczytania 86 pozycji źródłowych używa pliku JSON kopii Firestore w formacie e-Laboratorium. Rejestr zapisuje wyłącznie w emulatorze projektu `demo-elab-equipment-register`. Produkcyjna konfiguracja Firebase nie jest używana.
 
-## Uruchomienie
+## Uruchomienie na Windows
 
-W PowerShell, w katalogu repozytorium na gałęzi `codex/v38-equipment-register`:
+Potrzebne są Node.js 24, Java 21 i Firebase CLI 15.22.4, używane także przez testy projektu. Otwórz PowerShell w katalogu repozytorium i wskaż plik kopii:
 
 ```powershell
-node .\tools\equipment-register\server.mjs "C:\sciezka\do\kopii-Firestore.json"
+$env:ELAB_EQUIPMENT_BACKUP = 'C:\sciezka\do\kopii-Firestore.json'
+$stanSprzetu = Join-Path $env:LOCALAPPDATA 'e-Laboratorium/Rejestr-sprzetu-demo'
+$opcjeSprzetu = @('--export-on-exit', $stanSprzetu)
+if (Test-Path -LiteralPath (Join-Path $stanSprzetu 'firebase-export-metadata.json')) {
+    $opcjeSprzetu += @('--import', $stanSprzetu)
+}
+npx --yes firebase-tools@15.22.4 emulators:exec --only firestore --project demo-elab-equipment-register --config tools/equipment-register/firebase.emulator.json @opcjeSprzetu 'node tools/equipment-register/server.mjs "%ELAB_EQUIPMENT_BACKUP%" 4388'
 ```
 
-Otwórz [lokalny kreator](http://127.0.0.1:4388/). Zatrzymasz serwer klawiszami Ctrl+C. Jeśli port jest zajęty, dodaj inny numer po ścieżce do kopii. Żeby wrócić do szkicu, uruchom kreator na tym samym porcie, z tą samą kopią i otwórz go w tej samej przeglądarce.
+Otwórz [rejestr sprzętu](http://127.0.0.1:4388/). Serwer przyjmuje połączenia tylko z tego komputera. Zatrzymuj emulator przez Ctrl+C, aby zapisać stan wraz z historią poza repozytorium. Przy kolejnym uruchomieniu wskaż tę samą kopię źródłową i zachowaj ten sam katalog eksportu emulatora.
 
-## Praca ze szkicem
+## Dwa panele
 
-1. Otwórz „Przypisania”. Wyszukaj numer, nazwę urządzenia lub identyfikator pozycji. Etykieta „Zgodny numer” wskazuje propozycję opartą na ewidencji, a „Wymaga weryfikacji” oznacza wpis do sprawdzenia. Każda grupa wymaga zatwierdzenia.
-2. W edytorze popraw proponowaną nazwę i numer. Na karcie pozycji widać oryginalną nazwę, typ, miesiąc i datę. „Rodzaj w rejestrze” oraz „Szczegóły czynności” służą do właściwego przypisania. Możesz np. zachować dwie czynności tego samego typu z różnymi opisami.
-3. W sekcji „Połącz lub rozdziel grupę” wybierz grupę docelową i połącz całe grupy lub przenieś zaznaczone pozycje. Zaznaczenie części pozycji umożliwia wydzielenie nowej grupy. Połączenie zachowuje nazwę i numer grupy docelowej oraz wszystkie pozycje i przypisane czynności.
-4. Sprawdzone grupy zatwierdź. Zmiana nazwy, numeru, czynności lub członkostwa grupy wymaga ponownej weryfikacji. Filtr „Tylko niezweryfikowane” pomaga dokończyć pracę. „Pozycje źródłowe” pokazują wszystkie rekordy, a „Podgląd rejestru” pokazuje proponowane urządzenia i czynności.
-5. Użyj „Zapisz szkic”, aby wrócić do pracy później. Lokalny szkic jest przypisany do kopii i adresu kreatora w bieżącej przeglądarce. „Eksportuj przypisanie JSON” jest dostępne po zatwierdzeniu wszystkich pozycji i rozwiązaniu powtórzonych numerów. Plik zawiera proponowane urządzenia i czynności, powiązania z identyfikatorami źródłowymi oraz oryginalne pozycje. Brak pola typu pozostaje widoczny także w eksporcie.
+- **Rejestr sprzętu** — dodawanie, edycja, wycofywanie i przywracanie urządzeń. Numer ewidencyjny można dopisać później. Rodzaje czynności wybiera się z podpowiedzi lub wpisuje samodzielnie. Zmiana nazwy urządzenia albo rodzaju istniejącej czynności zachowuje jej identyfikator. Czynność można wyłączyć z planowania bez usuwania jej z karty.
+- **Harmonogram** — podgląd aktywnych kart sprzętu z aktywnymi czynnościami. Uwzględnia dane z rejestru, także sprzęt bez numeru. Edytor planów rocznych pozostaje kolejnym etapem.
 
-Kreator udostępnia odczytane pozycje wyłącznie pod adresem pętli zwrotnej `127.0.0.1`. Nie łączy się z Firestore ani Firebase Auth. Zmiany szkicu pozostają w pamięci przeglądarki, a eksport tworzy oddzielny plik.
+Przycisk **Uporządkuj przypisania** prowadzi do dotychczasowego kreatora. Można tam wyszukiwać, zatwierdzać, łączyć, rozdzielać i korygować pozycje. „Zapisz przypisania” aktualizuje wspólny rejestr. Można zapisywać niepełne przypisania i eksportować JSON z ich stanem weryfikacji. Jeśli w tej samej przeglądarce jest szkic poprzedniego kreatora, przy pierwszym uruchomieniu można go wczytać i zapisać jawnie, zanim emulator zawiera zapisane zmiany.
 
-## Testy lokalne
+## Model prototypu
+
+Niezmienna kopia źródłowa jest odczytywana przez serwer. Jeden dokument emulatora `lokalneRejestrySprzetu/{fingerprint}` zawiera numer rewizji i stan roboczy: mapowanie wszystkich źródeł oraz karty sprzętu ze stabilnymi identyfikatorami urządzeń i ich czynności. Wycofanie to zmiana statusu. Połączenie grup pozostawia wcześniejszą kartę w archiwum ze wskazaniem grupy docelowej.
+
+Zapis jest warunkowany bieżącą rewizją i czasem ostatniej aktualizacji dokumentu Firestore. Jedna operacja zapisuje nowy stan oraz wpis poprzedniego stanu w `historia/{operationId}`. Żądanie ponowione z tym samym identyfikatorem nie wykonuje czynności drugi raz. Formularz otwarty w drugim oknie zachowuje treść w razie konfliktu, a rejestr utrzymuje wcześniej zaakceptowany zapis.
+
+W przyszłym modelu produkcyjnym można rozdzielić agregat na dokumenty sprzętu i czynności, zachowując ich identyfikatory. Osobne pozycje roku powinny wskazywać identyfikator sprzętu i czynności oraz przechowywać historyczną nazwę, miesiąc i datę wykonania. Nie ma jeszcze produkcyjnej migracji ani reguł dla tych ścieżek.
+
+## Testy
 
 ```powershell
-node --test tools/equipment-register/register.test.mjs
+node --test tools/equipment-register/register.test.mjs tools/equipment-register/registry.test.mjs
 npm test
 npm run build
 ```
+
+Test równoczesnych zapisów wymaga uruchomionego emulatora i zmiennych `GCLOUD_PROJECT=demo-elab-equipment-register` oraz `FIRESTORE_EMULATOR_HOST=127.0.0.1:18138`.

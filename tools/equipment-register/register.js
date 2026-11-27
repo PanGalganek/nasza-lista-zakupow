@@ -3,6 +3,7 @@ import {
   activityKinds, createExport, createRegister, duplicateNumbers, groupActivities, groupSources,
   moveSources, restoreDraft, reviseActivity, reviseGroup, searchText, setApproval,
 } from "./model.js";
+import { loadRegistry, saveRegistry } from "./api.js";
 
 const byId = id => document.getElementById(id);
 const message = byId("message");
@@ -34,19 +35,19 @@ async function start() {
   if (!result.ok) throw new Error("Nie udało się odczytać kopii harmonogramu.");
   const dataset = await result.json();
   const sources = [...dataset.sources].sort((a, b) => nameSort(a.name, b.name) || a.month.localeCompare(b.month));
-  const { proposals, draft: initial } = createRegister(sources);
+  const { proposals } = createRegister(sources);
   const key = "e-lab-equipment-draft-v1:" + dataset.fingerprint;
-  let draft = initial;
+  let current = await loadRegistry();
+  let draft = restoreDraft(current.state.mapping, sources);
   let dirty = false;
-
+  let busy = false;
+  let operation;
+  let previousDraft;
   try {
     const localDraft = localStorage.getItem(key);
-    if (localDraft) {
-      draft = restoreDraft(JSON.parse(localDraft), sources);
-      notify("Wczytano zapisany szkic.");
-    }
+    if (localDraft) previousDraft = restoreDraft(JSON.parse(localDraft), sources);
   } catch {
-    notify("Nie udało się odczytać szkicu. Pokazano propozycje z kopii.", "error");
+    notify("Nie udało się odczytać wcześniejszego szkicu.", "error");
   }
 
   const completeCount = sources.filter(source => source.doneDate).length;
@@ -89,8 +90,11 @@ async function start() {
     byId("pending-count").textContent = (sources.length - verified) + " pozycji do zatwierdzenia";
     byId("approval-progress").max = sources.length;
     byId("approval-progress").value = verified;
-    byId("save-draft").disabled = !dirty;
-    byId("export-register").disabled = verified !== sources.length;
+    byId("save-draft").disabled = !dirty || busy;
+    byId("reload-register").disabled = busy;
+    byId("legacy-draft").hidden = !previousDraft || current.revision !== 0;
+    byId("legacy-draft").disabled = busy;
+    byId("export-register").disabled = false;
     const query = searchText(search.value.trim()).split(/\s+/u).filter(Boolean);
     visibleGroups = draft.groups.filter(group => {
       if (pending.checked && group.approved && !duplicates.has(group.id)) return false;
@@ -176,7 +180,7 @@ async function start() {
       return article;
     }
     const kind = element("select");
-    for (const option of activityKinds) kind.append(new Option(option, option));
+    for (const option of new Set([...activityKinds, assignment.kind])) kind.append(new Option(option, option));
     kind.value = assignment.kind;
     const detail = element("input");
     detail.type = "text";
@@ -299,12 +303,54 @@ async function start() {
     render();
     notify(group.approved ? "Zatwierdzono grupę." : "Przywrócono grupę do weryfikacji.");
   });
-  byId("save-draft").onclick = () => run(() => {
-    localStorage.setItem(key, JSON.stringify(draft));
+  function loadShared(snapshot) {
+    current = snapshot;
+    draft = restoreDraft(snapshot.state.mapping, sources);
+    selection.clear();
     dirty = false;
+    operation = undefined;
+    render();
+  }
+  byId("legacy-draft").onclick = () => {
+    if (dirty && !confirm("Zastąpić otwarte przypisania wcześniejszym szkicem?")) return;
+    draft = structuredClone(previousDraft);
+    selection.clear();
+    dirty = true;
+    render();
+    notify("Wczytano lokalny szkic. Zapisz przypisania, aby zastosować go w rejestrze.");
+  };
+  byId("reload-register").onclick = async () => {
+    if (dirty && !confirm("Wczytać aktualny rejestr i pominąć niezapisane zmiany przypisań?")) return;
+    try {
+      loadShared(await loadRegistry());
+      notify("Wczytano bieżące przypisania.");
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  };
+  byId("save-draft").onclick = async () => {
+    if (busy) return;
+    busy = true;
     summary();
-    notify("Zapisano szkic w tej przeglądarce.");
-  });
+    const mapping = structuredClone(draft);
+    const signature = JSON.stringify(mapping);
+    if (operation?.signature !== signature) operation = { signature, id: crypto.randomUUID() };
+    try {
+      const saved = await saveRegistry(current.revision, { action: "grouping", mapping }, operation.id);
+      if (JSON.stringify(draft) === signature) {
+        loadShared(saved);
+        notify("Zapisano przypisania w lokalnym rejestrze.");
+      } else {
+        current = saved;
+        notify("Zapisano poprzednią wersję przypisań. Najnowsze poprawki pozostają otwarte.");
+      }
+    } catch (error) {
+      notify(error.message, "error");
+    } finally {
+      busy = false;
+      summary();
+    }
+  };
   byId("export-register").onclick = () => run(() => {
     const data = createExport(draft, dataset);
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2) + "\n"], { type: "application/json" }));
@@ -313,7 +359,7 @@ async function start() {
     link.download = "przypisanie-sprzetu.json";
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    notify("Wyeksportowano zatwierdzone przypisanie.");
+    notify("Wyeksportowano przypisania wraz ze statusem weryfikacji.");
   });
   for (const control of document.querySelectorAll("[data-view]")) {
     control.onclick = () => {

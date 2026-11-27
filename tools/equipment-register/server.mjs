@@ -4,6 +4,8 @@ import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { emulatorStore } from "./emulator-store.mjs";
+import { RegistryError } from "./registry-model.js";
 
 const collection = "wzorcowanie";
 const types = new Set(["Wzorcowanie", "Sprawdzenie", "Kalibracja"]);
@@ -47,11 +49,37 @@ export function readDataset(copy) {
 }
 
 const assets = {
-  "/": ["index.html", "text/html"],
+  "/": ["equipment.html", "text/html"],
+  "/przypisania": ["index.html", "text/html"],
+  "/equipment.js": ["equipment.js", "text/javascript"],
+  "/api.js": ["api.js", "text/javascript"],
+  "/registry-model.js": ["registry-model.js", "text/javascript"],
   "/register.js": ["register.js", "text/javascript"],
   "/model.js": ["model.js", "text/javascript"],
   "/style.css": ["style.css", "text/css"],
 };
+
+function sendJson(response, status, data) {
+  response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" }).end(JSON.stringify(data));
+}
+
+async function readCommand(request) {
+  if (!request.headers["content-type"]?.startsWith("application/json")) {
+    throw new RegistryError("Oczekiwano danych JSON.", 415);
+  }
+  const chunks = [];
+  let received = 0;
+  for await (const chunk of request) {
+    received += chunk.length;
+    if (received > 200_000) throw new RegistryError("Żądanie zapisu jest zbyt duże.", 413);
+    chunks.push(chunk);
+  }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw new RegistryError("Nie udało się odczytać żądania zapisu.");
+  }
+}
 
 async function run(path, rawPort = "4388") {
   const port = Number(rawPort);
@@ -61,11 +89,13 @@ async function run(path, rawPort = "4388") {
   const copy = JSON.parse(await readFile(resolve(path), "utf8"));
   const dataset = readDataset(copy);
   const payload = JSON.stringify(dataset);
+  const store = emulatorStore(dataset);
+  await store.load();
   const staticFiles = new Map(await Promise.all(Object.entries(assets).map(async ([url, [file, type]]) => [
     url, { body: await readFile(new URL(file, import.meta.url)), type },
   ])));
   const csp = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
-  const server = createServer((request, response) => {
+  const server = createServer(async (request, response) => {
     response.setHeader("Cache-Control", "no-store");
     response.setHeader("Content-Security-Policy", csp);
     response.setHeader("X-Content-Type-Options", "nosniff");
@@ -73,11 +103,32 @@ async function run(path, rawPort = "4388") {
       response.writeHead(403).end();
       return;
     }
+    const relative = request.url.split("?")[0];
+    if (relative === "/registry.json") {
+      if (request.method === "GET" || request.method === "POST") {
+        if (request.method === "POST" && request.headers.origin !== "http://127.0.0.1:" + port) {
+          response.writeHead(403).end();
+          return;
+        }
+        try {
+          const state = request.method === "GET" ? await store.load() : await store.save(await readCommand(request));
+          sendJson(response, 200, state);
+        } catch (error) {
+          if (error instanceof RegistryError) sendJson(response, error.status, { message: error.message });
+          else {
+            console.error(error.message);
+            sendJson(response, 503, { message: "Nie zapisano zmian w lokalnym rejestrze." });
+          }
+        }
+        return;
+      }
+      response.writeHead(405, { Allow: "GET, POST" }).end();
+      return;
+    }
     if (request.method !== "GET") {
       response.writeHead(405, { Allow: "GET" }).end();
       return;
     }
-    const relative = request.url.split("?")[0];
     const asset = relative === "/source.json" ? { body: payload, type: "application/json" } : staticFiles.get(relative);
     if (!asset) {
       response.writeHead(404).end();
@@ -89,7 +140,7 @@ async function run(path, rawPort = "4388") {
     console.error("Nie udało się uruchomić lokalnego kreatora: " + error.message);
     process.exitCode = 1;
   });
-  server.listen(port, "127.0.0.1", () => console.log("Kreator sprzętu (" + dataset.sources.length + " pozycji): http://127.0.0.1:" + port + "/"));
+  server.listen(port, "127.0.0.1", () => console.log("Lokalny rejestr sprzętu (" + dataset.sources.length + " pozycji): http://127.0.0.1:" + port + "/"));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

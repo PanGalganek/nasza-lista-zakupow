@@ -1,6 +1,7 @@
 
 export const activityKinds = ["Wzorcowanie", "Sprawdzenie", "Kalibracja", "Konserwacja"];
 const explicitKind = { wzorcowanie: "Wzorcowanie", sprawdzenie: "Sprawdzenie", kalibracja: "Kalibracja" };
+export const validActivityKind = value => typeof value === "string" && value.length <= 80 && Boolean(value.trim());
 const codePattern = /\b(?:III|II|I)-\d+(?:\/\d+)?(?:\/[WKS])*\b/i;
 
 function inferredCode(name) {
@@ -113,7 +114,7 @@ export function reviseGroup(draft, groupId, fields) {
 }
 
 export function reviseActivity(draft, sourceId, kind, label) {
-  if (!activityKinds.includes(kind)) throw new Error("Wybierz rodzaj czynności.");
+  if (!validActivityKind(kind)) throw new Error("Wybierz rodzaj czynności.");
   const assignment = draft.assignments[sourceId];
   const trimmedLabel = label.trim();
   if (assignment.kind === kind && assignment.label === trimmedLabel) return false;
@@ -182,7 +183,7 @@ export function restoreDraft(value, sources) {
   const used = new Set();
   for (const [id, assignment] of Object.entries(assignments)) {
     if (!ids.has(id) || !groupIds.has(assignment?.groupId)
-        || !activityKinds.includes(assignment.kind) || typeof assignment.label !== "string" || assignment.label.length > 150) {
+        || !validActivityKind(assignment.kind) || typeof assignment.label !== "string" || assignment.label.length > 150) {
       throw new Error("Zapis szkicu ma niepoprawne przypisanie.");
     }
     used.add(assignment.groupId);
@@ -193,17 +194,15 @@ export function restoreDraft(value, sources) {
 
 export function createExport(draft, dataset) {
   restoreDraft(draft, dataset.sources);
-  if (draft.groups.some(group => !group.approved) || duplicateNumbers(draft).size) {
-    throw new Error("Przed eksportem zatwierdź wszystkie pozycje i rozstrzygnij powtórzone numery.");
-  }
   const grouped = groupSources(draft, dataset.sources);
   return {
     schemaVersion: 1,
     source: { collection: "wzorcowanie", readTime: dataset.readTime, fingerprint: dataset.fingerprint },
     summary: { sourcePositions: dataset.sources.length, devices: draft.groups.length,
-      completedSourcePositions: dataset.sources.filter(source => source.doneDate).length },
+      completedSourcePositions: dataset.sources.filter(source => source.doneDate).length,
+      verifiedSourcePositions: draft.groups.reduce((total, group) => total + (group.approved ? grouped.get(group.id).length : 0), 0) },
     devices: draft.groups.map(group => ({
-      localId: group.id, name: group.name, inventoryNumber: group.number || null,
+      localId: group.id, name: group.name, inventoryNumber: group.number || null, verified: group.approved,
       activities: groupActivities(draft, grouped.get(group.id)),
     })),
     originalPositions: dataset.sources.map(source => ({ ...source })),

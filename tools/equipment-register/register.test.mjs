@@ -59,10 +59,10 @@ test("moving, splitting and merging preserve the source positions and require ap
   assert.deepEqual(sources, original);
 });
 
-test("export requires all groups to be verified and returns every original and allocation once", () => {
+test("export includes incomplete verification and preserves every original and allocation once", () => {
   const { draft } = createRegister(sources);
   const dataset = { readTime: "2026-11-27T17:28:19Z", fingerprint: "copy-hash", sources };
-  assert.throws(() => createExport(draft, dataset), /zatwierdź wszystkie/);
+  assert.equal(createExport(draft, dataset).summary.verifiedSourcePositions, 0);
   const probe = draft.groups.find(group => group.number !== "I-17").id;
   reviseGroup(draft, probe, { name: "Konflikt", number: " i-17 " });
   assert.equal(duplicateNumbers(draft).size, 2);

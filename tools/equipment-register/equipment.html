@@ -1,0 +1,105 @@
+
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sprzęt laboratoryjny · e-Laboratorium</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/equipment.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell brandbar">
+      <div class="brand"><span class="mark" aria-hidden="true">e</span>e-Laboratorium</div>
+      <span class="local">Emulator lokalny</span>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <div>
+        <h1>Sprzęt laboratoryjny</h1>
+        <p id="overview">Wczytywanie rejestru…</p>
+      </div>
+    </section>
+    <p id="message" class="feedback" role="status" aria-live="polite"></p>
+    <div id="workspace" hidden>
+      <nav class="nav" aria-label="Panele modułu sprzętu">
+        <button type="button" data-panel="registry" aria-pressed="true">Rejestr sprzętu</button>
+        <button type="button" data-panel="schedule" aria-pressed="false">Harmonogram</button>
+      </nav>
+      <section id="registry-panel" aria-label="Rejestr sprzętu">
+        <div class="card panel registry-toolbar">
+          <div class="actions">
+            <button type="button" id="add-device" class="primary">Dodaj sprzęt</button>
+            <a href="/przypisania" class="button-link">Uporządkuj przypisania</a>
+          </div>
+          <div class="fields">
+            <label>Wyszukiwanie
+              <input type="search" id="query" placeholder="Nazwa lub numer ewidencyjny">
+            </label>
+            <label>Status
+              <select id="filter">
+                <option value="all">Wszystkie urządzenia</option>
+                <option value="active">Aktywne</option>
+                <option value="withdrawn">Wycofane</option>
+                <option value="needs">Wymagają uzupełnienia</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div class="list-heading"><h2>Karty urządzeń</h2><span class="muted" id="shown-count"></span></div>
+        <div class="stack" id="devices"></div>
+      </section>
+      <section id="schedule-panel" hidden aria-label="Harmonogram sprzętu">
+        <div class="card panel registry-toolbar">
+          <div>
+            <h2>Urządzenia dostępne do planowania</h2>
+            <p class="muted">Lista pokazuje aktywny sprzęt i czynności pobrane z rejestru. Plan roczny będzie dostępny w następnym etapie.</p>
+          </div>
+          <p class="muted" id="schedule-summary"></p>
+        </div>
+        <div class="preview-grid" id="schedule-devices"></div>
+      </section>
+    </div>
+  </main>
+  <dialog id="device-dialog" aria-labelledby="dialog-title">
+    <form id="device-form" class="stack">
+      <div class="editor-heading">
+        <div>
+          <h2 id="dialog-title">Urządzenie</h2>
+          <p id="device-id" class="muted"></p>
+        </div>
+        <button type="button" id="close-dialog">Zamknij</button>
+      </div>
+      <div class="fields">
+        <label>Nazwa urządzenia
+          <input type="text" id="device-name" maxlength="200" required>
+        </label>
+        <label>Numer ewidencyjny (opcjonalnie)
+          <input type="text" id="device-number" maxlength="80">
+        </label>
+      </div>
+      <label>Uwagi (opcjonalnie)
+        <textarea id="device-notes" maxlength="500" rows="2"></textarea>
+      </label>
+      <div class="editor-heading">
+        <h3>Czynności urządzenia</h3>
+        <button type="button" id="add-activity">Dodaj czynność</button>
+      </div>
+      <datalist id="activity-kinds">
+        <option value="Sprawdzenie"></option>
+        <option value="Wzorcowanie"></option>
+        <option value="Kalibracja"></option>
+        <option value="Konserwacja"></option>
+      </datalist>
+      <div id="activity-rows" class="stack"></div>
+      <p id="form-error" class="form-error" role="status" aria-live="polite"></p>
+      <div class="actions form-actions">
+        <button type="button" id="cancel-device">Anuluj</button>
+        <button type="submit" id="save-device" class="primary">Zapisz urządzenie</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
