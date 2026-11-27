@@ -185,18 +185,35 @@ button.lab-order-badge, summary.lab-order-badge { border: 1px solid currentColor
 .lab-empty { color: var(--lab-muted); padding: 14px; border: 1px dashed var(--lab-border-strong); border-radius: 12px; background: #fafbf9; }
 .lab-status-row { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.lab-water-year { max-width: 12rem; margin-block-end: 14px; }
+.lab-water-overview { display: grid; grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr); align-items: end; gap: 10px 16px; }
+.lab-water-overview-progress { display: grid; gap: 8px; padding-block-end: 4px; }
+.lab-water-filters { display: grid; gap: 10px 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); align-items: end; }
+.lab-water-progress {
+  --water-meter: var(--lab-primary);
+  display: block; width: 100%; height: 8px; border: 0; border-radius: 8px; overflow: hidden;
+  appearance: none; background: #ebeff2; accent-color: var(--water-meter);
+}
+.lab-water-progress[data-tone=complete] { --water-meter: #2e7d32; }
+.lab-water-progress[data-tone=current] { --water-meter: var(--lab-amber); }
+.lab-water-progress[data-tone=past] { --water-meter: var(--lab-danger); }
+.lab-water-progress::-webkit-progress-bar { background: #ebeff2; }
+.lab-water-progress::-webkit-progress-value { background: var(--water-meter); }
+.lab-water-progress::-moz-progress-bar { background: var(--water-meter); }
+.lab-water-method-info { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.lab-water-method-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.lab-water-method-heading > strong { flex: 1 1 13rem; }
+.lab-water-method-count { font-variant-numeric: tabular-nums; }
+.lab-water-source { font-size: var(--lab-small); font-weight: 500; }
+.lab-water-method-body { padding: 6px 0; }
+.lab-water-group > h3 { font-weight: 700; }
+.lab-water-entry { gap: 6px; }
 .lab-water-status { display: inline-flex; width: fit-content; align-items: center; align-self: center; border-radius: 10px; padding: 4px 9px; font-size: var(--lab-small); }
-.lab-water-neutral { background: #eef1f4; color: #52606d; }
 .lab-water-control .lab-stack, .lab-water-manual .lab-stack { gap: 3px; }
 .lab-water-control .lab-button, .lab-water-manual .lab-button { white-space: normal; }
 .lab-water-manual span { overflow-wrap: anywhere; }
-#waterMenu .lab-water-status { grid-column: 1 / -1; }
 @media (max-width: 560px) {
-  #waterMenu { grid-template-columns: minmax(0, 1fr); }
-  #waterMenu .lab-tile { grid-template-columns: 36px minmax(0, 1fr); column-gap: 12px; min-height: 0; padding: 12px 32px 12px 12px; }
-  #waterMenu .lab-tile-icon { grid-row: 1 / 4; }
-  #waterMenu .lab-tile-title, #waterMenu .lab-tile-description, #waterMenu .lab-water-status { grid-column: 2; }
+  .lab-water-overview { grid-template-columns: minmax(0, 1fr); }
+  .lab-water-method-heading > strong { flex-basis: 100%; }
 }
 
 .lab-field { min-width: 0; display: grid; gap: 5px; color: #34443b; font-size: var(--lab-small); font-weight: 650; }

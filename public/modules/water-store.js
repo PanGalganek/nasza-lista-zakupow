@@ -1,4 +1,4 @@
-import { sixMeasurementsKey, waterAnnualId, waterCategory, waterDateInYear, waterPlan } from "./water-plan.js?v=33";
+import { sixMeasurementsKey, waterAnnualId, waterCategory, waterDateInYear, waterPlan } from "./water-plan.js?v=34";
 
 export function createWaterStore(db, firestore, online = () => navigator.onLine) {
   const { doc, runTransaction } = firestore;
@@ -8,8 +8,12 @@ export function createWaterStore(db, firestore, online = () => navigator.onLine)
     if (!online()) throw new Error("Brak połączenia. Twoje zmiany pozostają w otwartym formularzu.");
     const { year, origin, itemKey, planVersion } = selection;
     const plan = waterPlan(year);
-    if (!plan || (origin === "plan" && !plan.controls.some((control) => control.key === itemKey))) {
+    const control = plan?.controls.find((control) => control.key === itemKey);
+    if (!plan || (origin === "plan" && !control)) {
       throw new Error("Ta pozycja nie ma planu w wybranym roku.");
+    }
+    if (control && origin === "plan" && control.planVersion !== planVersion) {
+      throw new Error("Odśwież aplikację, aby użyć właściwej wersji kontroli.");
     }
     if (action.date && !waterDateInYear(action.date, year)) throw new Error("Wybierz datę z wyświetlanego roku.");
     const target = reference(waterAnnualId(year, origin, itemKey));

@@ -326,7 +326,9 @@ service cloud.firestore {
         && data.timestamp is int && data.revision is int && data.revision >= 1 && data.note is string && data.note.size() <= 300
         && (data.doneDate == null || validWaterDate(data.doneDate, data.year))
         && data.legacyTaskId is string
-        && ((data.origin == 'plan' && data.planVersion == 'woda-2026.1' && waterPlanKey(data.itemKey)
+        && ((data.origin == 'plan'
+            && ((data.planVersion == 'woda-2026.1' && waterPlanKey(data.itemKey))
+              || (data.planVersion == 'woda-2026.2' && data.itemKey == 'przewod-sc'))
             && !data.keys().hasAny(['taskName', 'taskCategory']))
           || (data.origin == 'manual' && data.planVersion == '' && data.legacyTaskId == ''
             && data.taskName is string && data.taskName.size() > 0 && data.taskName.size() <= 200

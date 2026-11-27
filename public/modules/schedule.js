@@ -1,8 +1,8 @@
-import { taskCategories } from "./constants.js?v=33";
-import { byId, createElement, iconButton, notify } from "./ui.js?v=33";
-import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=33";
-import { createWaterMonitoring } from "./water-monitoring.js?v=33";
-import { waterManualPrefix } from "./water-plan.js?v=33";
+import { taskCategories } from "./constants.js?v=34";
+import { byId, createElement, iconButton, notify } from "./ui.js?v=34";
+import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=34";
+import { createWaterMonitoring } from "./water-monitoring.js?v=34";
+import { waterManualPrefix } from "./water-plan.js?v=34";
 
 export function createScheduleModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
   const water = createWaterMonitoring({ db, firestore, navigation });
@@ -10,7 +10,6 @@ export function createScheduleModule({ db, firestore, registerSnapshot, reportLi
   const pending = new Set();
 
   function switchSubTab(lab, target) {
-    if (lab === "woda") return water.selectCategory(target);
     const capitalizedLab = lab.charAt(0).toUpperCase() + lab.slice(1);
     for (const category of taskCategories) {
       byId(`subContent${capitalizedLab}${category}`)?.classList.toggle("hidden", category !== target);
@@ -18,7 +17,8 @@ export function createScheduleModule({ db, firestore, registerSnapshot, reportLi
   }
 
   async function addTask(lab, category) {
-    const input = byId(`taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${category}`);
+    const input = byId(lab === "woda" ? "waterManualName" : `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${category}`);
+    if (lab === "woda") category = byId("waterManualCategory").value;
     const name = input.value.trim();
     if (!name || pending.has(input)) return;
     const submit = input.form.querySelector("button");

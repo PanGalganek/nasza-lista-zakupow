@@ -1,5 +1,5 @@
-import { icon, fillIcons } from "./icons.js?v=33";
-import { byId, createElement } from "./ui.js?v=33";
+import { icon, fillIcons } from "./icons.js?v=34";
+import { byId, createElement } from "./ui.js?v=34";
 
 const top = [
   ["inventory", "Odczynniki i wzorce", "Rejestr, magazyn i receptury", "flask", "blue", "Odczynniki"],
@@ -21,14 +21,6 @@ const stock = [
   ["archive", "Archiwum", "Zamknięte i wycofane partie", "archive", "slate", "archive"],
 ];
 
-const waterWork = [
-  ["Archiwalna", "Próbki archiwalne", "Kontrole powtórnych badań", "archive", "slate"],
-  ["Slepa", "Próbki ślepe", "Próbki nieznane analitykowi", "flask", "blue"],
-  ["Porownania", "Porównania wewnątrzlaboratoryjne", "Realizacja planu porównań", "arrows", "violet"],
-  ["Probkobranie", "Próbkobranie", "Kontrole według matryc", "drop", "cyan"],
-  ["Granice", "Granice oznaczalności i zakresu roboczego", "Dolne i górne granice metod", "target", "teal"],
-];
-
 const work = [
   ["Archiwalna", "Próba archiwalna", "Kontrola i harmonogram prób", "archive", "slate"],
   ["Slepa", "Próba ślepa", "Harmonogram prób ślepych", "flask", "blue"],
@@ -46,10 +38,12 @@ for (const [route, title, description, symbol, tone, screen] of top) {
 for (const [key, title, description, symbol, tone, section] of stock) {
   routes.set("inventory/" + key, { title, description, symbol, tone, screen: "Odczynniki", section });
 }
-for (const [group, screen, lab] of [["water", "Woda", "woda"], ["waste", "Scieki", "scieki"]]) {
-  for (const [key, title, description, symbol, tone] of (group === "water" ? waterWork : work)) {
-    routes.set(group + "/" + key, { title, description, symbol, tone, screen, lab, category: key });
-  }
+for (const [key, title, description, symbol, tone] of work) {
+  routes.set("waste/" + key, { title, description, symbol, tone, screen: "Scieki", lab: "scieki", category: key });
+}
+// Keep old Water bookmarks working with the method view.
+for (const key of ["Archiwalna", "Slepa", "Porownania", "Probkobranie", "Granice"]) {
+  routes.set("water/" + key, routes.get("water"));
 }
 
 function routeButton(route, className) {
@@ -66,11 +60,6 @@ function routeButton(route, className) {
     const arrow = createElement("span", "lab-tile-arrow");
     arrow.append(icon("chevron"));
     control.append(badge, createElement("span", "lab-tile-title", title), createElement("span", "lab-tile-description", description), arrow);
-    if (route.startsWith("water/")) {
-      const progress = createElement("span", "lab-water-status lab-water-neutral");
-      progress.dataset.waterProgress = routes.get(route).category;
-      control.append(progress);
-    }
   }
   return control;
 }
@@ -80,9 +69,7 @@ export function buildShell() {
   byId("labSidebar").append(...["home", ...top.map(([route]) => route)].map((key) => routeButton(key, "lab-side-link")));
   byId("homeTiles").append(...top.map(([route]) => routeButton(route, "lab-tile lab-tile-main")));
   byId("inventoryNav").append(...stock.map(([key]) => routeButton("inventory/" + key, "lab-tile")));
-  for (const lab of ["water", "waste"]) {
-    byId(lab + "Menu").append(...(lab === "water" ? waterWork : work).map(([key]) => routeButton(lab + "/" + key, "lab-tile")));
-  }
+  byId("wasteMenu").append(...work.map(([key]) => routeButton("waste/" + key, "lab-tile")));
 }
 
 export function syncFilters() {
@@ -121,9 +108,9 @@ export function renderShell(route, { inventory, chemicals, schedule, calendar, e
       inventory.switchSection(view.section);
     } else inventory.switchSection(view.section);
   }
-  if (top === "water" || top === "waste") {
-    byId(top + "Menu").hidden = route !== top;
-    schedule.switchSubTab(top === "water" ? "woda" : "scieki", view.category);
+  if (top === "waste") {
+    byId("wasteMenu").hidden = route !== top;
+    schedule.switchSubTab("scieki", view.category);
   }
   if (route === "calendar") calendar.render();
   if (route === "equipment") equipment.render();
