@@ -1,6 +1,6 @@
 
-async function request(options) {
-  const response = await fetch("/registry.json", options);
+async function request(path, options) {
+  const response = await fetch(path, options);
   const result = await response.json();
   if (!response.ok) {
     const error = new Error(result.message ?? "Nie udało się otworzyć rejestru.");
@@ -10,12 +10,21 @@ async function request(options) {
   return result;
 }
 
-export const loadRegistry = () => request();
+export const loadRegistry = () => request("/registry.json");
+export const loadPlan = year => request("/plans/" + year + ".json");
 
-export function saveRegistry(revision, command, operationId = crypto.randomUUID()) {
-  return request({
+function save(path, revision, command, operationId) {
+  return request(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ revision, operationId, command }),
   });
+}
+
+export function saveRegistry(revision, command, operationId = crypto.randomUUID()) {
+  return save("/registry.json", revision, command, operationId);
+}
+
+export function savePlan(year, revision, command, operationId) {
+  return save("/plans/" + year + ".json", revision, command, operationId);
 }

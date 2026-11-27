@@ -6,6 +6,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { emulatorStore } from "./emulator-store.mjs";
 import { RegistryError } from "./registry-model.js";
+import { validYear } from "./plan-model.js";
 
 const collection = "wzorcowanie";
 const types = new Set(["Wzorcowanie", "Sprawdzenie", "Kalibracja"]);
@@ -54,6 +55,8 @@ const assets = {
   "/equipment.js": ["equipment.js", "text/javascript"],
   "/api.js": ["api.js", "text/javascript"],
   "/registry-model.js": ["registry-model.js", "text/javascript"],
+  "/plan-model.js": ["plan-model.js", "text/javascript"],
+  "/planner.js": ["planner.js", "text/javascript"],
   "/register.js": ["register.js", "text/javascript"],
   "/model.js": ["model.js", "text/javascript"],
   "/style.css": ["style.css", "text/css"],
@@ -63,7 +66,7 @@ function sendJson(response, status, data) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8" }).end(JSON.stringify(data));
 }
 
-async function readCommand(request) {
+async function readCommand(request, limit) {
   if (!request.headers["content-type"]?.startsWith("application/json")) {
     throw new RegistryError("Oczekiwano danych JSON.", 415);
   }
@@ -71,7 +74,7 @@ async function readCommand(request) {
   let received = 0;
   for await (const chunk of request) {
     received += chunk.length;
-    if (received > 200_000) throw new RegistryError("Żądanie zapisu jest zbyt duże.", 413);
+    if (received > limit) throw new RegistryError("Żądanie zapisu jest zbyt duże.", 413);
     chunks.push(chunk);
   }
   try {
@@ -104,20 +107,28 @@ async function run(path, rawPort = "4388") {
       return;
     }
     const relative = request.url.split("?")[0];
-    if (relative === "/registry.json") {
+    const planRoute = relative.match(/^\/plans\/(\d{4})\.json$/);
+    const year = Number(planRoute?.[1]);
+    if (planRoute && !validYear(year)) {
+      sendJson(response, 400, { message: "Nieprawidłowy rok harmonogramu." });
+      return;
+    }
+    if (relative === "/registry.json" || planRoute) {
       if (request.method === "GET" || request.method === "POST") {
         if (request.method === "POST" && request.headers.origin !== "http://127.0.0.1:" + port) {
           response.writeHead(403).end();
           return;
         }
         try {
-          const state = request.method === "GET" ? await store.load() : await store.save(await readCommand(request));
+          const load = planRoute ? () => store.loadPlan(year) : store.load;
+          const save = planRoute ? input => store.savePlan(year, input) : store.save;
+          const state = request.method === "GET" ? await load() : await save(await readCommand(request, planRoute ? 450_000 : 200_000));
           sendJson(response, 200, state);
         } catch (error) {
           if (error instanceof RegistryError) sendJson(response, error.status, { message: error.message });
           else {
             console.error(error.message);
-            sendJson(response, 503, { message: "Nie zapisano zmian w lokalnym rejestrze." });
+            sendJson(response, 503, { message: "Lokalny zapis danych jest niedostępny." });
           }
         }
         return;

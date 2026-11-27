@@ -53,13 +53,43 @@
       </section>
       <section id="schedule-panel" hidden aria-label="Harmonogram sprzętu">
         <div class="card panel registry-toolbar">
-          <div>
-            <h2>Urządzenia dostępne do planowania</h2>
-            <p class="muted">Lista pokazuje aktywny sprzęt i czynności pobrane z rejestru. Plan roczny będzie dostępny w następnym etapie.</p>
+          <div class="planner-heading">
+            <div><h2>Harmonogram roczny</h2><p id="plan-status" class="muted"></p></div>
+            <form id="plan-year-form" class="year-picker">
+              <label>Rok <input id="plan-year" type="number" min="2000" max="2199" step="1" required></label>
+              <button type="submit">Pokaż rok</button>
+            </form>
           </div>
-          <p class="muted" id="schedule-summary"></p>
+          <div class="actions">
+            <button type="button" id="plan-start" class="primary" hidden>Przygotuj harmonogram</button>
+            <button type="button" id="plan-edit" class="primary" hidden>Edytuj harmonogram</button>
+            <button type="button" id="plan-save" hidden>Zapisz szkic</button>
+            <button type="button" id="plan-approve" class="primary" hidden>Zatwierdź harmonogram</button>
+            <button type="button" id="plan-close" hidden>Zakończ edycję</button>
+            <button type="button" id="plan-reload" hidden>Wczytaj aktualną wersję</button>
+          </div>
+          <p id="plan-feedback" class="feedback" role="status" aria-live="polite"></p>
         </div>
-        <div class="preview-grid" id="schedule-devices"></div>
+        <div id="plan-content" class="stack" hidden>
+          <div class="card panel stack">
+            <h3 id="plan-total"></h3>
+            <ol id="plan-months" class="plan-counts" aria-label="Liczba terminów w miesiącach"></ol>
+          </div>
+          <div class="card panel fields">
+            <label>Szukaj sprzętu <input id="plan-query" type="search" placeholder="Nazwa lub numer ewidencyjny"></label>
+            <label>Rodzaj czynności <select id="plan-kind"></select></label>
+          </div>
+          <div id="plan-desktop" class="card plan-desktop"></div>
+          <div id="plan-mobile" class="plan-mobile stack">
+            <label class="card panel">Urządzenie <select id="plan-device"></select></label>
+            <div id="plan-mobile-rows" class="stack"></div>
+          </div>
+        </div>
+        <details class="card panel plan-source">
+          <summary id="plan-source-title">Harmonogram źródłowy</summary>
+          <p class="muted">Kopia zawiera miesiące planowane i daty wykonania. Rok źródłowego planu jest nieustalony, więc pozycje są dostępne tutaj.</p>
+          <div id="plan-source-rows" class="stack"></div>
+        </details>
       </section>
     </div>
   </main>
@@ -98,6 +128,20 @@
       <div class="actions form-actions">
         <button type="button" id="cancel-device">Anuluj</button>
         <button type="submit" id="save-device" class="primary">Zapisz urządzenie</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="plan-dialog" aria-labelledby="plan-dialog-title">
+    <form id="plan-dialog-form" class="stack">
+      <h2 id="plan-dialog-title"></h2>
+      <p id="plan-dialog-item" class="muted"></p>
+      <label>Termin <select id="plan-dialog-from" required></select></label>
+      <label id="plan-dialog-target">Nowy miesiąc <select id="plan-dialog-to" required></select></label>
+      <label id="plan-dialog-date-field">Rzeczywista data wykonania <input id="plan-dialog-date" type="date" required></label>
+      <p id="plan-dialog-error" class="form-error" role="status"></p>
+      <div class="actions form-actions">
+        <button type="button" id="plan-dialog-cancel">Anuluj</button>
+        <button type="submit" class="primary" id="plan-dialog-save"></button>
       </div>
     </form>
   </dialog>

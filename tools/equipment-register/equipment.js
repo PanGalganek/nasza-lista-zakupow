@@ -1,7 +1,8 @@
 
 import { loadRegistry, saveRegistry } from "./api.js";
 import { searchText } from "./model.js";
-import { needsDetails, scheduleEquipment } from "./registry-model.js";
+import { needsDetails } from "./registry-model.js";
+import { annualPlanner } from "./planner.js";
 
 const byId = id => document.getElementById(id);
 const dialog = byId("device-dialog");
@@ -13,6 +14,7 @@ let editor;
 let busy = false;
 let failedRefresh = false;
 let operation;
+const planner = annualPlanner();
 
 function element(tag, text, className) {
   const node = document.createElement(tag);
@@ -87,26 +89,11 @@ function renderRegistry() {
     : [element("p", "Brak urządzeń dla wybranych filtrów.", "empty card panel")]));
 }
 
-function renderSchedule() {
-  const devices = sorted(scheduleEquipment(registry.state.equipment));
-  byId("schedule-summary").textContent = devices.length + " aktywnych kart sprzętu · "
-    + devices.reduce((count, device) => count + device.activities.length, 0) + " aktywnych czynności";
-  byId("schedule-devices").replaceChildren(...devices.map(device => {
-    const card = element("article", undefined, "card panel");
-    card.dataset.scheduleDeviceId = device.id;
-    card.append(element("h3", device.name), element("p", device.number || "Brak numeru ewidencyjnego", "muted"));
-    if (device.needsDetails) card.append(statusChip("Do uzupełnienia", "manual"));
-    card.append(activityList(device.activities));
-    return card;
-  }));
-  if (!devices.length) byId("schedule-devices").append(element("p", "Brak aktywnych urządzeń.", "empty"));
-}
-
 function render() {
   const mapped = Object.keys(registry.state.mapping.assignments).length;
   byId("overview").textContent = "Rejestr lokalny · " + mapped + " zachowanych pozycji źródłowych";
   if (currentPanel === "registry") renderRegistry();
-  else renderSchedule();
+  else planner.show(registry.state.equipment);
 }
 
 function appendActivity(activity) {
@@ -244,10 +231,13 @@ for (const control of document.querySelectorAll("[data-panel]")) {
       byId(tab.dataset.panel + "-panel").hidden = tab !== control;
     }
     render();
+    if (currentPanel === "schedule") planner.refresh();
   };
 }
 
 if (await refresh()) byId("workspace").hidden = false;
 setInterval(async () => {
-  if (document.visibilityState === "visible" && await refresh()) byId("workspace").hidden = false;
+  if (document.visibilityState !== "visible") return;
+  if (await refresh()) byId("workspace").hidden = false;
+  if (currentPanel === "schedule") await planner.refresh();
 }, 3000);
