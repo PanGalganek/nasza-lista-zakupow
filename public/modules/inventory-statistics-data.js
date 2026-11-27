@@ -1,7 +1,7 @@
-import { parseLocalDate } from "../utils.js?v=35";
-import { warsawDate } from "./inventory-alerts.js?v=35";
-import { outgoingAmount } from "./inventory-history.js?v=35";
-import { units, validLots } from "./inventory-quantity.js?v=35";
+import { parseLocalDate } from "../utils.js?v=36";
+import { warsawDate } from "./inventory-alerts.js?v=36";
+import { outgoingAmount } from "./inventory-history.js?v=36";
+import { units, validLots } from "./inventory-quantity.js?v=36";
 
 const dayMs = 86_400_000;
 const dayNumber = (date) => Date.parse(date) / dayMs;

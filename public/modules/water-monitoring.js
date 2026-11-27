@@ -1,13 +1,13 @@
-import { formatPolishDate } from "../utils.js?v=35";
-import { warsawDate } from "./inventory-alerts.js?v=35";
-import { matchesInventorySearch } from "./inventory-quantity.js?v=35";
-import { button, details, field, input } from "./inventory-ui.js?v=35";
-import { byId, createElement, notify, setPositionOptions } from "./ui.js?v=35";
-import { createWaterStore } from "./water-store.js?v=35";
+import { formatPolishDate } from "../utils.js?v=36";
+import { warsawDate } from "./inventory-alerts.js?v=36";
+import { matchesInventorySearch } from "./inventory-quantity.js?v=36";
+import { button, details, field, input } from "./inventory-ui.js?v=36";
+import { byId, createElement, notify, setPositionOptions } from "./ui.js?v=36";
+import { createWaterStore } from "./water-store.js?v=36";
 import {
-  firstWaterYear, sixMeasurementsKey, waterAnnualId, waterCategory, waterCompleted, waterManualPrefix,
+  firstWaterYear, sixMeasurementsKey, waterAnnualId, waterCategory, waterCompleted,
   waterPlan, waterSamplingLabel,
-} from "./water-plan.js?v=35";
+} from "./water-plan.js?v=36";
 
 const categories = {
   Archiwalna: "Próbki archiwalne",
@@ -30,7 +30,6 @@ function controlLabel({ category, boundary, limit, matrix }) {
 export function createWaterMonitoring({ db, firestore, navigation }) {
   const store = createWaterStore(db, firestore);
   const methods = byId("waterMethods");
-  const manualPanel = byId("waterManual");
   const yearField = byId("waterYear");
   const searchField = byId("waterSearch");
   const position = byId("waterPosition");
@@ -51,8 +50,6 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     cards = [];
     selectedMethod = "";
     methods.replaceChildren();
-    manualPanel.open = false;
-    manualPanel.querySelector("form").reset();
     searchField.value = "";
     categoryFilter.value = "";
     outstanding.checked = false;
@@ -72,8 +69,7 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
   }
 
   function update(data) {
-    records = data.filter((record) => record.lab === "woda"
-      && (record.category === waterCategory || record.id.startsWith(waterManualPrefix)));
+    records = data.filter((record) => record.lab === "woda" && record.category === waterCategory && record.origin === "plan");
     loaded = true;
     const scrollPosition = window.scrollY;
     render();
@@ -166,7 +162,7 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     element.className = "lab-water-status lab-notice-" + (done ? "ok" : finishedYear ? "danger" : "warning");
   }
 
-  function paintRow(row, label, title, selection, state, alternate = false, completed = Boolean(state?.doneDate)) {
+  function paintRow(row, label, title, selection, state, alternate, completed) {
     const caption = createElement("div", "lab-stack");
     caption.append(createElement("strong", "", label));
     if (state?.doneDate) caption.append(createElement("span", "lab-muted", dateLabel(state.doneDate)));
@@ -264,25 +260,6 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     return Number(entry.done);
   }
 
-  function renderManual(yearRows, definitions) {
-    const list = byId("waterManualList");
-    list.replaceChildren();
-    const definitionIds = new Set(definitions.map(({ id }) => id));
-    const archived = [...yearRows.values()]
-      .filter((record) => record.origin === "manual" && record.itemKey.startsWith(waterManualPrefix)
-        && record.taskName && !definitionIds.has(record.itemKey))
-      .map((record) => ({ id: record.itemKey, name: record.taskName, category: record.taskCategory }));
-    const tasks = [...definitions, ...archived];
-    if (!tasks.length) list.append(createElement("p", "lab-empty", "Brak zadań ręcznych."));
-    for (const task of tasks) {
-      const row = createElement("div", "lab-data-row lab-water-manual");
-      const state = yearRows.get(waterAnnualId(year, "manual", task.id));
-      paintRow(row, task.name, task.name, { year, origin: "manual", itemKey: task.id }, state);
-      row.firstElementChild.append(createElement("span", "lab-muted", categories[task.category]));
-      list.append(row);
-    }
-  }
-
   function render() {
     const latestYear = currentYear();
     if (yearField.options.length !== latestYear - firstWaterYear + 1) {
@@ -294,7 +271,6 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
       }
     }
     yearField.value = year;
-    manualPanel.hidden = !loaded;
     if (!loaded) {
       byId("waterTotal").textContent = "Wczytywanie harmonogramu…";
       byId("waterProgress").value = 0;
@@ -309,7 +285,7 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
       const selected = cards.find(({ key }) => key === selectedMethod);
       if (selected) selected.box.open = true;
     }
-    const yearRows = new Map(records.filter((record) => record.category === waterCategory && Number(record.year) === year)
+    const yearRows = new Map(records.filter((record) => Number(record.year) === year)
       .map((record) => [record.id, record]));
     let done = 0;
     for (const card of cards) {
@@ -327,7 +303,6 @@ export function createWaterMonitoring({ db, firestore, navigation }) {
     const total = plan.controls.length;
     byId("waterTotal").textContent = "Wykonano " + done + " z " + total + " kontroli · " + percent(done, total) + "%";
     byId("waterProgress").value = percent(done, total);
-    renderManual(yearRows, records.filter((record) => record.category !== waterCategory));
     applyFilters();
   }
 

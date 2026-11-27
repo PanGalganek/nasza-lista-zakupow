@@ -1,7 +1,6 @@
-import { parseLocalDate } from "../utils.js?v=35";
+import { parseLocalDate } from "../utils.js?v=36";
 
 export const waterCategory = "WodaRoczna";
-export const waterManualPrefix = "woda_reczne_";
 export const firstWaterYear = 2026;
 export const sixMeasurementsKey = "siar-g-dol";
 export const waterMatrices = { spo: "Woda do spożycia", pod: "Woda podziemna", pow: "Woda powierzchniowa", sc: "Ścieki" };

@@ -1,5 +1,5 @@
-import { chemicalCategory, formatPolishDate } from "../utils.js?v=35";
-import { formatQuantity, normalizeInventorySearch, units } from "./inventory-quantity.js?v=35";
+import { chemicalCategory, formatPolishDate } from "../utils.js?v=36";
+import { formatQuantity, normalizeInventorySearch, units } from "./inventory-quantity.js?v=36";
 
 export function standardKind(item) {
   if (chemicalCategory(item) === "Odczynniki") return "";
