@@ -455,11 +455,61 @@ test("unknown collections and other access records are denied", async () => {
 
 const waterFirestore = { doc, runTransaction };
 const waterSelection = (key, year = 2026, extra = {}) => ({
-  year, itemKey: key, origin: "plan", planVersion: waterPlan(year).version, ...extra,
+  year, itemKey: key, origin: "plan", planVersion: waterPlan(year).controls.find((control) => control.key === key)?.planVersion, ...extra,
 });
 const waterDoc = (db, { year, origin, itemKey }) => doc(db, "harmonogram", waterAnnualId(year, origin, itemKey));
 const finishWater = (date, expectedDate = null, note = "", expectedNote = "") =>
   ({ kind: "finish", date, expectedDate, note, expectedNote });
+
+test("all 101 water controls are writable under their own catalogue version", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createWaterStore(db, waterFirestore, () => true);
+  const controls = waterPlan(2026).controls;
+  assert.equal(controls.length, 101);
+  for (const { key } of controls) await assertSucceeds(store.save(waterSelection(key), finishWater("2026-09-16")));
+  assert.equal((await getDocs(collection(db, "harmonogram"))).size, 101);
+});
+
+test("conductivity in wastewater uses the new version while v33 edits remain compatible", async () => {
+  const db = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const store = createWaterStore(db, waterFirestore, () => true);
+  const old = waterSelection("przewod-stud");
+  await store.save(old, finishWater("2026-09-16", null, "Zapis v33"));
+  const original = (await getDoc(waterDoc(db, old))).data();
+  const newControl = waterSelection("przewod-sc");
+  const target = waterDoc(db, newControl);
+  await assertFails(setDoc(target, { ...original, itemKey: newControl.itemKey }));
+  await assertSucceeds(store.save(newControl, finishWater("2026-09-20")));
+  const saved = (await getDoc(target)).data();
+  assert.equal(saved.planVersion, "woda-2026.2");
+  await assertFails(deleteDoc(target));
+  await assertFails(setDoc(target, { ...original, itemKey: newControl.itemKey, revision: 2 }));
+  await assertFails(updateDoc(target, { doneDate: "2026-09-21" }));
+  await assertFails(updateDoc(waterDoc(db, old), { planVersion: "woda-2026.2", revision: 2 }));
+  await assertSucceeds(store.save(old, finishWater("2026-09-17", "2026-09-16", "Korekta", "Zapis v33")));
+  assert.deepEqual((await getDoc(target)).data(), saved);
+  assert.equal((await getDoc(waterDoc(db, old))).data().planVersion, "woda-2026.1");
+});
+
+test("two clients cannot silently overwrite a conductivity correction", async () => {
+  const firstDb = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const secondDb = testEnvironment.authenticatedContext(allowedUid).firestore();
+  const first = createWaterStore(firstDb, waterFirestore, () => true);
+  const second = createWaterStore(secondDb, waterFirestore, () => true);
+  const selection = waterSelection("przewod-sc");
+  await first.save(selection, finishWater("2026-09-20", null, "Zapis pierwotny"));
+  const results = await Promise.allSettled([
+    first.save(selection, finishWater("2026-10-01", "2026-09-20", "Pierwsza korekta", "Zapis pierwotny")),
+    second.save(selection, finishWater("2026-10-02", "2026-09-20", "Druga korekta", "Zapis pierwotny")),
+  ]);
+  assert.equal(results.filter(({ status }) => status === "fulfilled").length, 1);
+  const committed = (await getDoc(waterDoc(firstDb, selection))).data();
+  assert.equal(committed.revision, 2);
+  assert.equal(committed.note, results[0].status === "fulfilled" ? "Pierwsza korekta" : "Druga korekta");
+  await assert.rejects(second.save(selection, finishWater("2026-10-03", "2026-09-20", "Nieaktualny formularz", "Zapis pierwotny")),
+    /na innym urządzeniu/);
+  assert.deepEqual((await getDoc(waterDoc(firstDb, selection))).data(), committed);
+});
 
 test("water annual rules protect against v31 partial writes, replacement and deletion", async () => {
   const db = testEnvironment.authenticatedContext(allowedUid).firestore();
