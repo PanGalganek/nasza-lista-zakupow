@@ -1,12 +1,11 @@
-import { taskCategories } from "./constants.js?v=35";
-import { byId, createElement, iconButton, notify } from "./ui.js?v=35";
-import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=35";
-import { createWaterMonitoring } from "./water-monitoring.js?v=35";
-import { waterManualPrefix } from "./water-plan.js?v=35";
+import { taskCategories } from "./constants.js?v=36";
+import { byId, createElement, iconButton, notify } from "./ui.js?v=36";
+import { formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=36";
+import { createWaterMonitoring } from "./water-monitoring.js?v=36";
 
 export function createScheduleModule({ db, firestore, registerSnapshot, reportListenerError, navigation }) {
   const water = createWaterMonitoring({ db, firestore, navigation });
-  const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, updateDoc } = firestore;
+  const { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } = firestore;
   const pending = new Set();
 
   function switchSubTab(lab, target) {
@@ -16,18 +15,16 @@ export function createScheduleModule({ db, firestore, registerSnapshot, reportLi
     }
   }
 
-  async function addTask(lab, category) {
-    const input = byId(lab === "woda" ? "waterManualName" : `taskInput${lab.charAt(0).toUpperCase() + lab.slice(1)}${category}`);
-    if (lab === "woda") category = byId("waterManualCategory").value;
+  async function addTask(category) {
+    const input = byId(`taskInputScieki${category}`);
     const name = input.value.trim();
     if (!name || pending.has(input)) return;
     const submit = input.form.querySelector("button");
     pending.add(input);
     submit.disabled = true;
     try {
-      const task = { name, lab, category, doneDate: null, timestamp: Date.now() };
-      if (lab === "woda") await setDoc(doc(db, "harmonogram", waterManualPrefix + crypto.randomUUID()), task);
-      else await addDoc(collection(db, "harmonogram"), task);
+      const task = { name, lab: "scieki", category, doneDate: null, timestamp: Date.now() };
+      await addDoc(collection(db, "harmonogram"), task);
       input.value = "";
       notify("Dodano zadanie.");
     } finally { pending.delete(input); submit.disabled = false; }

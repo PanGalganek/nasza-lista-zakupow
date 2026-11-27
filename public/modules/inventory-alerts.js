@@ -1,9 +1,9 @@
-import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=35";
-import { createButton, createElement } from "./ui.js?v=35";
-import { stockLevel } from "./inventory-quantity.js?v=35";
-import { productId } from "./inventory-store.js?v=35";
-import { indexCatalog, orderItemKey, standardKind } from "./inventory-items.js?v=35";
-import { batchLabel, button, details, orderBadge } from "./inventory-ui.js?v=35";
+import { calculateCalendarDays, formatPolishDate, groupChemicalItems, parseLocalDate } from "../utils.js?v=36";
+import { createButton, createElement } from "./ui.js?v=36";
+import { stockLevel } from "./inventory-quantity.js?v=36";
+import { productId } from "./inventory-store.js?v=36";
+import { indexCatalog, orderItemKey, standardKind } from "./inventory-items.js?v=36";
+import { batchLabel, button, details, orderBadge } from "./inventory-ui.js?v=36";
 
 const categories = [
   ["expired", "Przekroczony termin ważności"],
