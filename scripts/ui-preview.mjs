@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { account, seed } from "./ui-preview-fixtures.mjs";
+import { stageEquipment } from "./equipment-v38-stage.mjs";
 
 const project = "demo-elab-ui";
 const authHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
@@ -15,7 +16,7 @@ assert.equal(process.env.GCLOUD_PROJECT, project, "Użyj identyfikatora demonstr
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../public");
 const port = Number(process.env.ELAB_UI_PORT || 4173);
 const nested = "/nasza-lista-zakupow/";
-const types = { ".css": "text/css", ".js": "text/javascript", ".html": "text/html", ".json": "application/json", ".svg": "image/svg+xml" };
+const types = { ".css": "text/css", ".js": "text/javascript", ".html": "text/html", ".json": "application/json", ".svg": "image/svg+xml", ".png": "image/png" };
 
 function replaceRequired(source, search, replacement) {
   const modified = source.replace(search, replacement);
@@ -34,7 +35,9 @@ connectFirestoreEmulator(db, "127.0.0.1", ${Number(firestoreHost.split(":")[1])}
 
 await readFile(resolve(root, "styles.css"));
 demoApplication(await readFile(resolve(root, "app.js"), "utf8"));
-await seed(project, authHost, firestoreHost);
+const equipmentBackup = process.env.ELAB_EQUIPMENT_BACKUP;
+await seed(project, authHost, firestoreHost, { legacyEquipment: !equipmentBackup });
+if (equipmentBackup) await stageEquipment(equipmentBackup, { host: firestoreHost, projectId: project, mapFile: process.env.ELAB_EQUIPMENT_MAPPING });
 
 createServer(async (request, response) => {
   if (request.method !== "GET" && request.method !== "HEAD") { response.writeHead(405).end(); return; }

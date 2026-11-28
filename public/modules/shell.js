@@ -1,5 +1,5 @@
-import { icon, fillIcons } from "./icons.js?v=37";
-import { byId, createElement } from "./ui.js?v=37";
+import { icon, fillIcons } from "./icons.js?v=38.1";
+import { byId, createElement } from "./ui.js?v=38.1";
 
 const top = [
   ["inventory", "Odczynniki i wzorce", "Rejestr, magazyn i receptury", "flask", "blue", "Odczynniki"],
@@ -37,6 +37,9 @@ for (const [route, title, description, symbol, tone, screen] of top) {
 }
 for (const [key, title, description, symbol, tone, section] of stock) {
   routes.set("inventory/" + key, { title, description, symbol, tone, screen: "Odczynniki", section });
+}
+for (const [key, title] of [["registry","Rejestr sprzętu"],["schedule","Harmonogram sprzętu"],["execution","Realizacja harmonogramu"],["history","Historia sprzętu"]]) {
+  routes.set("equipment/" + key, { title, screen: "Wzorcowanie" });
 }
 for (const [key, title, description, symbol, tone] of work) {
   routes.set("waste/" + key, { title, description, symbol, tone, screen: "Scieki", lab: "scieki", category: key });
@@ -113,7 +116,7 @@ export function renderShell(route, { inventory, chemicals, schedule, calendar, e
     schedule.switchSubTab("scieki", view.category);
   }
   if (route === "calendar") calendar.render();
-  if (route === "equipment") equipment.render();
+  equipment.render(top === "equipment" ? route : null);
 }
 
 export function bindShell() {

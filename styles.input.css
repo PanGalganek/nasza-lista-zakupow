@@ -2,6 +2,8 @@
 @source "./public/index.html";
 @source "./public/app.js";
 @source "./public/modules";
+@source "./public/equipment";
+@source not "./tools/equipment-register";
 
 :root {
   color-scheme: light;
@@ -385,3 +387,83 @@ body:has(.lab-dialog[open]) { overflow: hidden; }
   .lab-mobile-bar .lab-button > span:not(.lab-icon-slot) { font-size: .8125rem; }
 }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto !important; transition-duration: 0s !important; } }
+
+
+/* Equipment panels share the application's surfaces and controls. */
+#equipmentModeNotice:empty, #eq-message:empty { display: none; }
+#equipmentV38 .lab-button[aria-pressed=true], #equipmentV38 .plan-month:has(input:checked) {
+  color: var(--lab-primary-strong); background: var(--lab-blue-soft); border-color: #b8cdfb;
+}
+#equipmentV38 .stack { display: grid; gap: 9px; }
+#equipmentV38 :is(.card,.entry) { background: var(--lab-surface); border: 1px solid var(--lab-border); border-radius: var(--lab-card-radius); min-width: 0; }
+#equipmentV38 .panel { padding: clamp(12px,2vw,19px); }
+#equipmentV38 .entry { padding: 10px; }
+#equipmentV38 .muted { color: var(--lab-muted); }
+#equipmentV38 h3 { font-weight: 720; }
+#equipmentV38 .registry-toolbar { display: grid; gap: 12px; margin-bottom: 12px; }
+#equipmentV38 :is(.actions,.editor-heading,.planner-heading,.year-picker) { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#equipmentV38 :is(.editor-heading,.planner-heading) { justify-content: space-between; }
+#equipmentV38 .form-actions { justify-content: flex-end; }
+#equipmentV38 .fields { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 10px; }
+#equipmentV38 label { display: grid; gap: 4px; min-width: 0; }
+#equipmentV38 .check { display: flex; align-items: center; gap: 8px; min-height: var(--lab-touch); }
+#equipmentV38 .check input { flex: 0 0 auto; }
+#equipmentV38 input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--lab-primary); }
+#equipmentV38 :is(input:not([type=checkbox]),select,textarea) { width: 100%; min-height: var(--lab-touch); padding: 7px 10px; border: 1px solid var(--lab-border-strong); border-radius: var(--lab-input-radius); background: #fff; }
+#equipmentV38 :is(button):not(.lab-button) { border: 1px solid var(--lab-border-strong); background: #fff; border-radius: var(--lab-input-radius); padding: 6px 11px; min-height: var(--lab-touch); font-weight: 650; }
+#equipmentV38 button.primary { color: #fff; background: var(--lab-primary-strong); border-color: var(--lab-primary-strong); }
+#equipmentV38 button:disabled { opacity: .55; cursor: not-allowed; }
+#equipmentV38 .list-heading { display: flex; gap: 9px; margin-block: 10px; }
+#equipmentV38 :is(.device-card,.execution-row) { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: start; gap: 12px; }
+#equipmentV38 .activity-list { display: flex; gap: 5px; flex-wrap: wrap; }
+#equipmentV38 :is(.activity-list li,.pill) { background: var(--lab-blue-soft); border-radius: 12px; padding: 3px 9px; width: fit-content; font-size: .875rem; }
+#equipmentV38 .pill.approved { background: #ebf3ec; color: #225c26; }
+#equipmentV38 .pill.manual { background: #fef6df; color: var(--lab-warning-text); }
+#equipmentV38 .registry-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+#equipmentV38 :is(.form-error,[data-tone=error]) { color: var(--lab-danger); }
+#equipmentV38 .form-error:empty { display: none; }
+#equipmentV38 .year-picker input { width: 100px; }
+#equipmentV38 :is(.plan-counts,.plan-grid) { display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); gap: 4px; }
+#equipmentV38 .plan-counts li, #equipmentV38 .execution-progress > div { padding: 6px; background: var(--lab-blue-soft); border-radius: 8px; }
+#equipmentV38 .plan-counts li { display: grid; text-align: center; }
+#equipmentV38 .plan-desktop { overflow: auto; max-height: 72vh; }
+#equipmentV38 .plan-table { width: 100%; min-width: 770px; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+#equipmentV38 .plan-table :is(th,td) { border-bottom: 1px solid var(--lab-border); text-align: center; padding: 4px; overflow-wrap: anywhere; }
+#equipmentV38 .plan-table th:first-child { width: 16%; }
+#equipmentV38 .plan-table th:nth-child(2), #equipmentV38 .plan-table th:last-child { width: 12%; }
+#equipmentV38 .plan-table thead th { position: sticky; top: 0; background: #f7f9fd; z-index: 1; }
+#equipmentV38 .plan-table small { display: block; }
+#equipmentV38 .plan-table td button { font-size: .78rem; min-height: 34px; padding: 3px 5px; }
+#equipmentV38 .plan-month { min-height: 40px; display: grid; place-items: center; border-radius: 8px; }
+#equipmentV38 :is(.plan-done,.plan-done-date) { color: var(--lab-ok); }
+#equipmentV38 .plan-done-date { font-size: .7rem; }
+#equipmentV38 .plan-row-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+#equipmentV38 .plan-mobile { display: none; }
+#equipmentV38 .plan-source { margin-top: 12px; }
+#equipmentV38 .execution-period { grid-template-columns: minmax(0,.7fr) minmax(0,1fr) auto; align-items: end; }
+#equipmentV38 .execution-progress { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+#equipmentV38 progress { display: block; width: 100%; height: 8px; margin-top: 5px; appearance: none; border-radius: 9px; overflow: hidden; background: #dce6f3; }
+#equipmentV38 progress::-webkit-progress-bar { background: #dce6f3; }
+#equipmentV38 progress::-webkit-progress-value { background: var(--lab-primary); }
+#equipmentV38 progress::-moz-progress-bar { background: var(--lab-primary); }
+#equipmentV38 .warning-term { display: grid; text-align: left; }
+#equipmentV38 :is(.exec-fold,.plan-source) summary { font-weight: 700; padding-block: 8px; cursor: pointer; }
+#equipmentV38 dialog { margin: auto; width: min(720px,calc(100% - 24px)); max-height: calc(100dvh - 24px); padding: 15px; border: 1px solid var(--lab-border); border-radius: var(--lab-card-radius); color: var(--lab-text); }
+#equipmentV38 dialog::backdrop { background: #15223d66; }
+#equipmentV38 #copy-form { max-height: calc(100dvh - 56px); grid-template-rows: minmax(0,1fr) auto; }
+#equipmentV38 #copy-dialog { overflow: hidden; }
+#equipmentV38 .copy-body { overflow: auto; scrollbar-gutter: stable; padding: 4px; }
+#equipmentV38 .copy-choice, #equipmentV38 .copy-footer { border-top: 1px solid var(--lab-border); padding-top: 6px; }
+#equipmentV38 .copy-choice small { display: block; }
+#equipmentV38 .copy-device legend { font-weight: 700; overflow-wrap: anywhere; }
+#equipmentV38[data-readonly=true] :is(#plan-start,#plan-edit,#plan-copy,#plan-save,#plan-approve,.execution-row button,.plan-row-actions button) { display: none; }
+@media (max-width: 1100px) {
+  #equipmentV38 .plan-desktop { display: none; }
+  #equipmentV38 .plan-mobile { display: grid; }
+}
+@media (max-width: 650px) {
+  #equipmentV38 :is(.device-card,.execution-row,.fields) { grid-template-columns: minmax(0,1fr); }
+  #equipmentV38 .execution-period { grid-template-columns: minmax(0,.7fr) minmax(0,1fr); }
+  #equipmentV38 :is(.plan-counts,.plan-grid) { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  #equipmentV38 .plan-grid .plan-month { background: #f3f5f8; min-height: 62px; }
+}

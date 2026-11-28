@@ -1,0 +1,122 @@
+
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rejestr sprzętu · e-Laboratorium</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/register.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell brandbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">e</span>
+        <a href="/" class="brand-link">e-Laboratorium · Rejestr sprzętu</a>
+      </div>
+      <span class="local">Kreator lokalny</span>
+    </div>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <div>
+        <h1>Porządkowanie przypisań</h1>
+        <p id="source-info">Odczytywanie kopii harmonogramu…</p>
+      </div>
+      <div class="actions">
+        <button type="button" id="reload-register" disabled>Wczytaj aktualne przypisania</button>
+        <button type="button" id="legacy-draft" hidden>Wczytaj wcześniejszy szkic</button>
+        <button type="button" id="save-draft" class="primary" disabled>Zapisz przypisania</button>
+        <button type="button" id="export-register" disabled>Eksportuj przypisanie JSON</button>
+      </div>
+    </section>
+    <p id="message" class="feedback" role="status" aria-live="polite"></p>
+    <div id="workspace" hidden>
+      <section class="metrics" aria-label="Podsumowanie rejestru">
+        <div class="card metric progress-card">
+          <span>Zatwierdzone pozycje</span>
+          <strong id="approved-count">—</strong>
+          <progress id="approval-progress" aria-label="Postęp zatwierdzania pozycji"></progress>
+        </div>
+        <div class="card metric">
+          <span>Proponowane grupy</span>
+          <strong id="groups-count">—</strong>
+          <small id="pending-count"></small>
+        </div>
+        <div class="card metric">
+          <span>Zapisane wykonania</span>
+          <strong id="completed-count">—</strong>
+          <small>Daty z harmonogramu źródłowego</small>
+        </div>
+      </section>
+
+      <nav class="nav" aria-label="Widoki kreatora">
+        <button type="button" data-view="assignments" aria-pressed="true">Przypisania</button>
+        <button type="button" data-view="sources" aria-pressed="false">Pozycje źródłowe</button>
+        <button type="button" data-view="preview" aria-pressed="false">Podgląd rejestru</button>
+      </nav>
+
+      <div class="card filters">
+        <label>Wyszukiwanie
+          <input type="search" id="search" placeholder="Nazwa, numer ewidencyjny lub ID wpisu">
+        </label>
+        <label class="check"><input id="pending-only" type="checkbox"> Tylko niezweryfikowane</label>
+      </div>
+
+      <section id="assignments-view" class="workgrid">
+        <aside class="card panel" aria-label="Lista grup urządzeń">
+          <h2>Urządzenia <span id="visible-groups" class="muted"></span></h2>
+          <div id="group-list" class="group-list"></div>
+        </aside>
+        <article id="editor" class="card panel" aria-label="Wybrana grupa">
+          <p id="empty-editor" class="muted">Wybierz grupę, aby sprawdzić przypisane pozycje.</p>
+          <div id="group-editor" hidden>
+            <div class="editor-heading">
+              <div>
+                <h2 id="active-name" tabindex="-1"></h2>
+                <p id="active-description" class="muted"></p>
+              </div>
+              <button id="approve-group" type="button"></button>
+            </div>
+            <p class="duplicate-note" id="duplicate-note" hidden>Ten numer występuje w innej grupie.</p>
+            <div class="fields">
+              <label>Nazwa urządzenia
+                <input type="text" id="device-name" maxlength="200">
+              </label>
+              <label>Numer ewidencyjny
+                <input type="text" id="device-number" maxlength="80" placeholder="Może pozostać pusty">
+              </label>
+            </div>
+            <details class="operations" id="group-operations">
+              <summary>Połącz lub rozdziel grupę</summary>
+              <p>Zaznacz pozycje poniżej, aby je przenieść lub wydzielić. Możesz też połączyć całą grupę z wybraną.</p>
+              <label class="merge-field">Grupa docelowa
+                <select id="target-group"></select>
+              </label>
+              <div class="actions">
+                <button type="button" id="merge-group">Połącz całe grupy</button>
+                <button type="button" id="move-selected">Przenieś zaznaczone</button>
+                <button type="button" id="split-selected">Wydziel jako nowe urządzenie</button>
+              </div>
+              <p class="muted" id="selection-info"></p>
+            </details>
+            <div id="source-cards" class="stack"></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="sources-view" hidden aria-label="Wszystkie pozycje harmonogramu">
+        <h2>Pozycje harmonogramu</h2>
+        <div id="source-list" class="stack"></div>
+      </section>
+
+      <section id="preview-view" hidden aria-label="Podgląd przyszłego rejestru">
+        <h2>Podgląd rejestru</h2>
+        <p id="preview-summary" class="muted"></p>
+        <div id="device-preview" class="preview-grid"></div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

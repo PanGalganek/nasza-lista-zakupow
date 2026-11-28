@@ -21,7 +21,7 @@ const days = (offset) => {
   return formatLocalDate(date);
 };
 
-export async function seed(project, authHost, firestoreHost) {
+export async function seed(project, authHost, firestoreHost, { legacyEquipment = true } = {}) {
   const auth = async (operation) => fetch(`http://${authHost}/identitytoolkit.googleapis.com/v1/accounts:${operation}?key=fake-key`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(account), redirect: "error",
   });
@@ -93,9 +93,11 @@ export async function seed(project, authHost, firestoreHost) {
   }
   const month = days(0).slice(5, 7);
   const nextMonth = String((Number(month) % 12) + 1).padStart(2, "0");
-  put("wzorcowanie/pehametr", { name: "pH-metr stanowiskowy", month, type: "Wzorcowanie", doneDate: null, timestamp: 1 });
-  put("wzorcowanie/waga", { name: "Waga laboratoryjna", month, type: "Sprawdzenie", doneDate: days(0), timestamp: 2 });
-  put("wzorcowanie/pipeta", { name: "Pipeta automatyczna", month: nextMonth, type: "Wzorcowanie", doneDate: null, timestamp: 3 });
+  if (legacyEquipment) {
+    put("wzorcowanie/pehametr", { name: "pH-metr stanowiskowy", month, type: "Wzorcowanie", doneDate: null, timestamp: 1 });
+    put("wzorcowanie/waga", { name: "Waga laboratoryjna", month, type: "Sprawdzenie", doneDate: days(0), timestamp: 2 });
+    put("wzorcowanie/pipeta", { name: "Pipeta automatyczna", month: nextMonth, type: "Wzorcowanie", doneDate: null, timestamp: 3 });
+  }
   put("wydarzenia/qa", { title: "Kontrola próbek referencyjnych", date: days(0), timestamp: 1 });
   put("wydarzenia/check", { title: "Sprawdzenie dokumentacji", date: days(3), timestamp: 2 });
   for (let offset = 0; offset < writes.length; offset += 100) {

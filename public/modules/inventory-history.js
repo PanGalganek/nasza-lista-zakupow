@@ -1,10 +1,10 @@
-import { chemicalRegistryNumbers, formatLocalDate, formatPolishDate } from "../utils.js?v=37";
-import { icon } from "./icons.js?v=37";
-import { createElement } from "./ui.js?v=37";
-import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=37";
-import { productId } from "./inventory-store.js?v=37";
-import { batchLabel, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=37";
-import { lotDescription } from "./inventory-items.js?v=37";
+import { chemicalRegistryNumbers, formatLocalDate, formatPolishDate } from "../utils.js?v=38.1";
+import { icon } from "./icons.js?v=38.1";
+import { createElement } from "./ui.js?v=38.1";
+import { formatQuantity, matchesInventorySearch, units, validLots } from "./inventory-quantity.js?v=38.1";
+import { productId } from "./inventory-store.js?v=38.1";
+import { batchLabel, details, field, input, panel, saveButton, select, showStock } from "./inventory-ui.js?v=38.1";
+import { lotDescription } from "./inventory-items.js?v=38.1";
 
 const operationNames = {
   receipt: "Przychód", opening: "Ustalenie stanu", opening_correction: "Korekta ilości początkowej", withdrawal: "Rozchód", preparation: "Przygotowanie",

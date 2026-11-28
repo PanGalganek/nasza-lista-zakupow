@@ -476,9 +476,291 @@ service cloud.firestore {
         : resource.data.get('category', '') != 'WodaRoczna' && validTask(request.resource.data));
     }
 
+    function equipmentMode() {
+      let path = /databases/$(database)/documents/equipmentState/cutover;
+      return exists(path) ? get(path).data.mode : 'legacy';
+    }
+    function equipmentWrite() {
+      return activeUser()
+        && get(/databases/$(database)/documents/equipmentState/cutover).data.mode == 'active';
+    }
+    function equipmentId(id) {
+      return id is string && id.matches('^[A-Za-z0-9_-]{1,64}$');
+    }
+    function equipmentToken(id) {
+      return id is string && id.matches('^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$');
+    }
+    function equipmentYear(year) {
+      return year is string && year.matches('^20[0-9]{2}$|^21[0-9]{2}$');
+    }
+    function equipmentText(value, max) {
+      return value is string && value.size() <= max;
+    }
+    function equipmentRevision(data) {
+      return data.revision is int && data.revision > 0;
+    }
+    function equipmentDevicePath(id) {
+      return /databases/$(database)/documents/equipmentDevices/$(id);
+    }
+    function equipmentClock() {
+      return /databases/$(database)/documents/equipmentState/registry;
+    }
+    function equipmentDevice(data) {
+      let part = '[^\\s\\x1e\\x1f][^\\r\\n\\x1e\\x1f]{0,79}\\x1f[^\\r\\n\\x1e\\x1f]{0,150}\\x1f[01]';
+      return data.keys().hasAll(['name','number','notes','status','verified','mergedInto','nextActivity','activities','registry','revision'])
+        && data.keys().hasOnly(['name','number','notes','status','verified','mergedInto','nextActivity','activities','registry','revision'])
+        && equipmentText(data.name, 200) && data.name.matches('.*[^\\s].*')
+        && equipmentText(data.number, 80) && equipmentText(data.notes, 500)
+        && data.status in ['active','withdrawn'] && data.verified is bool
+        && (data.mergedInto == '' || (data.status == 'withdrawn' && equipmentId(data.mergedInto)))
+        && data.nextActivity is int && data.nextActivity >= 1 && data.nextActivity <= 101 && equipmentRevision(data)
+        && data.activities is string
+        && (data.activities == '' ? data.nextActivity == 1
+          : data.activities.matches('(' + part + ')(\\x1e' + part + ')*')
+            && data.nextActivity == data.activities.split('\\x1e').size() + 1)
+        && data.registry == get(equipmentClock()).data.revision + 1
+        && data.registry == getAfter(equipmentClock()).data.revision;
+    }
+    function equipmentActivityId(value) {
+      return value is string && value.matches('^a([1-9][0-9]?|100)$');
+    }
+    function eqActivity(card, activity) {
+      return card.activities.split('\\x1e')[int(activity.split('a')[1]) - 1].split('\\x1f');
+    }
+    function eqHasActivity(card, activity) {
+      return equipmentActivityId(activity) && int(activity.split('a')[1]) < card.nextActivity;
+    }
+
+    function eqYearPath(year) {
+      return /databases/$(database)/documents/equipmentYears/$(year);
+    }
+    function eqVersionPath(year, version) {
+      return /databases/$(database)/documents/equipmentYears/$(year)/versions/$(version);
+    }
+    function eqRowPath(year, version, row) {
+      return /databases/$(database)/documents/equipmentYears/$(year)/versions/$(version)/rows/$(row);
+    }
+    function eqResultPath(year, key) {
+      return /databases/$(database)/documents/equipmentYears/$(year)/results/$(key);
+    }
+    function eqHistoryPath(event) {
+      return /databases/$(database)/documents/equipmentHistory/$(event);
+    }
+    function eqPrevious(year) {
+      let path = eqYearPath(year);
+      return exists(path) ? get(path).data : {'revision': 0, 'published': '', 'draft': ''};
+    }
+    function eqHeader(data) {
+      return data.keys().hasAll(['revision','published','draft','last','slot','action'])
+        && data.keys().hasOnly(['revision','published','draft','last','slot','action'])
+        && equipmentRevision(data)
+        && (data.published == '' || equipmentToken(data.published))
+        && (data.draft == '' || equipmentToken(data.draft))
+        && equipmentToken(data.last);
+    }
+    function eqSourceCurrent(v) {
+      let src = getAfter(eqYearPath(v.sourceYear)).data;
+      return src.revision == v.sourceRevision && src.published == v.sourceVersion;
+    }
+    function eqPlanTransition(year, data, before) {
+      let v = getAfter(eqVersionPath(year, data.last)).data;
+      return data.slot == '' && v.state == 'sealed' && v.author == request.auth.uid && v.base == before.revision
+        && v.mode == data.action && v.written == v.total && v.sealedAt == request.time
+        && get(eqVersionPath(year, data.last)).data.state == 'open'
+        && v.registry == getAfter(equipmentClock()).data.revision
+        && (data.action == 'approve'
+          ? data.published == data.last && data.draft == ''
+          : data.published == before.published && data.draft == data.last)
+        && (data.action != 'copy' || (before.revision == 0 && eqSourceCurrent(v)));
+    }
+    function eqResultTransition(year, data, before) {
+      let event = getAfter(eqHistoryPath(data.last)).data;
+      return before.published != '' && data.published == before.published && data.draft == before.draft
+        && event.year == year && data.slot == event.key
+        && !exists(eqHistoryPath(data.last)) && event.at == request.time;
+    }
+    function eqVersionState(year, v) {
+      let previous = eqPrevious(year);
+      return v.keys().hasOnly(['author','base','mode','sourceYear','sourceVersion','sourceRevision','state','createdAt',
+          'registry','priorPublished','priorDraft','total','written','lastRow'])
+        && v.author == request.auth.uid && v.base == previous.revision && v.state == 'open' && v.createdAt == request.time
+        && v.priorPublished == previous.published && v.priorDraft == previous.draft
+        && v.registry == getAfter(equipmentClock()).data.revision
+        && v.total is int && v.total >= 0 && v.written == 0 && v.lastRow == ''
+        && (v.mode == 'copy'
+          ? v.base == 0 && equipmentYear(v.sourceYear) && v.sourceYear != year
+            && equipmentToken(v.sourceVersion) && v.sourceRevision is int && eqSourceCurrent(v)
+          : v.mode in ['draft','approve'] && v.sourceYear == '' && v.sourceVersion == '' && v.sourceRevision == 0);
+    }
+    function eqSeal(year, version) {
+      let v = resource.data;
+      let header = getAfter(eqYearPath(year)).data;
+      return v.state == 'open' && v.author == request.auth.uid && v.written == v.total
+        && request.resource.data.diff(v).affectedKeys().hasOnly(['state','sealedAt'])
+        && request.resource.data.state == 'sealed' && request.resource.data.sealedAt == request.time
+        && header.last == version && header.action == v.mode && header.revision == v.base + 1;
+    }
+    function eqAppend(year, version) {
+      let before = resource.data;
+      let next = request.resource.data;
+      let row = eqRowPath(year, version, next.lastRow);
+      return before.state == 'open' && before.author == request.auth.uid
+        && next.diff(before).affectedKeys().hasOnly(['written','lastRow'])
+        && next.written == before.written + 1 && next.written <= next.total
+        && !exists(row) && getAfter(row).data.position == next.written;
+    }
+    function eqSlot(slots, key) {
+      return !(key in slots) || equipmentToken(slots[key]);
+    }
+    function eqSlots(s) {
+      return s is map && s.size() > 0 && s.values().toSet().size() == s.size()
+        && s.keys().hasOnly(['01','02','03','04','05','06','07','08','09','10','11','12'])
+        && eqSlot(s,'01') && eqSlot(s,'02') && eqSlot(s,'03') && eqSlot(s,'04')
+        && eqSlot(s,'05') && eqSlot(s,'06') && eqSlot(s,'07') && eqSlot(s,'08')
+        && eqSlot(s,'09') && eqSlot(s,'10') && eqSlot(s,'11') && eqSlot(s,'12');
+    }
+    function eqInherited(year, version, row, slots) {
+      return version != '' && eqSlotsInherited(eqRowPath(year, version, row), slots);
+    }
+    function eqSlotsInherited(path, slots) {
+      let inherited = get(path);
+      return inherited != null && slots.values().toSet().hasOnly(inherited.data.slots.values());
+    }
+    function eqCopyRow(v, row, slots) {
+      let from = get(eqRowPath(v.sourceYear, v.sourceVersion, row)).data.slots;
+      return slots.keys().hasOnly(from.keys()) && !slots.values().hasAny(from.values());
+    }
+    function eqValidRow(year, version, row, data) {
+      let v = getAfter(eqVersionPath(year, version)).data;
+      let dev = get(equipmentDevicePath(data.device)).data;
+      return data.keys().hasAll(['device','activity','slots','position'])
+        && data.keys().hasOnly(['device','activity','slots','position'])
+        && equipmentId(data.device) && row == data.device + ':' + data.activity && eqHasActivity(dev, data.activity)
+        && eqSlots(data.slots) && data.position is int && data.position > 0
+        && v.state == 'open' && v.author == request.auth.uid && v.lastRow == row && v.written == data.position
+        && (v.mode == 'copy'
+          ? dev.status == 'active' && eqActivity(dev, data.activity)[2] == '1' && eqCopyRow(v, row, data.slots)
+          : (dev.status == 'active' && eqActivity(dev, data.activity)[2] == '1')
+            || eqInherited(year, v.priorPublished, row, data.slots)
+            || eqInherited(year, v.priorDraft, row, data.slots));
+    }
+    function eqExecutionDate(data) {
+      return equipmentText(data.notes, 500)
+        && (data.date == '' ? data.notes == '' : (validDate(data.date)
+          && eqRealDate(data.date.split('-'))));
+    }
+    function eqRealDate(parts) {
+      let y = int(parts[0]);
+      let m = int(parts[1]);
+      let d = int(parts[2]);
+      return (m != 2 || d < 29 || (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0)))
+        && timestamp.date(y, m, d) <= request.time + duration.value(2, 'h');
+    }
+    function eqResult(year, key, data, before) {
+      let row = data.device + ':' + data.activity;
+      let header = get(eqYearPath(year)).data;
+      let next = getAfter(eqYearPath(year)).data;
+      let event = getAfter(eqHistoryPath(data.event)).data;
+      return data.keys().hasAll(['device','activity','term','month','date','notes','revision','event'])
+        && data.keys().hasOnly(['device','activity','term','month','date','notes','revision','event'])
+        && equipmentId(data.device) && equipmentActivityId(data.activity) && equipmentToken(data.term)
+        && key == row + ':' + data.term && data.month.matches('^(0[1-9]|1[0-2])$')
+        && eqExecutionDate(data) && equipmentToken(data.event)
+        && (before.date == '' || data.month == before.get('month', data.month))
+        && (before.date != '' || data.date != '') && data.revision == before.revision + 1
+        && (before.date != '' || get(eqRowPath(year, header.published, row)).data.slots[data.month] == data.term)
+        && next.action == 'execute' && next.revision == header.revision + 1 && next.last == data.event
+        && !exists(eqHistoryPath(data.event)) && event.key == key && event.year == year
+        && event.at == request.time && event.beforeDate == before.date && event.beforeNotes == before.notes
+        && (data.date == '' ? event.action == 'undo' : (before.date == '' ? event.action == 'complete' : event.action == 'correct'));
+    }
+    function eqHistory(id, data) {
+      let result = getAfter(eqResultPath(data.year, data.key)).data;
+      let dev = get(equipmentDevicePath(data.device)).data;
+      let act = eqActivity(dev, data.activity);
+      return data.keys().hasOnly(['year','key','device','activity','term','month','action','beforeDate','beforeNotes','date','notes',
+          'revision','at','name','number','kind','label'])
+        && equipmentYear(data.year) && data.action in ['complete','correct','undo']
+        && data.at == request.time && result.event == id && result.revision == data.revision
+        && data.device == result.device && data.activity == result.activity && data.term == result.term && data.month == result.month
+        && data.date == result.date && data.notes == result.notes
+        && data.name == dev.name && data.number == dev.number && data.kind == act[0] && data.label == act[1]
+        && (!exists(eqResultPath(data.year, data.key))
+          ? data.revision == 1
+          : get(eqResultPath(data.year, data.key)).data.revision == data.revision - 1);
+    }
+    function eqLegacyLink(id, data) {
+      return data.keys().hasOnly(['device','activity','revision'])
+        && equipmentId(data.device) && equipmentActivityId(data.activity) && equipmentRevision(data)
+        && exists(/databases/$(database)/documents/wzorcowanie/$(id))
+        && eqHasActivity(getAfter(equipmentDevicePath(data.device)).data, data.activity);
+    }
+    function eqAdvanceRegistry(data) {
+      return data.keys().hasOnly(['revision','device']) && equipmentRevision(data)
+        && equipmentId(data.device) && data.revision == resource.data.revision + 1
+        && getAfter(equipmentDevicePath(data.device)).data.registry == data.revision;
+    }
+
+    match /equipmentState/cutover {
+      allow get: if activeUser();
+    }
+    match /equipmentState/registry {
+      allow get: if activeUser();
+      allow update: if equipmentWrite() && eqAdvanceRegistry(request.resource.data);
+    }
+    match /equipmentDevices/{id} {
+      allow read: if activeUser();
+      allow create: if equipmentWrite() && equipmentId(id) && equipmentDevice(request.resource.data)
+        && request.resource.data.revision == 1 && request.resource.data.mergedInto == '';
+      allow update: if equipmentWrite() && equipmentDevice(request.resource.data)
+        && request.resource.data.revision == resource.data.revision + 1 && request.resource.data.nextActivity >= resource.data.nextActivity
+        && (request.resource.data.mergedInto == resource.data.mergedInto || request.resource.data.mergedInto == ''
+          || (request.resource.data.mergedInto != id
+            && getAfter(equipmentDevicePath(request.resource.data.mergedInto)).data.status == 'active'));
+    }
+    match /equipmentLinks/{id} {
+      allow read: if activeUser();
+      allow create: if equipmentWrite() && eqLegacyLink(id, request.resource.data) && request.resource.data.revision == 1;
+      allow update: if equipmentWrite() && eqLegacyLink(id, request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
+    }
+    function eqUpdateHeader(year, data, before) {
+      return equipmentYear(year) && eqHeader(data) && data.revision == before.revision + 1
+        && (data.action == 'execute'
+          ? eqResultTransition(year, data, before)
+          : data.action in ['approve','draft','copy'] && eqPlanTransition(year, data, before));
+    }
+
+    match /equipmentYears/{year} {
+      allow read: if activeUser();
+      allow create: if equipmentWrite()
+        && eqUpdateHeader(year, request.resource.data, {'revision': 0, 'published': '', 'draft': ''});
+      allow update: if equipmentWrite() && eqUpdateHeader(year, request.resource.data, resource.data);
+
+      match /versions/{version} {
+        allow read: if activeUser();
+        allow create: if equipmentWrite() && equipmentYear(year) && equipmentToken(version)
+          && eqVersionState(year, request.resource.data);
+        allow update: if equipmentWrite() && (request.resource.data.state == 'sealed' ? eqSeal(year, version) : eqAppend(year, version));
+        match /rows/{row} {
+          allow read: if activeUser();
+          allow create: if equipmentWrite() && eqValidRow(year, version, row, request.resource.data);
+        }
+      }
+      match /results/{key} {
+        allow read: if activeUser();
+        allow create: if equipmentWrite() && eqResult(year, key, request.resource.data, {'revision': 0, 'date': '', 'notes': ''});
+        allow update: if equipmentWrite() && eqResult(year, key, request.resource.data, resource.data);
+      }
+    }
+    match /equipmentHistory/{id} {
+      allow read: if activeUser();
+      allow create: if equipmentWrite() && eqHistory(id, request.resource.data);
+    }
+
     match /wzorcowanie/{documentId} {
-      allow read, delete: if activeUser();
-      allow create, update: if activeUser() && validEquipment(request.resource.data);
+      allow read: if activeUser();
+      allow delete: if activeUser() && equipmentMode() == 'legacy';
+      allow create, update: if activeUser() && equipmentMode() == 'legacy' && validEquipment(request.resource.data);
     }
 
     match /wydarzenia/{documentId} {
