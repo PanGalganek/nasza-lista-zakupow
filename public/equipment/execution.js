@@ -1,6 +1,6 @@
-import { searchText } from "./model.js?v=38";
-import { calendarDate, monthlyNames } from "./plan-model.js?v=38";
-import { currentPeriod, deadlineWarnings, executionCounts, executionTiming, isOverdue } from "./execution-model.js?v=38";
+import { searchText } from "./model.js?v=38.1";
+import { calendarDate, monthlyNames } from "./plan-model.js?v=38.1";
+import { currentPeriod, deadlineWarnings, executionCounts, executionTiming, isOverdue } from "./execution-model.js?v=38.1";
 
 const get = id => document.getElementById("exec-" + id);
 const collator = new Intl.Collator("pl", { numeric: true });

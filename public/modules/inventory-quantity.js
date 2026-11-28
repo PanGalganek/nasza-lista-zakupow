@@ -1,4 +1,4 @@
-import { parseLocalDate } from "../utils.js?v=38";
+import { parseLocalDate } from "../utils.js?v=38.1";
 
 export const units = {
   mg: ["masa", 1_000], g: ["masa", 1_000_000], kg: ["masa", 1_000_000_000],

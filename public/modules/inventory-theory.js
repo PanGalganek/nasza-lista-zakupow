@@ -1,7 +1,7 @@
-import { formatLocalDate } from "../utils.js?v=38";
-import { createElement, notify } from "./ui.js?v=38";
-import { compatibleUnits, formatQuantity, maxQuantity, quantity, units } from "./inventory-quantity.js?v=38";
-import { button, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=38";
+import { formatLocalDate } from "../utils.js?v=38.1";
+import { createElement, notify } from "./ui.js?v=38.1";
+import { compatibleUnits, formatQuantity, maxQuantity, quantity, units } from "./inventory-quantity.js?v=38.1";
+import { button, field, input, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=38.1";
 
 function theoreticalAmount(amount, multiplier, divisor = 1n) {
   const numerator = BigInt(amount) * multiplier;

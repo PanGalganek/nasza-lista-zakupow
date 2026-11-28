@@ -1,5 +1,5 @@
-import { evolvePlan } from "./plan-model.js?v=38";
-import { RegistryError } from "./registry-model.js?v=38";
+import { evolvePlan } from "./plan-model.js?v=38.1";
+import { RegistryError } from "./registry-model.js?v=38.1";
 
 export function copyCandidates(approved, equipment) {
   return (approved?.entries ?? []).filter(({ deviceId, activityId }) => {

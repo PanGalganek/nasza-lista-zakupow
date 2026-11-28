@@ -4,20 +4,21 @@ import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { assertFails, initializeTestEnvironment } from "@firebase/rules-unit-testing";
 import * as firestore from "firebase/firestore";
+import { encodeActivities } from "../public/equipment/activity-codec.js";
 import { equipmentStore } from "../public/equipment/firestore-store.js";
 
-const { doc, setDoc, updateDoc, getDoc, deleteDoc, serverTimestamp } = firestore;
+const { doc, setDoc, updateDoc, getDoc, deleteDoc, serverTimestamp, writeBatch } = firestore;
 const projectId = "demo-elab-equip-rules";
 const operator = "equip-op";
 let env;
 const legacy = { name: "Miernik", month: "11", type: "Sprawdzenie", doneDate: "2026-10-04", timestamp: 1 };
-const device = { name: "Miernik", number: "", notes: "", status: "active", verified: false, mergedInto: "", nextActivity: 2, revision: 1 };
+const device = { name: "Miernik", number: "", notes: "", status: "active", verified: false, mergedInto: "", nextActivity: 2, registry: 0, revision: 1, activities: encodeActivities([{id:"a1",kind:"Sprawdzenie",label:"",active:true}]) };
 const activity = { device: "r1", activity: "a1", kind: "Sprawdzenie", label: "", active: true, revision: 1 };
 const op = () => env.authenticatedContext(operator).firestore();
 const setMode = mode => env.withSecurityRulesDisabled(context => setDoc(doc(context.firestore(), "equipmentState", "cutover"), { mode }));
 const engine = db => equipmentStore({ db, firestore, userId: () => operator, canWrite: () => true });
 const entry = (month, deviceId = "r1") => ({ id: randomUUID(), deviceId, activityId: "a1", month });
-const termRow = id => ({ device: "r1", activity: "a1", slots: { "11": id } });
+const termRow = id => ({ device: "r1", activity: "a1", slots: { "11": id }, position:1 });
 
 before(async () => {
   env = await initializeTestEnvironment({ projectId, firestore: { rules: await readFile(new URL("../firestore.rules", import.meta.url), "utf8") } });
@@ -30,7 +31,7 @@ beforeEach(async () => {
       setDoc(doc(db,"app_users","disabled"),{active:false,role:"admin"}),
       setDoc(doc(db,"wzorcowanie","old"),legacy),
       setDoc(doc(db,"equipmentDevices","r1"),device),
-      setDoc(doc(db,"equipmentActivities","r1:a1"),activity),
+      setDoc(doc(db,"equipmentState","registry"),{revision:0,device:""}),
       setDoc(doc(db,"equipmentLinks","old"),{device:"r1",activity:"a1",revision:1}),
     ]);
   });
@@ -101,13 +102,22 @@ test("a staged version is private to publication, validated per row, and cannot 
   const db = op(), api = engine(db);
   const id = randomUUID();
   const version = doc(db,"equipmentYears","2026","versions",id);
-  await setDoc(version,{author:operator,base:0,mode:"draft",sourceYear:"",sourceVersion:"",sourceRevision:0,state:"open",createdAt:serverTimestamp()});
+  await setDoc(version,{author:operator,base:0,mode:"draft",sourceYear:"",sourceVersion:"",sourceRevision:0,priorPublished:"",priorDraft:"",registry:0,total:2,written:0,lastRow:"",state:"open",createdAt:serverTimestamp()});
   const row = doc(db,"equipmentYears","2026","versions",id,"rows","r1:a1");
   const token = randomUUID();
   await assertFails(setDoc(row,{...termRow(token),slots:{"13":token}}));
   await assertFails(setDoc(row,{...termRow(token),slots:{"11":token,"12":token}}));
   await assertFails(setDoc(doc(db,"equipmentYears","2026","versions",id,"rows","r1:a2"),{...termRow(token),activity:"a2"}));
-  await setDoc(row,termRow(token));
+  await assertFails(setDoc(row,termRow(token)));
+  await assertFails(updateDoc(version,{written:1,lastRow:"r1:a1"}));
+  const batch = writeBatch(db);
+  batch.set(row,termRow(token));
+  batch.update(version,{written:1,lastRow:"r1:a1"});
+  await batch.commit();
+  const premature = writeBatch(db);
+  premature.update(version,{state:"sealed",sealedAt:serverTimestamp()});
+  premature.set(doc(db,"equipmentYears","2026"),{revision:1,published:"",draft:id,last:id,slot:"",action:"draft"});
+  await assertFails(premature.commit());
   assert.equal((await api.loadPlan(2026)).revision,0);
   await assertFails(updateDoc(version,{state:"sealed",sealedAt:serverTimestamp()}));
   await assertFails(setDoc(doc(db,"equipmentYears","2026"),{revision:1,published:id,draft:"",last:id,slot:"",action:"approve"}));
@@ -168,4 +178,86 @@ test("copy and execution revisions serialize concurrent clients without overwrit
   assert.equal(target.state.draft.entries[0].doneDate,null);
   assert.notEqual(target.state.draft.entries[0].id,id);
   assert.equal((await a.loadPlan(2026)).state.approved.entries[0].doneDate,"2026-11-04");
+});
+
+test("large card edits and merges have a fixed write set and never truncate a stable activity ID", async () => {
+  await setMode("active");
+  const api = engine(op()), other = engine(op());
+  const registry = await api.loadRegistry();
+  const source = registry.state.equipment.r1;
+  const kinds = Array.from({ length: 99 }, (_, index) =>
+    ({ id: "a" + (index + 2), kind: "Kontrola " + index, label: "Opis · A", active: index % 2 === 0 }));
+  let plan = await api.saveDevice({ ...source, activities: [...source.activities, ...kinds] }, source);
+  const full = plan.state.equipment.r1;
+  assert.equal(full.activities.length, 100);
+  assert.equal(full.activities.at(-1).id, "a100");
+  const second = { ...source, id: "r2", name: "Karta docelowa" };
+  plan = await api.saveDevice(second);
+  const merged = await api.mergeDevices(full, plan.state.equipment.r2);
+  assert.equal(merged.state.equipment.r2.activities.length, 100);
+  assert.equal(merged.state.equipment.r1.activities.length, 100);
+  assert.equal(merged.state.equipment.r1.mergedInto, "r2");
+  await assert.rejects(other.saveDevice({ ...full, name: "Stare dane" }, full), /zmieniły/);
+  const archived = merged.state.equipment.r1;
+  await assert.rejects(api.saveDevice({ ...archived, activities: archived.activities.slice(0, 15) }, archived));
+  const restored = await api.saveDevice({ ...archived, status: "active", mergedInto: null }, archived);
+  assert.equal(restored.state.equipment.r1.activities.at(-1).id, "a100");
+});
+
+test("staging keeps a withdrawn planned activity when the same ID belongs to the older draft", async () => {
+  await setMode("active");
+  const api = engine(op());
+  const approved = await api.savePlan(2026,0,{action:"approve",entries:[entry(11)]},randomUUID());
+  const planned = await api.savePlan(2026,1,{action:"draft",entries:[...approved.state.approved.entries, entry(12)]},randomUUID());
+  const device = (await api.loadRegistry()).state.equipment.r1;
+  await api.saveDevice({ ...device, status:"withdrawn" }, device);
+  const summarized = await api.savePlan(2026,2,{action:"approve",entries:planned.state.draft.entries},randomUUID());
+  assert.deepEqual(summarized.state.approved.entries.map(row=>row.month).sort(),[11,12]);
+});
+
+test("capture of registry revision covers edits during copy and rejects an unbound revision advance", async () => {
+  await setMode("active");
+  const db=op(), api=engine(db);
+  const original = await api.savePlan(2026,0,{action:"approve",entries:[entry(11)]},randomUUID());
+  const registry = await api.loadRegistry();
+  await assertFails(updateDoc(doc(db,"equipmentState","registry"),{revision:1,device:"r1"}));
+  const card = registry.state.equipment.r1;
+  await api.saveDevice({ ...card, status:"withdrawn" }, card);
+  await assert.rejects(api.savePlan(2027,0,{
+    action:"copy",sourceYear:2026,sourceRevision:original.revision,
+    registryRevision:registry.revision,selectedIds:[original.state.approved.entries[0].id],
+  },randomUUID()), /zmieniły/);
+  assert.equal((await api.loadPlan(2027)).revision,0);
+});
+
+
+test("copy cannot seal after a separate client edits the registry during staging", async () => {
+  await setMode("active");
+  const db = op(), api = engine(db), other = engine(op());
+  const source = await api.savePlan(2026,0,{action:"approve",entries:[entry(11)]},randomUUID());
+  const registration = await api.loadRegistry();
+  const card = registration.state.equipment.r1;
+  let changed = false;
+  const copying = equipmentStore({
+    db, userId: () => operator, canWrite: () => true,
+    firestore: { ...firestore, writeBatch(...args) {
+      const batch = firestore.writeBatch(...args);
+      const commit = batch.commit.bind(batch);
+      batch.commit = async () => {
+        await commit();
+        if (!changed) {
+          changed = true;
+          await other.saveDevice({ ...card, status: "withdrawn" }, card);
+        }
+      };
+      return batch;
+    } },
+  });
+  await assert.rejects(copying.savePlan(2027,0,{
+    action:"copy",sourceYear:2026,sourceRevision:source.revision,
+    registryRevision:registration.revision,selectedIds:[source.state.approved.entries[0].id],
+  },randomUUID()), /zmieniły/);
+  assert.ok(changed);
+  assert.equal((await other.loadPlan(2027)).revision,0);
+  assert.equal((await other.loadPlan(2026)).revision,source.revision);
 });

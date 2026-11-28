@@ -1,11 +1,11 @@
-import { createEquipmentModule as legacyModule } from "./equipment.js?v=38";
-import { annualPlanner } from "../equipment/planner.js?v=38";
-import { executionView } from "../equipment/execution.js?v=38";
-import { registryPanel } from "../equipment/registry-ui.js?v=38";
-import { equipmentStore } from "../equipment/firestore-store.js?v=38";
-import { currentPeriod, deadlineWarnings } from "../equipment/execution-model.js?v=38";
-import { monthlyNames } from "../equipment/plan-model.js?v=38";
-import { byId } from "./ui.js?v=38";
+import { createEquipmentModule as legacyModule } from "./equipment.js?v=38.1";
+import { annualPlanner } from "../equipment/planner.js?v=38.1";
+import { executionView } from "../equipment/execution.js?v=38.1";
+import { registryPanel } from "../equipment/registry-ui.js?v=38.1";
+import { equipmentStore } from "../equipment/firestore-store.js?v=38.1";
+import { currentPeriod, deadlineWarnings } from "../equipment/execution-model.js?v=38.1";
+import { monthlyNames } from "../equipment/plan-model.js?v=38.1";
+import { byId } from "./ui.js?v=38.1";
 
 export function createEquipmentV38(dependencies) {
   const { db, firestore, registerSnapshot, reportListenerError, navigation, userId } = dependencies;

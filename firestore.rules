@@ -481,7 +481,8 @@ service cloud.firestore {
       return exists(path) ? get(path).data.mode : 'legacy';
     }
     function equipmentWrite() {
-      return activeUser() && equipmentMode() == 'active';
+      return activeUser()
+        && get(/databases/$(database)/documents/equipmentState/cutover).data.mode == 'active';
     }
     function equipmentId(id) {
       return id is string && id.matches('^[A-Za-z0-9_-]{1,64}$');
@@ -498,25 +499,36 @@ service cloud.firestore {
     function equipmentRevision(data) {
       return data.revision is int && data.revision > 0;
     }
+    function equipmentDevicePath(id) {
+      return /databases/$(database)/documents/equipmentDevices/$(id);
+    }
+    function equipmentClock() {
+      return /databases/$(database)/documents/equipmentState/registry;
+    }
     function equipmentDevice(data) {
-      return data.keys().hasAll(['name','number','notes','status','verified','mergedInto','nextActivity','revision'])
-        && data.keys().hasOnly(['name','number','notes','status','verified','mergedInto','nextActivity','revision'])
+      let part = '[^\\s\\x1e\\x1f][^\\r\\n\\x1e\\x1f]{0,79}\\x1f[^\\r\\n\\x1e\\x1f]{0,150}\\x1f[01]';
+      return data.keys().hasAll(['name','number','notes','status','verified','mergedInto','nextActivity','activities','registry','revision'])
+        && data.keys().hasOnly(['name','number','notes','status','verified','mergedInto','nextActivity','activities','registry','revision'])
         && equipmentText(data.name, 200) && data.name.matches('.*[^\\s].*')
         && equipmentText(data.number, 80) && equipmentText(data.notes, 500)
-        && data.verified is bool && data.status in ['active','withdrawn']
+        && data.status in ['active','withdrawn'] && data.verified is bool
         && (data.mergedInto == '' || (data.status == 'withdrawn' && equipmentId(data.mergedInto)))
-        && data.nextActivity is int && data.nextActivity >= 1 && data.nextActivity <= 101 && equipmentRevision(data);
+        && data.nextActivity is int && data.nextActivity >= 1 && data.nextActivity <= 101 && equipmentRevision(data)
+        && data.activities is string
+        && (data.activities == '' ? data.nextActivity == 1
+          : data.activities.matches('(' + part + ')(\\x1e' + part + ')*')
+            && data.nextActivity == data.activities.split('\\x1e').size() + 1)
+        && data.registry == get(equipmentClock()).data.revision + 1
+        && data.registry == getAfter(equipmentClock()).data.revision;
     }
     function equipmentActivityId(value) {
       return value is string && value.matches('^a([1-9][0-9]?|100)$');
     }
-    function equipmentActivity(key, data) {
-      return data.keys().hasAll(['device','activity','kind','label','active','revision'])
-        && data.keys().hasOnly(['device','activity','kind','label','active','revision'])
-        && equipmentId(data.device) && equipmentActivityId(data.activity) && key == data.device + ':' + data.activity
-        && equipmentText(data.kind, 80) && data.kind.matches('.*[^\\s].*') && equipmentText(data.label, 150)
-        && data.active is bool && equipmentRevision(data)
-        && getAfter(/databases/$(database)/documents/equipmentDevices/$(data.device)).data.nextActivity > int(data.activity.split('a')[1]);
+    function eqActivity(card, activity) {
+      return card.activities.split('\\x1e')[int(activity.split('a')[1]) - 1].split('\\x1f');
+    }
+    function eqHasActivity(card, activity) {
+      return equipmentActivityId(activity) && int(activity.split('a')[1]) < card.nextActivity;
     }
 
     function eqYearPath(year) {
@@ -547,13 +559,15 @@ service cloud.firestore {
         && equipmentToken(data.last);
     }
     function eqSourceCurrent(v) {
-      let src = get(eqYearPath(v.sourceYear)).data;
+      let src = getAfter(eqYearPath(v.sourceYear)).data;
       return src.revision == v.sourceRevision && src.published == v.sourceVersion;
     }
     function eqPlanTransition(year, data, before) {
       let v = getAfter(eqVersionPath(year, data.last)).data;
       return data.slot == '' && v.state == 'sealed' && v.author == request.auth.uid && v.base == before.revision
-        && v.mode == data.action && !('sealedAt' in get(eqVersionPath(year, data.last)).data)
+        && v.mode == data.action && v.written == v.total && v.sealedAt == request.time
+        && get(eqVersionPath(year, data.last)).data.state == 'open'
+        && v.registry == getAfter(equipmentClock()).data.revision
         && (data.action == 'approve'
           ? data.published == data.last && data.draft == ''
           : data.published == before.published && data.draft == data.last)
@@ -566,9 +580,13 @@ service cloud.firestore {
         && !exists(eqHistoryPath(data.last)) && event.at == request.time;
     }
     function eqVersionState(year, v) {
-      return v.keys().hasAll(['author','base','mode','sourceYear','sourceVersion','sourceRevision','state','createdAt'])
-        && v.keys().hasOnly(['author','base','mode','sourceYear','sourceVersion','sourceRevision','state','createdAt'])
-        && v.author == request.auth.uid && v.base == eqPrevious(year).revision && v.state == 'open' && v.createdAt == request.time
+      let previous = eqPrevious(year);
+      return v.keys().hasOnly(['author','base','mode','sourceYear','sourceVersion','sourceRevision','state','createdAt',
+          'registry','priorPublished','priorDraft','total','written','lastRow'])
+        && v.author == request.auth.uid && v.base == previous.revision && v.state == 'open' && v.createdAt == request.time
+        && v.priorPublished == previous.published && v.priorDraft == previous.draft
+        && v.registry == getAfter(equipmentClock()).data.revision
+        && v.total is int && v.total >= 0 && v.written == 0 && v.lastRow == ''
         && (v.mode == 'copy'
           ? v.base == 0 && equipmentYear(v.sourceYear) && v.sourceYear != year
             && equipmentToken(v.sourceVersion) && v.sourceRevision is int && eqSourceCurrent(v)
@@ -577,10 +595,19 @@ service cloud.firestore {
     function eqSeal(year, version) {
       let v = resource.data;
       let header = getAfter(eqYearPath(year)).data;
-      return v.state == 'open' && v.author == request.auth.uid
+      return v.state == 'open' && v.author == request.auth.uid && v.written == v.total
         && request.resource.data.diff(v).affectedKeys().hasOnly(['state','sealedAt'])
         && request.resource.data.state == 'sealed' && request.resource.data.sealedAt == request.time
         && header.last == version && header.action == v.mode && header.revision == v.base + 1;
+    }
+    function eqAppend(year, version) {
+      let before = resource.data;
+      let next = request.resource.data;
+      let row = eqRowPath(year, version, next.lastRow);
+      return before.state == 'open' && before.author == request.auth.uid
+        && next.diff(before).affectedKeys().hasOnly(['written','lastRow'])
+        && next.written == before.written + 1 && next.written <= next.total
+        && !exists(row) && getAfter(row).data.position == next.written;
     }
     function eqSlot(slots, key) {
       return !(key in slots) || equipmentToken(slots[key]);
@@ -592,27 +619,30 @@ service cloud.firestore {
         && eqSlot(s,'05') && eqSlot(s,'06') && eqSlot(s,'07') && eqSlot(s,'08')
         && eqSlot(s,'09') && eqSlot(s,'10') && eqSlot(s,'11') && eqSlot(s,'12');
     }
-    function eqInherited(year, version, row, ids) {
-      return version != '' && exists(eqRowPath(year, version, row))
-        && ids.hasOnly(get(eqRowPath(year, version, row)).data.slots.values());
+    function eqInherited(year, version, row, slots) {
+      return version != '' && eqSlotsInherited(eqRowPath(year, version, row), slots);
+    }
+    function eqSlotsInherited(path, slots) {
+      let inherited = get(path);
+      return inherited != null && slots.values().toSet().hasOnly(inherited.data.slots.values());
+    }
+    function eqCopyRow(v, row, slots) {
+      let from = get(eqRowPath(v.sourceYear, v.sourceVersion, row)).data.slots;
+      return slots.keys().hasOnly(from.keys()) && !slots.values().hasAny(from.values());
     }
     function eqValidRow(year, version, row, data) {
-      let v = get(eqVersionPath(year, version)).data;
-      let dev = get(/databases/$(database)/documents/equipmentDevices/$(data.device)).data;
-      let act = get(/databases/$(database)/documents/equipmentActivities/$(row)).data;
-      let previous = eqPrevious(year);
-      return data.keys().hasAll(['device','activity','slots']) && data.keys().hasOnly(['device','activity','slots'])
-        && equipmentId(data.device) && equipmentActivityId(data.activity) && row == data.device + ':' + data.activity
-        && act.device == data.device && act.activity == data.activity && eqSlots(data.slots)
-        && v.state == 'open' && v.author == request.auth.uid && previous.revision == v.base
-        && getAfter(eqVersionPath(year, version)).data.state == 'open'
+      let v = getAfter(eqVersionPath(year, version)).data;
+      let dev = get(equipmentDevicePath(data.device)).data;
+      return data.keys().hasAll(['device','activity','slots','position'])
+        && data.keys().hasOnly(['device','activity','slots','position'])
+        && equipmentId(data.device) && row == data.device + ':' + data.activity && eqHasActivity(dev, data.activity)
+        && eqSlots(data.slots) && data.position is int && data.position > 0
+        && v.state == 'open' && v.author == request.auth.uid && v.lastRow == row && v.written == data.position
         && (v.mode == 'copy'
-          ? dev.status == 'active' && act.active == true
-            && data.slots.keys().hasOnly(get(eqRowPath(v.sourceYear, v.sourceVersion, row)).data.slots.keys())
-            && !data.slots.values().hasAny(get(eqRowPath(v.sourceYear, v.sourceVersion, row)).data.slots.values())
-          : (dev.status == 'active' && act.active == true)
-            || eqInherited(year, previous.published, row, data.slots.values())
-            || eqInherited(year, previous.draft, row, data.slots.values()));
+          ? dev.status == 'active' && eqActivity(dev, data.activity)[2] == '1' && eqCopyRow(v, row, data.slots)
+          : (dev.status == 'active' && eqActivity(dev, data.activity)[2] == '1')
+            || eqInherited(year, v.priorPublished, row, data.slots)
+            || eqInherited(year, v.priorDraft, row, data.slots));
     }
     function eqExecutionDate(data) {
       return equipmentText(data.notes, 500)
@@ -646,15 +676,15 @@ service cloud.firestore {
     }
     function eqHistory(id, data) {
       let result = getAfter(eqResultPath(data.year, data.key)).data;
-      let dev = get(/databases/$(database)/documents/equipmentDevices/$(data.device)).data;
-      let act = get(/databases/$(database)/documents/equipmentActivities/$(data.device + ':' + data.activity)).data;
+      let dev = get(equipmentDevicePath(data.device)).data;
+      let act = eqActivity(dev, data.activity);
       return data.keys().hasOnly(['year','key','device','activity','term','month','action','beforeDate','beforeNotes','date','notes',
           'revision','at','name','number','kind','label'])
         && equipmentYear(data.year) && data.action in ['complete','correct','undo']
         && data.at == request.time && result.event == id && result.revision == data.revision
         && data.device == result.device && data.activity == result.activity && data.term == result.term && data.month == result.month
         && data.date == result.date && data.notes == result.notes
-        && data.name == dev.name && data.number == dev.number && data.kind == act.kind && data.label == act.label
+        && data.name == dev.name && data.number == dev.number && data.kind == act[0] && data.label == act[1]
         && (!exists(eqResultPath(data.year, data.key))
           ? data.revision == 1
           : get(eqResultPath(data.year, data.key)).data.revision == data.revision - 1);
@@ -663,11 +693,20 @@ service cloud.firestore {
       return data.keys().hasOnly(['device','activity','revision'])
         && equipmentId(data.device) && equipmentActivityId(data.activity) && equipmentRevision(data)
         && exists(/databases/$(database)/documents/wzorcowanie/$(id))
-        && getAfter(/databases/$(database)/documents/equipmentActivities/$(data.device + ':' + data.activity)).data.device == data.device;
+        && eqHasActivity(getAfter(equipmentDevicePath(data.device)).data, data.activity);
+    }
+    function eqAdvanceRegistry(data) {
+      return data.keys().hasOnly(['revision','device']) && equipmentRevision(data)
+        && equipmentId(data.device) && data.revision == resource.data.revision + 1
+        && getAfter(equipmentDevicePath(data.device)).data.registry == data.revision;
     }
 
     match /equipmentState/cutover {
       allow get: if activeUser();
+    }
+    match /equipmentState/registry {
+      allow get: if activeUser();
+      allow update: if equipmentWrite() && eqAdvanceRegistry(request.resource.data);
     }
     match /equipmentDevices/{id} {
       allow read: if activeUser();
@@ -677,31 +716,31 @@ service cloud.firestore {
         && request.resource.data.revision == resource.data.revision + 1 && request.resource.data.nextActivity >= resource.data.nextActivity
         && (request.resource.data.mergedInto == resource.data.mergedInto || request.resource.data.mergedInto == ''
           || (request.resource.data.mergedInto != id
-            && getAfter(/databases/$(database)/documents/equipmentDevices/$(request.resource.data.mergedInto)).data.status == 'active'));
-    }
-    match /equipmentActivities/{id} {
-      allow read: if activeUser();
-      allow create: if equipmentWrite() && equipmentActivity(id, request.resource.data) && request.resource.data.revision == 1;
-      allow update: if equipmentWrite() && equipmentActivity(id, request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
+            && getAfter(equipmentDevicePath(request.resource.data.mergedInto)).data.status == 'active'));
     }
     match /equipmentLinks/{id} {
       allow read: if activeUser();
       allow create: if equipmentWrite() && eqLegacyLink(id, request.resource.data) && request.resource.data.revision == 1;
       allow update: if equipmentWrite() && eqLegacyLink(id, request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
     }
+    function eqUpdateHeader(year, data, before) {
+      return equipmentYear(year) && eqHeader(data) && data.revision == before.revision + 1
+        && (data.action == 'execute'
+          ? eqResultTransition(year, data, before)
+          : data.action in ['approve','draft','copy'] && eqPlanTransition(year, data, before));
+    }
+
     match /equipmentYears/{year} {
       allow read: if activeUser();
-      allow create, update: if equipmentWrite() && equipmentYear(year)
-        && eqHeader(request.resource.data) && request.resource.data.revision == eqPrevious(year).revision + 1
-        && (request.resource.data.action == 'execute'
-          ? eqResultTransition(year, request.resource.data, eqPrevious(year))
-          : request.resource.data.action in ['approve','draft','copy']
-            && eqPlanTransition(year, request.resource.data, eqPrevious(year)));
+      allow create: if equipmentWrite()
+        && eqUpdateHeader(year, request.resource.data, {'revision': 0, 'published': '', 'draft': ''});
+      allow update: if equipmentWrite() && eqUpdateHeader(year, request.resource.data, resource.data);
+
       match /versions/{version} {
         allow read: if activeUser();
         allow create: if equipmentWrite() && equipmentYear(year) && equipmentToken(version)
           && eqVersionState(year, request.resource.data);
-        allow update: if equipmentWrite() && eqSeal(year, version);
+        allow update: if equipmentWrite() && (request.resource.data.state == 'sealed' ? eqSeal(year, version) : eqAppend(year, version));
         match /rows/{row} {
           allow read: if activeUser();
           allow create: if equipmentWrite() && eqValidRow(year, version, row, request.resource.data);

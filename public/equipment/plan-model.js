@@ -1,4 +1,4 @@
-import { RegistryError } from "./registry-model.js?v=38";
+import { RegistryError } from "./registry-model.js?v=38.1";
 
 export const monthlyNames = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
   "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];

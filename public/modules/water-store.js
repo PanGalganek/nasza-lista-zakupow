@@ -1,4 +1,4 @@
-import { waterAnnualId, waterCategory, waterDateInYear, waterMeasurementTarget, waterPlan, waterUsesMeasurements } from "./water-plan.js?v=38";
+import { waterAnnualId, waterCategory, waterDateInYear, waterMeasurementTarget, waterPlan, waterUsesMeasurements } from "./water-plan.js?v=38.1";
 
 export function createWaterStore(db, firestore, online = () => navigator.onLine) {
   const { doc, runTransaction } = firestore;

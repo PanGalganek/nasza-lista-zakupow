@@ -1,10 +1,10 @@
-import { chemicalCategory, formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=38";
-import { createElement } from "./ui.js?v=38";
-import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=38";
-import { lotOptions, orderItemKey, orderLineProgress, orderPackageCount, standardKind } from "./inventory-items.js?v=38";
-import { button, details, field, input, orderDescriptionLimit, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=38";
-import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=38";
-import { productId, requireInventoryConnection } from "./inventory-store.js?v=38";
+import { chemicalCategory, formatLocalDate, formatPolishDate, parseLocalDate } from "../utils.js?v=38.1";
+import { createElement } from "./ui.js?v=38.1";
+import { formatQuantity, matchesInventorySearch, quantity } from "./inventory-quantity.js?v=38.1";
+import { lotOptions, orderItemKey, orderLineProgress, orderPackageCount, standardKind } from "./inventory-items.js?v=38.1";
+import { button, details, field, input, orderDescriptionLimit, panel, saveButton, select, unitSelect } from "./inventory-ui.js?v=38.1";
+import { createOrderDocx, orderColumns } from "./inventory-docx.js?v=38.1";
+import { productId, requireInventoryConnection } from "./inventory-store.js?v=38.1";
 
 export const orderRequesters = ["B. Joachim", "A. Cieniewski", "K. Łoboda", "J. Gosławska", "M. Piasecka"];
 const requesterStorage = "e-lab-order-requester";

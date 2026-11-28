@@ -1,4 +1,4 @@
-import { parseLocalDate } from "../utils.js?v=38";
+import { parseLocalDate } from "../utils.js?v=38.1";
 
 export const waterCategory = "WodaRoczna";
 export const firstWaterYear = 2026;

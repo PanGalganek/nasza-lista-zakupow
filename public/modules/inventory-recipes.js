@@ -1,9 +1,9 @@
-import { formatLocalDate, parseLocalDate } from "../utils.js?v=38";
-import { createElement, iconButton, notify } from "./ui.js?v=38";
-import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=38";
-import { readableLotNames, standardKind } from "./inventory-items.js?v=38";
-import { productId } from "./inventory-store.js?v=38";
-import { button, details, field, input, panel, saveButton, select, showStock, unitSelect } from "./inventory-ui.js?v=38";
+import { formatLocalDate, parseLocalDate } from "../utils.js?v=38.1";
+import { createElement, iconButton, notify } from "./ui.js?v=38.1";
+import { compatibleUnits, flaskVolumes, formatQuantity, matchesInventorySearch, quantity, scaledQuantity, validLots } from "./inventory-quantity.js?v=38.1";
+import { readableLotNames, standardKind } from "./inventory-items.js?v=38.1";
+import { productId } from "./inventory-store.js?v=38.1";
+import { button, details, field, input, panel, saveButton, select, showStock, unitSelect } from "./inventory-ui.js?v=38.1";
 
 const say = (target, value) => target.append(createElement("p", "text-sm", value));
 const methodOptions = (inventory) => inventory.rows("methods").map((method) => [method.id, method.name]);

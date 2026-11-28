@@ -1,6 +1,6 @@
-import { searchText } from "./model.js?v=38";
-import { copyDialog } from "./plan-copy.js?v=38";
-import { calendarDate, initialYear, monthlyNames, planCounts, planRows, rowKey, validYear } from "./plan-model.js?v=38";
+import { searchText } from "./model.js?v=38.1";
+import { copyDialog } from "./plan-copy.js?v=38.1";
+import { calendarDate, initialYear, monthlyNames, planCounts, planRows, rowKey, validYear } from "./plan-model.js?v=38.1";
 
 const get = id => document.getElementById("plan-" + id);
 const collator = new Intl.Collator("pl", { numeric: true });

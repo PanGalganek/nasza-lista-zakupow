@@ -1,44 +1,63 @@
 # Sprzęt laboratoryjny v38
 
-## Model
+## Model i granice transakcji
 
-| Ścieżka | Znaczenie |
-|---|---|
-| `equipmentState/cutover` | Znacznik przełączenia przygotowywany administracyjnie. Brak znacznika daje tryb v37. Stany `preparing`, `active` i `paused` blokują każdy zapis klienta do kolekcji źródłowej. W trybie `active` można zapisywać w v38, a `paused` pozwala czytać oba modele. |
-| `equipmentDevices/{device}` | Karta ze stałym ID, opcjonalnym numerem, stanem, uwagami i rewizją. Wycofanie pozostawia kartę. Połączenie zachowuje archiwalną kartę i wskazanie karty docelowej. |
-| `equipmentActivities/{device}:{activity}` | Osobny dokument czynności z niezmiennym kluczem, statusem i niezależną rewizją. |
-| `equipmentLinks/{sourceId}` | Korygowane przypisanie oryginalnego ID `wzorcowanie` do karty i czynności. Podział może atomowo utworzyć kartę, czynność i powiązanie. |
-| `equipmentYears/{year}` | Rewizja roku i wskaźniki zatwierdzonego planu oraz szkicu. |
-| `equipmentYears/{year}/versions/{id}/rows/{device}:{activity}` | Niezmienne wiersze wersji. Wiersz ma maksymalnie 12 pól miesięcznych. Plan jest widoczny po atomowym zamknięciu wersji i zmianie wskaźnika. Niezakończona wersja pozostaje poza widokiem użytkownika. |
-| `equipmentYears/{year}/results/{device}:{activity}:{term}` | Aktualny stan wykonania terminu. Dokument zachowuje pierwotny miesiąc, odrębną rzeczywistą datę i uwagi. |
-| `equipmentHistory/{operation}` | Niezmienny wpis zdarzenia zawierający stan przed i po, rok i miesiąc planu oraz kopię nazwy, numeru i czynności z chwili zapisu. Dwa indeksy obsługują stronicowanie po roku i sprzęcie. |
+| Ścieżka | Dane |
+| --- | --- |
+| `equipmentState/cutover` | Brak znacznika oznacza tryb v37. Administrator ustawia `preparing`, `active` lub `paused`. Każdy z tych stanów blokuje zapis klienta do `wzorcowanie`. Zapis v38 działa w `active`. |
+| `equipmentState/registry` | Rewizja rejestru, aktualizowana atomowo ze zmianą karty. Reguły wymagają zgodnej zmiany karty i rewizji. |
+| `equipmentDevices/{device}` | Jedna karta ze stałym ID, opcjonalnym numerem, statusem, rewizją i maksymalnie 100 czynnościami. Każda zachowuje ID `a1…a100`, wyznaczane pozycją w zapisie. Format weryfikuje reguła. Reguła zabrania skracania listy. Wycofanie lub połączenie pozostawia kartę i powiązania. |
+| `equipmentLinks/{sourceId}` | Przypisanie oryginalnego ID `wzorcowanie` do karty i czynności. Rozdzielenie tworzy kartę i aktualizuje powiązanie w jednej transakcji. |
+| `equipmentYears/{year}` | Rewizja roku oraz wskaźniki zatwierdzonego planu i szkicu. |
+| `equipmentYears/{year}/versions/{version}` | Rewizje wejściowe, deklarowana liczba wierszy i liczba zatwierdzonych wierszy. Każdy zapis dopisuje jeden wiersz oraz zwiększa licznik w tej samej partii. Tylko właściciel wersji może ją uzupełniać. |
+| `equipmentYears/{year}/versions/{version}/rows/{device}:{activity}` | Niezmienny wiersz z maksymalnie 12 terminami. Reguły dopuszczają tylko wiersz wskazany przez bieżący krok zapisu. |
+| `equipmentYears/{year}/results/{device}:{activity}:{term}` | Stan wykonania z oryginalnym planowanym miesiącem, datą rzeczywistą i uwagami. |
+| `equipmentHistory/{operation}` | Niezmienny wpis dziennika z danymi sprzętu, stanem przed i po operacji oraz rokiem i miesiącem planu. |
 
-Zapis wykonania zmienia w jednej transakcji stan terminu, rewizję roku i historię. Edycja planu tworzy wiersze nowej wersji w małych porcjach, a dopiero transakcja przełączająca wskaźnik udostępnia wersję. Równoległa zmiana roku przerywa zapis na podstawie starszej rewizji. Wykonania zawsze są widoczne niezależnie od wersji planu, nawet gdy operator zapisze kolejny układ terminów. Historia może rosnąć odrębnymi dokumentami zdarzeń.
+Opublikowanie wersji atomowo zamyka ją i aktualizuje wskaźnik roku. Reguły wymagają zapisania wszystkich zadeklarowanych wierszy oraz niezmienionej rewizji rejestru. Kopiowanie sprawdza również rewizję i wersję planu źródłowego. Ponowienie na tym samym kluczu weryfikuje już zapisane wiersze i uzupełnia brakujące. Odhaczenie, korekta i cofnięcie atomowo aktualizują nagłówek, stan wykonania i dziennik.
 
-Reguły wymagają istniejącego aktywnego konta `admin` lub `operator`. Sprawdzają kształt dokumentów, trwałe klucze, zakres i unikalność miesięcy w wierszu, wersje powiązane z bieżącą rewizją roku, granice pól, parę wykonanie–historia i równoczesną aktualizację nagłówka. Usuwanie dokumentów sprzętu, wersji, realizacji i historii jest niedostępne dla klientów. Przycisk „Kopiuj harmonogram” tworzy szkic tylko dla nieistniejącego roku; źródłem jest zatwierdzona wersja, a wykonania pozostają w poprzednim roku.
+### Macierz wywołań reguł
 
-## Przygotowanie migracji i przełączenie
+Poniższe górne granice zakładają, że każde wywołanie `get()`, `exists()` i `getAfter()` liczy się osobno. Zapis v38 zawsze zaczyna od dwóch wywołań, po konto i stan przełączenia. Odczyt klienta, np. `transaction.get()`, jest osobnym żądaniem odczytu. Kolumna „Łącznie” dolicza konserwatywnie jedno wywołanie na każdy dodatkowy element `verify` w końcowym żądaniu SDK. Maksimum to 10 na pojedynczą operację i 20 na żądanie wielodokumentowe. [Limity Cloud Firestore](https://firebase.google.com/docs/firestore/quotas) · [Odczyty w regułach](https://firebase.google.com/docs/firestore/security/rules-conditions)
 
-1. Wykonać świeży prywatny eksport i próbę odtworzenia według [procedury Firestore](firestore-backup.md). Na kopii ustalić stan oryginałów, liczbę wykonanych pozycji i ewentualne nowe rekordy. Użytkownik może zatwierdzić wstępne grupowanie częściowo, a brak numeru nie blokuje zapisu.
-2. W emulatorze przygotować `equipmentDevices`, `equipmentActivities` i `equipmentLinks` na podstawie kopii i opcjonalnego pliku z kreatora przypisań. Skrypt w tej gałęzi jest ograniczony do loopbacku i projektu `demo-elab-ui`. Weryfikuje zbiór identyfikatorów, wartości i liczniki oraz bezpiecznie wznawia przygotowanie z tej samej kopii. Pozostawia dawne pozycje bez przypisanego roku.
-3. Po osobnej akceptacji wdrożeniowej przygotować indeksy i reguły w środowisku docelowym. Obecny workflow publikuje Hosting i reguły. Indeksy z `firestore.indexes.json` trzeba opublikować oddzielnie i potwierdzić ich gotowość przed aktywacją. Przy braku znacznika pozostaje tryb dotychczasowy. Następnie zaufanym klientem administracyjnym ustawić `preparing`, potwierdzić zamrożenie zapisów `wzorcowanie` oraz wykonać odczyt po zamrożeniu. Jeśli wartości różnią się od kopii, ponownie zweryfikować zakres przygotowania przed aktywacją. Nie zmieniać oryginalnych ID, dat ani dokumentów `wzorcowanie`.
-4. W trybie `preparing` przygotować nowe karty, czynności i linki w porcjach według identycznego manifestu zweryfikowanego lokalnie. Utworzyć brakujące dokumenty warunkowo oraz przerwać przy odmiennych wartościach. Potwierdzić kompletność wszystkich odniesień i brak wpisów rocznych utworzonych na podstawie roku wykonania. Użytkownik zatwierdza rzeczywisty rok odrębnie, tworząc właściwy plan.
-5. Udostępnić v38 i sprawdzić odczyt w trybie przygotowania. Ustawić `active` warunkowo na zweryfikowanej wersji znacznika. Potwierdzić na obu hostingach działanie nowego interfejsu, brak możliwości zapisu starego klienta oraz odczyt oryginalnych danych. W próbach produkcyjnych używać tylko odczytów.
+| Operacja | Maksimum dla poszczególnych zapisów | Łącznie |
+| --- | --- | ---: |
+| Dodanie lub edycja karty, w tym 100 czynności | karta 4, rewizja rejestru 3 | 7 |
+| Wycofanie lub przywrócenie karty | karta 4, rewizja rejestru 3 | 7 |
+| Połączenie kart | karta źródłowa 5, docelowa 4, rewizja rejestru 3 | 12 |
+| Zmiana przypisania pozycji źródłowej | powiązanie 4 | 4 |
+| Rozdzielenie pozycji do nowej karty | karta 4, rewizja rejestru 3, powiązanie 4 | 11 |
+| Otwarcie wersji szkicu, zatwierdzenia lub edycji | wersja 5 | 5 |
+| Otwarcie kopiowania do pustego roku | wersja 5 | 5 |
+| Zapis pojedynczego wiersza aktywnego | wiersz 4, postęp wersji 4 | 8 |
+| Zapis wiersza nieaktywnego, odziedziczonego z planu lub szkicu | wiersz 6, postęp wersji 4 | 10 |
+| Zapis wiersza kopiowanego | wiersz 5, postęp wersji 4 | 9 |
+| Zapis lub zatwierdzenie kompletnej wersji i edycja planu | nagłówek 5, zamknięcie wersji 3, weryfikacja rewizji rejestru 1 | 9 |
+| Finalizacja kopiowania | nagłówek 6, zamknięcie wersji 3, weryfikacja rejestru i roku źródłowego po 1 | 11 |
+| Pierwsze odhaczenie | nagłówek 4, wynik 7, dziennik 5 | 16 |
+| Korekta lub cofnięcie | nagłówek 4, wynik 6, dziennik 6 | 16 |
+| Ponowne odhaczenie po cofnięciu | nagłówek 4, wynik 7, dziennik 6 | 17 |
+| Odczyt karty, planu lub strony historii | sprawdzenie konta 1 | 1 na żądanie |
+| Zapis starszego klienta przed przełączeniem lub jego odrzucenie po przełączeniu | sprawdzenie konta plus maks. 2 odczyty znacznika | 3 |
 
-## Powrót awaryjny
+Bezpośredni zapis lub usunięcie historii, karty, wiersza w zamkniętej wersji i wyniku bez zdarzenia jest blokowany. W skrypcie administracyjnym obowiązują uprawnienia IAM, warunki istnienia dokumentów i kontrola wersji znacznika. Skrypt nie korzysta z uprawnień klienta aplikacji.
 
-- Przed przełączeniem lub po pojawieniu się nowych zapisów ustawić `paused` zaufanym klientem administracyjnym. Zachować aktualne reguły i blokadę starej kolekcji. Oryginały oraz nowe wyniki i historia nadal są dostępne do odczytu. Wersję PWA v37 można użyć tymczasowo dla innych modułów, a sprzęt pozostanie w niej archiwum tylko do odczytu.
-- Przywrócić ostatni frontend zgodny z nowym modelem lub poprawić frontend v38. Przetestować go na świeżej kopii ze wszystkimi zmianami powstałymi od wdrożenia, zwłaszcza rewizjami roku i dziennikiem. Dopiero wtedy ustawić `active`.
-- Jeżeli przerwano zapis wersji, pozostawiona otwarta wersja nie jest widoczna w planie. Powtórzenie tej samej operacji może uzupełnić brakujące wiersze. Można też rozpocząć nową edycję. Ewentualne sprzątanie osieroconych, otwartych wersji wymaga odrębnej operacji administracyjnej po sprawdzeniu wskaźników. Zatwierdzonych wersji, wyników i historii nie usuwać.
+### Limity Spark, rozmiary i indeksy
 
-## Koszty i limity
+- Plan o 85 wierszach i 1020 terminach kosztuje 173 zapisy dokumentów na wersję: otwarcie, 85 par wiersz–postęp i dwa końcowe zapisy. Największe żądanie aplikacji ma trzy zapisy dokumentów oraz ograniczoną liczbę odczytów. Kopiowanie sprawdza rejestr i źródłowy rok w stałym zakresie. Odhaczenie kosztuje trzy zapisy. Jedna strona historii pobiera do 40 zdarzeń.
+- Szacunek dla badanego rozmiaru rejestru to ok. 270 odczytów dokumentów na pierwsze otwarcie z jedną wersją roku i kilkunastoma wynikami, przed odczytami potrzebnymi regułom. Pełny zapis lub kopiowanie wymaga rzędu 1000–1500 odczytów liczonych ostrożnie bez buforowania, przed ponowieniami. Wydajność pojedynczego dokumentu postępu i koszt nasłuchów zależą od obciążenia. Starsze wersje planów przechowują oddzielne wiersze i nie zwiększają rozmiaru nagłówka.
+- Karta z 100 czynnościami pozostaje poniżej 100 KiB danych pól przy oszacowaniu czterech bajtów na znak oraz limitach tekstu. Pojedynczy wiersz zawiera do 12 tokenów. Rozmiary są wyraźnie poniżej 1 MiB na dokument i 10 MiB na żądanie. Tworzenie kolejnych wierszy składa się z osobnych żądań, a transakcja finalizacji ma limit 270 s.
+- Historia wymaga dwóch indeksów `equipmentHistory`: `year ASC, at DESC` i `device ASC, at DESC`. Pole `equipmentDevices.activities` jest zwolnione z indeksowania, ponieważ jest odczytywane z karty. Spark zapewnia m.in. 50 tys. odczytów, 20 tys. zapisów dokumentów na dzień, 1 GiB danych i po 200 indeksów złożonych i konfiguracji pojedynczych pól bez rozliczeń. Kwoty dzielą wszystkie moduły. [Limity](https://firebase.google.com/docs/firestore/quotas) · [Indeksy](https://firebase.google.com/docs/firestore/query-data/indexing) · [Wydajność dokumentu](https://firebase.google.com/docs/firestore/best-practices)
 
-Przy 77 kartach, 85 czynnościach, 86 powiązaniach, jednym planie z 85 wierszami i 13 wynikach otwarcie modułu kosztuje orientacyjnie **350 odczytów dokumentów**, plus dokumenty użyte przez reguły. Dodatkowe aktywne lata zwiększają ten koszt o liczbę ich wierszy i wyników przy pierwszym odczycie. W obrębie sesji wersje planów są buforowane, a moduł nasłuchuje metadanych roku tylko podczas otwarcia zakładki. Historia jest odczytywana na żądanie po maksymalnie **40 zdarzeń**.
+## Procedura migracji po odrębnej zgodzie
 
-Jedno odhaczenie, korekta lub cofnięcie to **3 zapisy atomowe** i szacunkowo **12–25 odczytów** włącznie z walidacją, przed ponowieniami, odświeżeniem widoku i aktualizacją pozostałych klientów. Zapis albo zatwierdzenie 85 wierszy to **87 zapisów dokumentów** i szacunkowo **700–1100 odczytów**, zależnie od cache, trybu kopiowania i odwołań reguł. Jest to estymacja dla typowego użycia, a nie pomiar zużycia produkcyjnego. Limity Firestore dzieli cała aplikacja.
+Skrypt [equipment-v38-migrate.mjs](../scripts/equipment-v38-migrate.mjs) działa poza katalogiem publikowanym. Dla produkcji wymaga krótkotrwałego tokenu OAuth uprawnionego konta przekazanego przez `ELAB_FIRESTORE_ADMIN_TOKEN`. Weryfikuje projekt, typ bazy i wyłączone rozliczenia. Polecenia zapisujące wymagają `--confirm` z dokładnym identyfikatorem projektu. Testy zapisu uruchamia się na emulatorze loopback i z projektem `demo-*`. Kopie i opcjonalne przypisania zapisuje się poza Git.
 
-Jeden wiersz ma 12 krótkich kluczy miesięcy i tokenów. Kartę ograniczają długości tekstu, zdarzenie przechowuje tylko jedną zmianę, a nagłówek roku przechowuje wskaźniki. Limity budżetu są znacznie powyżej rozmiarów tych dokumentów: **1 MiB** na dokument, **10 MiB** na żądanie oraz **270 s** na transakcję. Reguły pozwalają na maksymalnie **10 wywołań odczytu zależnego na operację** i **20 w ramach transakcji lub partii**. Spark daje **50 tys. odczytów** i **20 tys. zapisów dziennie**. [Limity Firestore](https://firebase.google.com/docs/firestore/quotas) [Zasady rozliczeń i odczytów w regułach](https://firebase.google.com/docs/firestore/pricing)
+1. Wykonać prywatną kopię i odtworzyć ją w emulatorze. Przeprowadzić `dry-run --backup <kopia>` oraz sprawdzić zakres migracji. Wstrzymać automatyczne ścieżki publikacji obu hostingów przed scaleniem, zachowując kontrole CI.
+2. Opublikować zatwierdzone indeksy i poczekać na `READY`, następnie opublikować reguły. Poczekać na propagację. `freeze` sprawdza zgodność aktywnych reguł z plikiem i gotowość indeksów. Przy braku znacznika klient v37 może nadal zapisywać w sprzęcie. [Publikowanie reguł](https://firebase.google.com/docs/rules/manage-deploy)
+3. Uzyskać potwierdzenie zapisania czynności z otwartych kart. Wykonać `freeze`, potem `capture --output <nowy plik>`. Kopia po zamrożeniu jest wymagana do dalszych kroków. Porównać ją z pierwszą kopią, żeby wychwycić równoległe zapisy. Przy zmianie zakresu zweryfikować ponownie manifest i ewentualne przypisania. Zmiany zakolejkowane offline po odrzuceniu przez blokadę rozliczyć z użytkownikiem.
+4. Dla tej samej kopii wykonać `dry-run`, a potem `stage --backup <kopia po zamrożeniu>`. Opcjonalny `--mapping` musi być ten sam w każdym kroku przygotowania i aktywacji. Skrypt wiąże znacznik z hashem wszystkich pól `wzorcowanie` i pełnym manifestem nowych dokumentów. Zapisuje wyłącznie brakujące dokumenty docelowe warunkowo. Porównuje wszystkie ścieżki i pola w pełnej kopii przed i po, a niespodziewane zmiany źródła lub celu zatrzymują proces. Różnice w innych modułach raportuje oddzielnie do weryfikacji. Po przerwaniu ponowić dla tej samej kopii. Plan roczny 2026 wymaga osobnej zgody.
+5. Opublikować oba frontendy w trybie `preparing`. Zweryfikować pliki i aktualizację PWA. Po pozytywnej kontroli uruchomić `activate --backup <ta sama kopia>`. Aktywacja ponownie weryfikuje indeksy, reguły, wartości źródeł i manifest celu. Stan zmienia się pod warunkiem zgodności wersji znacznika. Sprawdzić oba hostingi odczytowo, wykonać `audit --backup <ta sama kopia>` i przywrócić standardową automatyzację.
+6. Przed aktywacją awaria pozostawia `preparing`; można uzupełnić przygotowanie i ponowić weryfikację bez otwierania zapisów v37. Po aktywacji użyć `pause`, zachować rozszerzone reguły i wszystkie dane. Zgodny frontend v38 umożliwia odczyt nowych wykonanych czynności. v37 może tymczasowo obsługiwać pozostałe moduły i pokazywać stary rejestr tylko do odczytu. Po naprawie i teście na nowej kopii użyć `resume`. Nigdy nie nadpisywać produkcji starą pełną kopią.
 
-## Podgląd lokalny
-
-Użyć emulatorów Auth i Firestore dla projektu `demo-elab-ui`. Wskazać prywatny plik kopii JSON w `ELAB_EQUIPMENT_BACKUP`, opcjonalnie plik eksportu przypisań w `ELAB_EQUIPMENT_MAPPING`, a następnie uruchomić w emulatorach `node scripts/ui-preview.mjs`. Przykładowe konto jest generowane lokalnie. Konfiguracja demonstracyjna nie należy do publikowanych plików.
+Każde polecenie wymaga argumentu `--project`. Polecenia `capture`, `dry-run` i `audit` wykonują wyłącznie odczyty. Plik porównania zapisuje się opcjonalnym `--output` poza Git. Na potrzeby testów można uruchomić [próbę integracyjną](../tests/equipment-release-rehearsal.mjs) w emulatorze `demo-elab-ui`, podając pełną prywatną kopię, kopię porównawczą i ścieżkę raportu. Próba używa wyłącznie lokalnego emulatora Firestore. Dla lokalnych odczytów po wyczyszczeniu testu źródło jest stabilne. Produkcyjny eksport stosuje wspólny czas odczytu wszystkich kolekcji.

@@ -1,4 +1,4 @@
-import { calendarDate, executionActions } from "./plan-model.js?v=38";
+import { calendarDate, executionActions } from "./plan-model.js?v=38.1";
 
 export function currentPeriod(now = new Date()) {
   const [year, month] = calendarDate(now).split("-").map(Number);

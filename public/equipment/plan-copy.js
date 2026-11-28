@@ -1,5 +1,5 @@
-import { copyCandidates } from "./copy-model.js?v=38";
-import { monthlyNames, validYear } from "./plan-model.js?v=38";
+import { copyCandidates } from "./copy-model.js?v=38.1";
+import { monthlyNames, validYear } from "./plan-model.js?v=38.1";
 
 const get = id => document.getElementById("copy-" + id);
 const collator = new Intl.Collator("pl", { numeric: true });

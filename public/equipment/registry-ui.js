@@ -1,5 +1,5 @@
-import { searchText } from "./model.js?v=38";
-import { editDevice, needsDetails } from "./registry-model.js?v=38";
+import { searchText } from "./model.js?v=38.1";
+import { editDevice, needsDetails } from "./registry-model.js?v=38.1";
 
 const get = id => document.getElementById(id);
 const sort = new Intl.Collator("pl", { numeric: true });

@@ -1,3 +1,4 @@
+import { encodeActivities } from "../public/equipment/activity-codec.js";
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
@@ -11,15 +12,10 @@ const encoded = value => value === null ? { nullValue: null } : typeof value ===
 const fields = object => Object.fromEntries(Object.entries(object).map(([key, value]) => [key, encoded(value)]));
 const canonical = input => JSON.stringify(Object.entries(input).sort(([a], [b]) => a.localeCompare(b)));
 
-export async function stageEquipment(filename, { host, projectId, mapFile } = {}) {
-  if (projectId !== project || !/^127\.0\.0\.1:[1-9]\d{0,4}$/.test(host ?? "")) {
-    throw new Error("Skrypt działa wyłącznie w emulatorze Firestore demo-elab-ui.");
-  }
-  const backup = JSON.parse(await readFile(filename, "utf8"));
+export function equipmentManifest(backup, localDraft) {
   const dataset = readDataset(backup);
   const register = createRegister(dataset.sources);
   const initial = makeInitialRegistry(dataset.sources);
-  const localDraft = mapFile ? JSON.parse(await readFile(mapFile, "utf8")) : null;
   let model = initial;
   if (localDraft) {
     if (localDraft.source?.fingerprint !== dataset.fingerprint || localDraft.schemaVersion !== 1 || !Array.isArray(localDraft.devices)) {
@@ -35,11 +31,32 @@ export async function stageEquipment(filename, { host, projectId, mapFile } = {}
     restoreDraft(mapping, dataset.sources);
     model = evolveRegistry(initial, { action: "grouping", mapping }, dataset.sources, "seed").state;
   } else if (register.draft.groups.length !== Object.keys(initial.equipment).length) throw new Error("Niespójna liczba grup.");
+  const desired = new Map();
+  desired.set("equipmentState/registry", fields({ revision: 0, device: "" }));
+  for (const { id, activities, ...device } of Object.values(model.equipment)) {
+    desired.set("equipmentDevices/" + id, fields({ ...device, mergedInto: device.mergedInto ?? "", revision: 1,
+      registry: 0, activities: encodeActivities(activities) }));
+  }
+  for (const [id, assignment] of Object.entries(model.mapping.assignments)) {
+    const { groupId: device, kind, label } = assignment;
+    const activity = model.equipment[device]?.activities.find(row => row.kind === kind && row.label === label);
+    if (!activity) throw new Error("Brak czynności dla powiązania źródłowego.");
+    desired.set("equipmentLinks/" + id, fields({ device, activity: activity.id, revision: 1 }));
+  }
+  return { dataset, desired, deviceCount: Object.keys(model.equipment).length };
+}
+
+export async function stageEquipment(filename, { host, projectId, mapFile } = {}) {
+  if (projectId !== project || !/^127\.0\.0\.1:[1-9]\d{0,4}$/.test(host ?? "")) {
+    throw new Error("Skrypt działa wyłącznie w emulatorze Firestore demo-elab-ui.");
+  }
+  const backup = JSON.parse(await readFile(filename, "utf8"));
+  const { dataset, deviceCount, desired } = equipmentManifest(backup, mapFile ? JSON.parse(await readFile(mapFile, "utf8")) : null);
   const root = "projects/" + project + "/databases/(default)/documents";
   const base = "http://" + host + "/v1/" + root;
   const config = "equipmentState/cutover";
   const current = { fingerprint: dataset.fingerprint, mode: "preparing", sourceCount: dataset.sources.length,
-    completionCount: dataset.sources.filter(row => row.doneDate).length, deviceCount: Object.keys(model.equipment).length };
+    completionCount: dataset.sources.filter(row => row.doneDate).length, deviceCount };
   async function req(path, body) {
     const response = await fetch(base + path, { method: body ? "POST" : "GET", redirect: "error",
       headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
@@ -56,20 +73,7 @@ export async function stageEquipment(filename, { host, projectId, mapFile } = {}
   if (cutover?.fields.fingerprint.stringValue !== dataset.fingerprint && cutover) throw new Error("Emulator został przygotowany z innej kopii.");
   if (cutover?.fields.mode.stringValue === "active" || cutover?.fields.mode.stringValue === "paused") return current;
   if (!cutover) await req(":commit", { writes: [write(config, fields(current))] });
-  const desired = new Map();
   for (const item of backup.collections.wzorcowanie) desired.set("wzorcowanie/" + item.name.split("/").at(-1), item.fields);
-  for (const { id, activities, ...device } of Object.values(model.equipment)) {
-    desired.set("equipmentDevices/" + id, fields({ ...device, mergedInto: device.mergedInto ?? "", revision: 1 }));
-    for (const { id: activity, ...value } of activities) {
-      desired.set("equipmentActivities/" + id + ":" + activity, fields({ ...value, device: id, activity, revision: 1 }));
-    }
-  }
-  for (const [id, assignment] of Object.entries(model.mapping.assignments)) {
-    const { groupId: device, kind, label } = assignment;
-    const activity = model.equipment[device]?.activities.find(row => row.kind === kind && row.label === label);
-    if (!activity) throw new Error("Brak czynności dla powiązania źródłowego.");
-    desired.set("equipmentLinks/" + id, fields({ device, activity: activity.id, revision: 1 }));
-  }
   const list = [...desired];
   for (let i = 0; i < list.length; i += 30) {
     const page = list.slice(i, i + 30);
@@ -88,7 +92,7 @@ export async function stageEquipment(filename, { host, projectId, mapFile } = {}
       if (!saved || canonical(saved.fields) !== canonical(expected)) throw new Error("Weryfikacja nie powiodła się: " + path);
     }));
   }
-  for (const name of ["wzorcowanie","equipmentDevices","equipmentActivities","equipmentLinks"]) {
+  for (const name of ["wzorcowanie","equipmentDevices","equipmentLinks"]) {
     const found = await req("/" + name + "?pageSize=300&mask.fieldPaths=revision");
     if (found?.nextPageToken || (found?.documents ?? []).length !== list.filter(([path]) => path.startsWith(name + "/")).length) {
       throw new Error("Nieoczekiwane dodatkowe dokumenty w kolekcji " + name + ".");

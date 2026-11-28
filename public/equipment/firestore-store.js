@@ -1,7 +1,8 @@
-import { evolvePlan, executionActions, rowKey, validYear } from "./plan-model.js?v=38";
-import { copyDraft } from "./copy-model.js?v=38";
-import { executionEvent } from "./execution-model.js?v=38";
-import { RegistryError } from "./registry-model.js?v=38";
+import { decodeActivities, encodeActivities } from "./activity-codec.js?v=38.1";
+import { evolvePlan, executionActions, rowKey, validYear } from "./plan-model.js?v=38.1";
+import { copyDraft } from "./copy-model.js?v=38.1";
+import { executionEvent } from "./execution-model.js?v=38.1";
+import { RegistryError } from "./registry-model.js?v=38.1";
 
 const blank = { revision: 0, published: "", draft: "" };
 const slot = value => String(value).padStart(2, "0");
@@ -48,13 +49,14 @@ async function copiedToken(operationId, entryId) {
 }
 
 export function equipmentStore({ db, firestore, userId, canWrite }) {
-  const { collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, startAfter, where, writeBatch } = firestore;
+  const { collection, doc, getDoc, getDocFromServer, getDocs, getDocsFromServer, limit, onSnapshot, orderBy, query, runTransaction, serverTimestamp, setDoc, startAfter, where, writeBatch } = firestore;
   const ref = (...path) => doc(db, ...path.map(String));
   const col = (...path) => collection(db, ...path.map(String));
   const yearRef = year => ref("equipmentYears", year);
   const planRef = (year, version) => ref("equipmentYears", year, "versions", version);
   const rows = (year, version) => col("equipmentYears", year, "versions", version, "rows");
   const results = year => col("equipmentYears", year, "results");
+  const clock = ref("equipmentState", "registry");
   const versions = new Map();
   const realizations = new Map();
   let registryCache;
@@ -68,15 +70,11 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
     headers = [];
   }
 
-  const registryCollections = ["equipmentDevices", "equipmentActivities", "equipmentLinks"];
-
-  function registryFrom(devices, activities, links) {
-    const equipment = Object.fromEntries(devices.docs.map(doc => [doc.id, { ...doc.data(), id: doc.id, activities: [] }]));
-    for (const document of activities.docs) {
-      const { device, activity, ...value } = document.data();
-      if (equipment[device]) equipment[device].activities.push({ ...value, id: activity });
-    }
-    for (const device of Object.values(equipment)) device.activities.sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
+  function registryFrom(devices, links, clockSnapshot) {
+    const equipment = Object.fromEntries(devices.docs.map(document => {
+      const value = document.data();
+      return [document.id, { ...value, id: document.id, activities: decodeActivities(value.activities) }];
+    }));
     const assignments = Object.fromEntries(links.docs.map(doc => {
       const { device, activity, revision } = doc.data();
       let current = equipment[device];
@@ -89,20 +87,26 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
       const effective = current?.activities.find(row => original && row.kind === original.kind && row.label === original.label);
       return [doc.id, { groupId: current?.id ?? device, activityId: effective?.id ?? activity, revision }];
     }));
-    const stamp = [...devices.docs, ...activities.docs].map(snap => snap.id + "@" + snap.data().revision).sort().join(",");
-    registryCache = { revision: stamp, state: { equipment, mapping: { assignments } } };
+    registryCache = { revision: clockSnapshot.data()?.revision, state: { equipment, mapping: { assignments } } };
     return registryCache;
   }
 
   async function registry() {
-    return registryFrom(...await Promise.all(registryCollections.map(name => getDocs(col(name)))));
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const before = await getDocFromServer(clock);
+      const [devices, links] = await Promise.all([getDocsFromServer(col("equipmentDevices")), getDocsFromServer(col("equipmentLinks"))]);
+      const after = await getDocFromServer(clock);
+      if (before.data()?.revision === after.data()?.revision) return registryFrom(devices, links, after);
+    }
+    throw stale();
   }
 
   function watchRegistry(draw, error) {
     const snapshots = new Map();
-    const stops = registryCollections.map(name => onSnapshot(col(name), snapshot => {
-      snapshots.set(name, snapshot);
-      if (snapshots.size === registryCollections.length) draw(registryFrom(...registryCollections.map(name => snapshots.get(name))));
+    const sources = [col("equipmentDevices"), col("equipmentLinks"), clock];
+    const stops = sources.map((source, index) => onSnapshot(source, snapshot => {
+      snapshots.set(index, snapshot);
+      if (snapshots.size === sources.length) draw(registryFrom(...sources.map((_, key) => snapshots.get(key))));
     }, error));
     return () => stops.forEach(stop => stop());
   }
@@ -182,31 +186,31 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
   async function stage(year, version, record, packed) {
     const versionRef = planRef(year, version);
     const docState = await getDoc(versionRef);
-    if (!docState.exists()) await setDoc(versionRef, { ...record, state: "open", createdAt: serverTimestamp() });
-    else {
+    const planned = [...packed].sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+    const metadata = { ...record, total: planned.length };
+    let written = 0;
+    if (!docState.exists()) {
+      await setDoc(versionRef, { ...metadata, written, lastRow: "", state: "open", createdAt: serverTimestamp() });
+    } else {
       const found = docState.data();
-      if (found.state !== "open" || Object.keys(record).some(key => found[key] !== record[key])) throw stale();
+      if (found.state !== "open" || Object.keys(metadata).some(key => found[key] !== metadata[key])) throw stale();
+      written = found.written;
+      const existing = await getDocs(rows(year, version));
+      if (existing.size !== written || found.lastRow !== (planned[written - 1]?.[0] ?? "")) throw stale();
+      for (const document of existing.docs) {
+        const value = document.data();
+        const expected = planned[value.position - 1];
+        if (!expected || value.position > written || document.id !== expected[0]
+            || value.device !== expected[1].device || value.activity !== expected[1].activity
+            || JSON.stringify(Object.entries(value.slots).sort()) !== JSON.stringify(Object.entries(expected[1].slots).sort())) throw stale();
+      }
     }
-    const collection = rows(year, version);
-    const existing = docState.exists() ? await getDocs(collection) : null;
-    const missing = new Map(packed);
-    for (const doc of existing?.docs ?? []) {
-      const expected = missing.get(doc.id);
-      const found = doc.data();
-      if (!expected || expected.device !== found.device || expected.activity !== found.activity
-          || JSON.stringify(Object.entries(expected.slots).sort()) !== JSON.stringify(Object.entries(found.slots).sort())) throw stale();
-      missing.delete(doc.id);
-    }
-    const batches = [];
-    for (const [key, row] of missing) {
+    for (const [rowKey, row] of planned.slice(written)) {
+      written++;
       const batch = writeBatch(db);
-      batch.set(ref("equipmentYears", year, "versions", version, "rows", key), row);
-      batches.push(batch);
-    }
-    for (let index = 0; index < batches.length; index += 8) {
-      const settled = await Promise.allSettled(batches.slice(index, index + 8).map(batch => batch.commit()));
-      const failure = settled.find(result => result.status === "rejected");
-      if (failure) throw failure.reason;
+      batch.set(ref("equipmentYears", year, "versions", version, "rows", rowKey), { ...row, position: written });
+      batch.update(versionRef, { written, lastRow: rowKey });
+      await batch.commit();
     }
   }
 
@@ -221,7 +225,8 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
     if (header.revision !== revision) throw stale();
     const activeRegistry = await registry();
     const { equipment } = activeRegistry.state;
-    const record = { author: userId(), base: revision, mode: command.action, sourceYear: "", sourceVersion: "", sourceRevision: 0 };
+    const record = { author: userId(), base: revision, mode: command.action, sourceYear: "", sourceVersion: "", sourceRevision: 0,
+      priorPublished: header.published, priorDraft: header.draft, registry: activeRegistry.revision };
     let pending;
     if (command.action === "copy") {
       if (!validYear(command.sourceYear) || command.sourceYear === year) throw new RegistryError("Wybierz dwa różne lata.");
@@ -245,16 +250,11 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
         if (command.action === "copy" && present.revision !== 0) throw occupied();
         if (present.revision !== revision) throw stale();
         const staged = await transaction.get(planRef(year, id));
-        if (staged.data()?.state !== "open") throw stale();
+        if (staged.data()?.state !== "open" || staged.data().written !== packed.size) throw stale();
+        if ((await transaction.get(clock)).data()?.revision !== record.registry) throw stale();
         if (record.sourceYear) {
           const current = (await transaction.get(yearRef(record.sourceYear))).data();
           if (current?.published !== record.sourceVersion || current.revision !== record.sourceRevision) throw stale();
-          const devices = [...new Set([...packed.values()].map(row => row.device))];
-          const [cards, activities] = await Promise.all([
-            Promise.all(devices.map(device => transaction.get(ref("equipmentDevices", device)))),
-            Promise.all([...packed.keys()].map(key => transaction.get(ref("equipmentActivities", key)))),
-          ]);
-          if (cards.some(card => card.data()?.status !== "active") || activities.some(act => act.data()?.active !== true)) throw stale();
         }
         transaction.update(planRef(year, id), { state: "sealed", sealedAt: serverTimestamp() });
         transaction.set(yearRef(year), { revision: revision + 1, published: command.action === "approve" ? id : header.published,
@@ -278,17 +278,16 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
     const current = data.approved?.entries.find(row => row.id === command.entryId);
     const after = evolvePlan(data, command, activeRegistry.state.equipment).approved.entries.find(row => row.id === command.entryId);
     const key = executionKey(current);
+    const device = (await getDocFromServer(ref("equipmentDevices", current.deviceId))).data();
+    const activity = decodeActivities(device.activities).find(row => row.id === current.activityId);
     await runTransaction(db, async transaction => {
       const eventRef = ref("equipmentHistory", id);
       const resultRef = ref("equipmentYears", year, "results", key);
-      const [annual, event, result, device, activity] = await Promise.all([
+      const [annual, event, result] = await Promise.all([
         transaction.get(yearRef(year)), transaction.get(eventRef), transaction.get(resultRef),
-        transaction.get(ref("equipmentDevices", current.deviceId)), transaction.get(ref("equipmentActivities", keyFor(current))),
       ]);
       if (event.exists()) return;
       if (annual.data()?.revision !== revision) throw stale();
-      const dev = device.data();
-      const act = activity.data();
       const next = (result.data()?.revision ?? 0) + 1;
       const execution = executionEvent(command.action, current, after);
       const location = { device: current.deviceId, activity: current.activityId, term: token(current.id), month: slot(current.month) };
@@ -296,33 +295,26 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
       transaction.set(eventRef, { ...location, year: String(year), key, action: execution.action, revision: next, at: serverTimestamp(),
         beforeDate: execution.before?.date ?? "", beforeNotes: execution.before?.notes ?? "",
         date: execution.after?.date ?? "", notes: execution.after?.notes ?? "",
-        name: dev.name, number: dev.number, kind: act.kind, label: act.label });
+        name: device.name, number: device.number, kind: activity.kind, label: activity.label });
       transaction.set(yearRef(year), { ...annual.data(), revision: revision + 1, last: id, slot: key, action: "execute" });
     });
     return loadPlan(year);
   }
 
+  function cardFields({ name, number, notes, status, verified, mergedInto, activities }, revision, registry) {
+    return { name, number, notes, status, verified, mergedInto: mergedInto ?? "", activities: encodeActivities(activities),
+      revision, registry, nextActivity: activities.length + 1 };
+  }
+
   async function saveDevice(value, previous) {
     assertWritable();
-    const { id, name, number, notes, status, verified, mergedInto, nextActivity, activities } = value;
     await runTransaction(db, async transaction => {
-      const deviceRef = ref("equipmentDevices", id);
-      const changed = activities.filter(row => {
-        const old = previous?.activities.find(act => act.id === row.id);
-        return !old || ["kind","label","active"].some(field => row[field] !== old[field]);
-      });
-      const [card, ...originals] = await Promise.all([transaction.get(deviceRef),
-        ...changed.map(row => transaction.get(ref("equipmentActivities", id + ":" + row.id)))]);
+      const deviceRef = ref("equipmentDevices", value.id);
+      const [card, version] = await Promise.all([transaction.get(deviceRef), transaction.get(clock)]);
       if ((card.data()?.revision ?? 0) !== (previous?.revision ?? 0)) throw stale();
-      changed.forEach((row, i) => {
-        if ((originals[i].data()?.revision ?? 0) !== (previous?.activities.find(act => act.id === row.id)?.revision ?? 0)) throw stale();
-      });
-      transaction.set(deviceRef, { name, number, notes, status, verified, mergedInto: mergedInto ?? "", nextActivity,
-        revision: (previous?.revision ?? 0) + 1 });
-      changed.forEach((row, i) => transaction.set(ref("equipmentActivities", id + ":" + row.id), {
-        device: id, activity: row.id, kind: row.kind, label: row.label, active: row.active,
-        revision: (originals[i].data()?.revision ?? 0) + 1,
-      }));
+      const next = version.data().revision + 1;
+      transaction.set(deviceRef, cardFields(value, (previous?.revision ?? 0) + 1, next));
+      transaction.update(clock, { revision: next, device: value.id });
     });
     return registry();
   }
@@ -343,12 +335,13 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
     const link = ref("equipmentLinks", source.id);
     const id = "eq-" + crypto.randomUUID();
     await runTransaction(db, async transaction => {
-      const current = await transaction.get(link);
+      const [current, version] = await Promise.all([transaction.get(link), transaction.get(clock)]);
       if ((current.data()?.revision ?? 0) !== revision) throw stale();
-      transaction.set(ref("equipmentDevices", id), { name: source.name, number: "", notes: "", status: "active",
-        verified: false, mergedInto: "", nextActivity: 2, revision: 1 });
-      transaction.set(ref("equipmentActivities", id + ":a1"), { device: id, activity: "a1",
-        kind: source.type ?? "Wzorcowanie", label: "", active: true, revision: 1 });
+      const next = version.data().revision + 1;
+      const value = { name: source.name, number: "", notes: "", status: "active", verified: false,
+        activities: [{ id: "a1", kind: source.type ?? "Wzorcowanie", label: "", active: true }] };
+      transaction.set(ref("equipmentDevices", id), cardFields(value, 1, next));
+      transaction.update(clock, { revision: next, device: id });
       transaction.set(link, { device: id, activity: "a1", revision: revision + 1 });
     });
     return registry();
@@ -363,15 +356,13 @@ export function equipmentStore({ db, firestore, userId, canWrite }) {
     await runTransaction(db, async transaction => {
       const a = ref("equipmentDevices", source.id);
       const b = ref("equipmentDevices", target.id);
-      const [before, after] = await Promise.all([transaction.get(a), transaction.get(b)]);
+      const [before, after, version] = await Promise.all([transaction.get(a), transaction.get(b), transaction.get(clock)]);
       if (before.data()?.revision !== source.revision || after.data()?.revision !== target.revision) throw stale();
-      transaction.update(a, { status: "withdrawn", mergedInto: target.id, revision: source.revision + 1 });
-      transaction.update(b, { nextActivity: target.nextActivity + missing.length, revision: target.revision + 1 });
-      missing.forEach((row, i) => {
-        const id = "a" + (target.nextActivity + i);
-        transaction.set(ref("equipmentActivities", target.id + ":" + id), { device: target.id, activity: id,
-          kind: row.kind, label: row.label, active: row.active, revision: 1 });
-      });
+      const next = version.data().revision + 1;
+      const activities = [...target.activities, ...missing.map((row, index) => ({ ...row, id: "a" + (target.nextActivity + index) }))];
+      transaction.set(a, cardFields({ ...source, status: "withdrawn", mergedInto: target.id }, source.revision + 1, next));
+      transaction.set(b, cardFields({ ...target, activities }, target.revision + 1, next));
+      transaction.update(clock, { revision: next, device: source.id });
     });
     return registry();
   }

@@ -71,8 +71,8 @@ test("the dashboard links directly to warnings and affected lots can be replenis
   assert.match(modules, /createButton\("Otwórz pozycję", [^\n]+\(\) => openPosition\(lot\)/);
   assert.match(modules, /presentForm\("Edytuj partię"\)/);
   assert.match(modules, /buildChemicalAlerts\(categoryItems, threshold\)/);
-  assert.match(app, /\.\/modules\/chemicals\.js\?v=38/);
-  assert.match(html, /\.\/app\.js\?v=38/);
+  assert.match(app, /\.\/modules\/chemicals\.js\?v=38\.1/);
+  assert.match(html, /\.\/app\.js\?v=38\.1/);
 });
 
 test("all visible full dates use the Polish day-month-year format", () => {
@@ -104,10 +104,10 @@ test("application responsibilities are split into focused modules", () => {
 });
 
 test("all local JavaScript imports use one cache version", () => {
-  const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+)?)"/g)]
+  const localImports = [...`${app}\n${modules}`.matchAll(/from "(\.{1,2}\/[^"?]+\.js(?:\?v=\d+(?:\.\d+)?)?)"/g)]
     .map((match) => match[1]);
   assert.ok(localImports.length > 0);
-  assert.ok(localImports.every((path) => path.endsWith("?v=38")));
+  assert.ok(localImports.every((path) => path.endsWith("?v=38.1")));
 });
 
 test("equipment panels and their full module graph are available in the v38 app shell", async () => {
@@ -118,13 +118,13 @@ test("equipment panels and their full module graph are available in the v38 app 
   const directory = new URL("../public/equipment/", import.meta.url);
   const names = (await readdir(directory)).filter(name => name.endsWith(".js"));
   for (const name of names) {
-    assert.ok(serviceWorker.includes("./equipment/" + name + "?v=38"), name);
+    assert.ok(serviceWorker.includes("./equipment/" + name + "?v=38.1"), name);
     const content = await readFile(new URL(name, directory), "utf8");
     for (const [, path] of content.matchAll(/from "(\.{1,2}\/[^"]+\.js[^"]*)"/g)) {
-      assert.ok(path.endsWith("?v=38"), path);
+      assert.ok(path.endsWith("?v=38.1"), path);
     }
   }
-  assert.ok(serviceWorker.includes("./modules/equipment-v38.js?v=38"));
+  assert.ok(serviceWorker.includes("./modules/equipment-v38.js?v=38.1"));
 });
 
 test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", async () => {
@@ -153,11 +153,11 @@ test("PWA caches PNG icons for Android, Apple Home Screen, and browser tabs", as
     assert.equal(png[25], 2, "Opaque RGB icon");
   }));
   assert.match(serviceWorker, /APP_SHELL/);
-  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v38"/);
-  assert.match(html, /styles\.css\?v=38/);
-  assert.match(serviceWorker, /styles\.css\?v=38/);
+  assert.match(serviceWorker, /const CACHE_NAME = "e-lab-v38-r2"/);
+  assert.match(html, /styles\.css\?v=38\.1/);
+  assert.match(serviceWorker, /styles\.css\?v=38\.1/);
   assert.match(serviceWorker, /\.\/modules\/chemicals\.js/);
-  for (const name of ["icons", "navigation", "shell", "inventory-statistics", "inventory-statistics-data", "water-plan", "water-store", "water-monitoring"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=38`));
+  for (const name of ["icons", "navigation", "shell", "inventory-statistics", "inventory-statistics-data", "water-plan", "water-store", "water-monitoring"]) assert.ok(serviceWorker.includes(`./modules/${name}.js?v=38.1`));
 });
 
 test("Firebase deployment uses Application Default Credentials", () => {

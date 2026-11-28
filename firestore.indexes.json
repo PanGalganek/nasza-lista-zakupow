@@ -11,5 +11,5 @@
       "fields": [{ "fieldPath": "device", "order": "ASCENDING" }, { "fieldPath": "at", "order": "DESCENDING" }]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [{ "collectionGroup": "equipmentDevices", "fieldPath": "activities", "indexes": [] }]
 }
